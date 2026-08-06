@@ -2,12 +2,11 @@ name: nuzul
 description: "نزل - منصة الحجوزات الفندقية"
 publish_to: 'none'
 version: 0.1.0+6
+
 environment:
   sdk: '>=3.3.0 <4.0.0'
 
 dependencies:
-  url_launcher: ^6.3.0
-  http: ^1.2.0
   flutter:
     sdk: flutter
   flutter_localizations:
@@ -26,9 +25,6 @@ dependencies:
 
   # Backend
   supabase_flutter: ^2.8.0
-
-  # Payments
-  flutter_stripe: ^11.1.0
 
   # Models / serialization
   freezed_annotation: ^2.4.4
@@ -60,7 +56,6 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/images/destinations/
     - assets/icons/
 
   # fonts:
