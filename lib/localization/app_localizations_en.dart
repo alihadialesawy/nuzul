@@ -133,4 +133,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loginRequired => 'You must sign in first';
+
+  @override
+  String get roomTypeSectionTitle => 'Room Type';
+
+  @override
+  String get roomQueen => 'Queen Room (2 beds)';
+
+  @override
+  String get roomKing => 'King Room';
+
+  @override
+  String get roomStudioSuite => 'Studio Suite';
+
+  @override
+  String get aboutAreaTitle => 'About the Surrounding Area';
+
+  @override
+  String aboutAreaDescription(String city) {
+    return 'This hotel enjoys a prime location in $city, close to major landmarks and essential facilities, making it a convenient choice for getting around during your stay.';
+  }
 }

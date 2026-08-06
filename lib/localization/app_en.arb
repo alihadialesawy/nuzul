@@ -45,5 +45,19 @@
   "loadingBookings": "Loading your bookings...",
   "errorLoadBookings": "Failed to load bookings, check your connection",
 
-  "loginRequired": "You must sign in first"
+  "loginRequired": "You must sign in first",
+
+  "roomTypeSectionTitle": "Room Type",
+  "roomQueen": "Queen Room (2 beds)",
+  "roomKing": "King Room",
+  "roomStudioSuite": "Studio Suite",
+  "aboutAreaTitle": "About the Surrounding Area",
+  "aboutAreaDescription": "This hotel enjoys a prime location in {city}, close to major landmarks and essential facilities, making it a convenient choice for getting around during your stay.",
+  "@aboutAreaDescription": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/utils/validators.dart';
+import '../../core/widgets/app_banner.dart';
 import '../../localization/app_localizations.dart';
 import 'controllers/auth_controller.dart';
 
@@ -80,7 +81,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.register)),
+      appBar: const AppBanner(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSizes.lg),
@@ -89,6 +90,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: AppSizes.md),
+                Text(
+                  l10n.register,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: AppSizes.xl),
                 TextFormField(
                   controller: _nameController,

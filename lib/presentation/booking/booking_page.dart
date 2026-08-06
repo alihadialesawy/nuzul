@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,11 +6,26 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/widgets/price_text.dart';
+import '../../core/widgets/app_footer.dart';
+import '../../core/widgets/app_banner.dart';
 import '../../data/models/hotel_model.dart';
+import '../../data/models/selected_room.dart';
 import '../../data/repositories/booking_repository.dart';
+import '../../core/services/payment_service.dart';
 import '../../localization/app_localizations.dart';
 
 final bookingRepositoryProvider = Provider((ref) => BookingRepository());
+final paymentServiceProvider = Provider((ref) => PaymentService());
+
+/// Stripe غير مدعوم حاليًا إلا على Android/iOS (وWeb إن تم إعداده لاحقًا).
+/// على أنظمة سطح المكتب (Windows/macOS/Linux) نتخطى الدفع الفعلي مؤقتًا
+/// ونسجّل الحجز بحالة "قيد الانتظار" ليتم إتمام الدفع لاحقًا من جهاز مدعوم.
+bool get _isStripeSupportedPlatform {
+  if (kIsWeb) return true;
+  return defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+}
 
 class BookingPage extends ConsumerStatefulWidget {
   final HotelModel hotel;
@@ -17,12 +33,18 @@ class BookingPage extends ConsumerStatefulWidget {
   final DateTime checkOut;
   final int guests;
 
+  /// أنواع الغرف المختارة مع كمية كل نوع (يدعم اختيار أكتر من نوع غرفة
+  /// في نفس الحجز). لو القائمة فاضية أو لم تُمرَّر، يُستخدم السعر
+  /// الأساسي للفندق كنوع غرفة افتراضي بكمية 1.
+  final List<SelectedRoom>? selectedRooms;
+
   const BookingPage({
     super.key,
     required this.hotel,
     required this.checkIn,
     required this.checkOut,
     required this.guests,
+    this.selectedRooms,
   });
 
   @override
@@ -34,7 +56,22 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   String? _errorMessage;
 
   int get _nights => widget.checkOut.difference(widget.checkIn).inDays;
-  double get _totalPrice => widget.hotel.pricePerNight * _nights;
+
+  List<SelectedRoom> get _rooms =>
+      (widget.selectedRooms != null && widget.selectedRooms!.isNotEmpty)
+          ? widget.selectedRooms!
+          : [
+        SelectedRoom(
+          label: '',
+          pricePerNight: widget.hotel.pricePerNight,
+          quantity: 1,
+        ),
+      ];
+
+  double get _subtotalPerNight =>
+      _rooms.fold(0, (sum, room) => sum + room.subtotalPerNight);
+
+  double get _totalPrice => _subtotalPerNight * _nights;
 
   Future<void> _confirmBooking() async {
     setState(() {
@@ -42,6 +79,37 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       _errorMessage = null;
     });
 
+    // على المنصات غير المدعومة من Stripe (سطح المكتب حاليًا)، نتخطى
+    // خطوة الدفع الفعلي ونسجّل الحجز مباشرة بحالة "قيد الانتظار".
+    if (!_isStripeSupportedPlatform) {
+      await _createBooking(status: 'pending');
+      return;
+    }
+
+    // 1. نفّذ الدفع الفعلي أولاً عبر Stripe قبل أي تسجيل بقاعدة البيانات
+    final paymentService = ref.read(paymentServiceProvider);
+    final paymentResult = await paymentService.pay(amount: _totalPrice);
+
+    if (!mounted) return;
+
+    final paymentSucceeded = paymentResult.when(
+      success: (_) => true,
+      failure: (message) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = message;
+        });
+        return false;
+      },
+    );
+
+    if (!paymentSucceeded) return;
+
+    // 2. الدفع نجح فعليًا -> سجّل الحجز بحالة "مؤكد" مباشرة
+    await _createBooking(status: 'confirmed');
+  }
+
+  Future<void> _createBooking({required String status}) async {
     final repo = ref.read(bookingRepositoryProvider);
     final result = await repo.createBooking(
       hotelId: widget.hotel.id,
@@ -50,6 +118,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       checkOut: widget.checkOut,
       guests: widget.guests,
       totalPrice: _totalPrice,
+      status: status,
     );
 
     if (!mounted) return;
@@ -62,7 +131,10 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       failure: (message) {
         setState(() {
           _isSubmitting = false;
-          _errorMessage = message;
+          _errorMessage = status == 'confirmed'
+          // الدفع نجح فعليًا بس فشل تسجيل الحجز -- رسالة توضح الوضع
+              ? 'تم الدفع بنجاح، لكن حدث خطأ أثناء تسجيل الحجز: $message'
+              : 'حدث خطأ أثناء تسجيل الحجز: $message';
         });
       },
     );
@@ -96,13 +168,20 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final rooms = _rooms;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.confirmBookingTitle)),
+      appBar: const AppBanner(),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(AppSizes.md),
           children: [
+            Text(
+              l10n.confirmBookingTitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: AppSizes.md),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(AppSizes.md),
@@ -143,6 +222,20 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                             widget.hotel.city,
                             style: const TextStyle(color: AppColors.textSecondary),
                           ),
+                          // عرض كل أنواع الغرف المختارة مع كمياتها
+                          for (final room in rooms)
+                            if (room.label.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  '${room.quantity} × ${room.label}',
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
                         ],
                       ),
                     ),
@@ -194,13 +287,24 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                 padding: const EdgeInsets.all(AppSizes.md),
                 child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('${widget.hotel.pricePerNight.toStringAsFixed(0)} × $_nights'),
-                        Text(Formatters.currency(_totalPrice)),
-                      ],
-                    ),
+                    // سطر سعر منفصل لكل نوع غرفة مختار (لو أكتر من نوع)
+                    for (final room in rooms)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                room.label.isNotEmpty
+                                    ? '${room.label} × ${room.quantity} × $_nights'
+                                    : '×$_nights',
+                              ),
+                            ),
+                            PriceText(sarAmount: room.subtotalPerNight * _nights),
+                          ],
+                        ),
+                      ),
                     const Divider(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -209,8 +313,8 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                           l10n.totalLabel,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                         ),
-                        Text(
-                          Formatters.currency(_totalPrice),
+                        PriceText(
+                          sarAmount: _totalPrice,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -255,6 +359,8 @@ class _BookingPageState extends ConsumerState<BookingPage> {
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textHint, fontSize: 12),
             ),
+
+            const AppFooter(),
           ],
         ),
       ),

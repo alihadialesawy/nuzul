@@ -44,6 +44,25 @@ class HotelRepository {
     }
   }
 
+  /// يجيب أفضل الفنادق تقييمًا لعرضها في قسم "الفنادق المميزة" بالصفحة
+  /// الرئيسية قبل تنفيذ أي بحث.
+  Future<Result<List<HotelModel>>> getFeaturedHotels({int limit = 6}) async {
+    try {
+      final response = await _client
+          .from('hotels')
+          .select()
+          .order('rating', ascending: false)
+          .limit(limit);
+
+      final hotels =
+      (response as List).map((row) => HotelModel.fromJson(row)).toList();
+
+      return Success(hotels);
+    } catch (e) {
+      return Failure(ErrorTranslator.translate(e));
+    }
+  }
+
   /// إضافة/إزالة فندق من المفضلة (جدول وسيط favorites)
   Future<Result<void>> toggleFavorite(String hotelId, bool isFavorite) async {
     try {
@@ -64,6 +83,69 @@ class HotelRepository {
             .eq('user_id', userId)
             .eq('hotel_id', hotelId);
       }
+      return const Success(null);
+    } catch (e) {
+      return Failure(ErrorTranslator.translate(e));
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // دوال إدارة الفنادق (Admin) — عرض الكل بدون فلترة، إضافة، تعديل، حذف
+  // ---------------------------------------------------------------------
+
+  /// يجيب كل الفنادق بدون أي فلترة (city/max_guests)، مرتبة بالأحدث أولاً،
+  /// لاستخدامها في لوحة إدارة الفنادق.
+  Future<Result<List<HotelModel>>> getAllHotelsForAdmin() async {
+    try {
+      final response = await _client
+          .from('hotels')
+          .select()
+          .order('created_at', ascending: false);
+
+      final hotels =
+      (response as List).map((row) => HotelModel.fromJson(row)).toList();
+
+      return Success(hotels);
+    } catch (e) {
+      return Failure(ErrorTranslator.translate(e));
+    }
+  }
+
+  /// يضيف فندق جديد ويرجع النسخة المخزّنة (فيها الـ id المُولّد من DB)
+  Future<Result<HotelModel>> createHotel(HotelModel hotel) async {
+    try {
+      final response = await _client
+          .from('hotels')
+          .insert(hotel.toJson())
+          .select()
+          .single();
+
+      return Success(HotelModel.fromJson(response));
+    } catch (e) {
+      return Failure(ErrorTranslator.translate(e));
+    }
+  }
+
+  /// يحدّث بيانات فندق موجود عن طريق الـ id
+  Future<Result<HotelModel>> updateHotel(HotelModel hotel) async {
+    try {
+      final response = await _client
+          .from('hotels')
+          .update(hotel.toJson())
+          .eq('id', hotel.id)
+          .select()
+          .single();
+
+      return Success(HotelModel.fromJson(response));
+    } catch (e) {
+      return Failure(ErrorTranslator.translate(e));
+    }
+  }
+
+  /// يحذف فندق نهائيًا عن طريق الـ id
+  Future<Result<void>> deleteHotel(String hotelId) async {
+    try {
+      await _client.from('hotels').delete().eq('id', hotelId);
       return const Success(null);
     } catch (e) {
       return Failure(ErrorTranslator.translate(e));

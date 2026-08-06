@@ -1,0 +1,62 @@
+{
+  "@@locale": "es",
+  "appName": "Safr-AI",
+
+  "login": "Iniciar sesión",
+  "register": "Crear cuenta",
+  "email": "Correo electrónico",
+  "password": "Contraseña",
+  "confirmPassword": "Confirmar contraseña",
+  "fullName": "Nombre completo",
+  "noAccountRegister": "¿No tienes una cuenta? Crear cuenta nueva",
+  "haveAccountLogin": "¿Ya tienes una cuenta? Iniciar sesión",
+
+  "whereTo": "¿A dónde vas? (Ciudad)",
+  "guests": "Huéspedes",
+  "search": "Buscar",
+  "bookNow": "Reservar ahora",
+  "myBookings": "Mis reservas",
+  "searchPrompt": "Busca una ciudad para ver los hoteles disponibles",
+  "noResults": "No hay hoteles disponibles para esta ciudad y fechas",
+  "searching": "Buscando hoteles...",
+  "errorLoadResults": "No se pudieron cargar los resultados, revisa tu conexión",
+  "retry": "Reintentar",
+  "perNight": "por noche",
+
+  "confirmBookingTitle": "Confirmar reserva",
+  "checkInLabel": "Fecha de entrada",
+  "checkOutLabel": "Fecha de salida",
+  "nightsLabel": "Número de noches",
+  "guestsLabel": "Número de huéspedes",
+  "totalLabel": "Total",
+  "confirmBookingButton": "Confirmar reserva",
+  "paymentNote": "Nota: el pago real a través de Stripe se añadirá en el siguiente paso — esta reserva se registra actualmente con estado \"pendiente\".",
+  "bookingSuccessTitle": "Solicitud de reserva enviada",
+  "ok": "Aceptar",
+
+  "statusPending": "Pendiente",
+  "statusConfirmed": "Confirmada",
+  "statusCancelled": "Cancelada",
+  "cancelBooking": "Cancelar reserva",
+  "cancelBookingConfirmTitle": "Cancelar reserva",
+  "cancelBookingUndo": "Deshacer",
+  "cancelBookingYes": "Sí, cancelar",
+  "noBookingsYet": "Aún no tienes ninguna reserva",
+  "loadingBookings": "Cargando tus reservas...",
+  "errorLoadBookings": "No se pudieron cargar las reservas, revisa tu conexión",
+
+  "loginRequired": "Debes iniciar sesión primero",
+  "roomTypeSectionTitle": "Tipo de habitación",
+  "roomQueen": "Habitación con dos camas queen",
+  "roomKing": "Habitación king",
+  "roomStudioSuite": "Suite estudio",
+  "aboutAreaTitle": "Sobre la zona",
+  "aboutAreaDescription": "Este hotel está ubicado en una zona privilegiada de {city}, cerca de los principales lugares de interés y servicios esenciales, lo que lo convierte en una opción práctica para moverte fácilmente durante tu estancia.",
+  "@aboutAreaDescription": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  }
+}

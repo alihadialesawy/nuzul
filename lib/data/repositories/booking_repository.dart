@@ -14,6 +14,7 @@ class BookingRepository {
     required DateTime checkOut,
     required int guests,
     required double totalPrice,
+    String status = 'pending',
   }) async {
     try {
       final userId = _client.auth.currentUser?.id;
@@ -31,7 +32,7 @@ class BookingRepository {
         'check_out': checkOut.toIso8601String(),
         'guests': guests,
         'total_price': totalPrice,
-        'status': 'pending',
+        'status': status,
       })
           .select()
           .single();
@@ -72,6 +73,40 @@ class BookingRepository {
       await _client
           .from('bookings')
           .update({'status': 'cancelled'}).eq('id', bookingId);
+      return const Success(null);
+    } catch (e) {
+      return Failure(ErrorTranslator.translate(e));
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // دوال إدارة الحجوزات (Admin)
+  // ---------------------------------------------------------------------
+
+  /// يجيب حجوزات كل الزبائن (بدون فلترة بـ user_id) مع بيانات الفندق
+  /// وبيانات الزبون (الاسم/الهاتف من profiles)، لعرضها بلوحة إدارة الحجوزات.
+  Future<Result<List<BookingModel>>> getAllBookingsForAdmin() async {
+    try {
+      final response = await _client
+          .from('bookings')
+          .select('*, hotels(name, city, images), profiles(display_name, full_name, phone)')
+          .order('created_at', ascending: false);
+
+      final bookings = (response as List)
+          .map((row) => BookingModel.fromJson(row))
+          .toList();
+
+      return Success(bookings);
+    } catch (e) {
+      return Failure(ErrorTranslator.translate(e));
+    }
+  }
+
+  /// يحدّث حالة حجز معيّن (pending/confirmed/cancelled) — يستخدمها الأدمن
+  /// للتأكيد أو الإلغاء اليدوي من لوحة إدارة الحجوزات.
+  Future<Result<void>> updateBookingStatus(String bookingId, String status) async {
+    try {
+      await _client.from('bookings').update({'status': status}).eq('id', bookingId);
       return const Success(null);
     } catch (e) {
       return Failure(ErrorTranslator.translate(e));

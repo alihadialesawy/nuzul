@@ -131,4 +131,24 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get loginRequired => 'يجب تسجيل الدخول أولاً';
+
+  @override
+  String get roomTypeSectionTitle => 'نوع الغرفة';
+
+  @override
+  String get roomQueen => 'غرفة كوين سريرين';
+
+  @override
+  String get roomKing => 'غرفة كينج';
+
+  @override
+  String get roomStudioSuite => 'جناح استوديو';
+
+  @override
+  String get aboutAreaTitle => 'عن المنطقة المحيطة';
+
+  @override
+  String aboutAreaDescription(String city) {
+    return 'يقع هذا الفندق في موقع مميز داخل $city، بالقرب من أبرز المعالم والمرافق الحيوية، مما يجعله خيارًا مناسبًا للتنقل بسهولة خلال إقامتك.';
+  }
 }

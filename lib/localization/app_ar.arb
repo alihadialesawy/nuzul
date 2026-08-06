@@ -45,5 +45,18 @@
   "loadingBookings": "يحمّل حجوزاتك...",
   "errorLoadBookings": "تعذر تحميل الحجوزات، تحقق من الاتصال",
 
-  "loginRequired": "يجب تسجيل الدخول أولاً"
-}
+ "loginRequired": "يجب تسجيل الدخول أولاً",
+   "roomTypeSectionTitle": "نوع الغرفة",
+   "roomQueen": "غرفة كوين سريرين",
+   "roomKing": "غرفة كينج",
+   "roomStudioSuite": "جناح استوديو",
+   "aboutAreaTitle": "عن المنطقة المحيطة",
+   "aboutAreaDescription": "يقع هذا الفندق في موقع مميز داخل {city}، بالقرب من أبرز المعالم والمرافق الحيوية، مما يجعله خيارًا مناسبًا للتنقل بسهولة خلال إقامتك.",
+   "@aboutAreaDescription": {
+     "placeholders": {
+       "city": {
+         "type": "String"
+       }
+     }
+   }
+ }
