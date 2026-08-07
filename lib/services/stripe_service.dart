@@ -1,24 +1,17 @@
-allprojects {
-repositories {
-google()
-mavenCentral()
-}
-}
+import 'package:flutter_stripe/flutter_stripe.dart';
 
-val newBuildDir: Directory =
-rootProject.layout.buildDirectory
-    .dir("../../build")
-.get()
-rootProject.layout.buildDirectory.value(newBuildDir)
+/// نقطة وصول موحدة لإعدادات Stripe عبر التطبيق
+class StripeService {
+  StripeService._();
 
-subprojects {
-val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-project.layout.buildDirectory.value(newSubprojectBuildDir)
-}
-subprojects {
-project.evaluationDependsOn(":app")
-}
+  /// استدعِ هذا مرة وحدة بملف main.dart قبل runApp()، بعد SupabaseService.initialize()
+  static Future<void> initialize() async {
+    Stripe.publishableKey = publishableKey;
+    await Stripe.instance.applySettings();
+  }
 
-tasks.register<Delete>("clean") {
-delete(rootProject.layout.buildDirectory)
+  // TODO: استبدل هذا بمفتاحك الفعلي من Stripe Dashboard
+  // (Developers > API keys > Publishable key)
+  // ابدأ بمفتاح test mode (يبدأ بـ pk_test_...) قبل الإطلاق الفعلي
+  static const String publishableKey = 'PASTE_YOUR_STRIPE_PUBLISHABLE_KEY_HERE';
 }
