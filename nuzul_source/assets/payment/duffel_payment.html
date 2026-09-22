@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Duffel Payment</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 16px;
+      background: #ffffff;
+    }
+    #status {
+      font-size: 14px;
+      color: #666;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">جاري تحميل نموذج الدفع...</div>
+  <div id="root"></div>
+
+  <!--
+    bundle.js ده ناتج مشروع React المصغّر (duffel-payment-webview/)
+    -- لازم تبنيه بنفسك (npm install ثم npm run build) وتنسخ
+    dist/bundle.js هنا بجانب الملف ده، قبل ما تحطهم مع بعض جوّه
+    assets/payment/ في مشروع Flutter.
+  -->
+  <script src="bundle.js"></script>
+  <script>
+    document.getElementById('status').style.display = 'none';
+  </script>
+</body>
+</html>

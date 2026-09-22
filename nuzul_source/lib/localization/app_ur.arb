@@ -1,0 +1,73 @@
+{
+  "@@locale": "ur",
+  "appName": "Nuzul",
+  "login": "لاگ ان کریں",
+  "register": "اکاؤنٹ بنائیں",
+  "email": "ای میل",
+  "password": "پاس ورڈ",
+  "confirmPassword": "پاس ورڈ کی تصدیق کریں",
+  "fullName": "پورا نام",
+  "noAccountRegister": "اکاؤنٹ نہیں ہے؟ ایک بنائیں",
+  "haveAccountLogin": "پہلے سے اکاؤنٹ ہے؟ لاگ ان کریں",
+  "whereTo": "کہاں جانا ہے؟ (شہر)",
+  "guests": "مہمان",
+  "search": "تلاش کریں",
+  "bookNow": "ابھی بک کریں",
+  "myBookings": "میری بکنگز",
+  "searchPrompt": "دستیاب ہوٹل دیکھنے کے لیے ایک شہر تلاش کریں",
+  "noResults": "اس شہر اور تاریخوں کے لیے کوئی ہوٹل دستیاب نہیں",
+  "searching": "ہوٹل تلاش کیے جا رہے ہیں...",
+  "errorLoadResults": "نتائج لوڈ نہیں ہو سکے، اپنا کنکشن چیک کریں",
+  "retry": "دوبارہ کوشش کریں",
+  "perNight": "رات",
+  "confirmBookingTitle": "بکنگ کی تصدیق کریں",
+  "checkInLabel": "چیک ان",
+  "checkOutLabel": "چیک آؤٹ",
+  "nightsLabel": "راتوں کی تعداد",
+  "guestsLabel": "مہمانوں کی تعداد",
+  "totalLabel": "کل",
+  "confirmBookingButton": "بکنگ کی تصدیق کریں",
+  "paymentNote": "نوٹ: Stripe کے ذریعے اصل ادائیگی اگلے مرحلے میں شامل کی جائے گی — یہ بکنگ فی الحال \"زیر التوا\" حالت میں درج ہے۔",
+  "bookingSuccessTitle": "بکنگ کی درخواست بھیج دی گئی",
+  "ok": "ٹھیک ہے",
+  "statusPending": "زیر التوا",
+  "statusConfirmed": "تصدیق شدہ",
+  "statusCancelled": "منسوخ",
+  "cancelBooking": "بکنگ منسوخ کریں",
+  "cancelBookingConfirmTitle": "بکنگ منسوخ کریں",
+  "cancelBookingUndo": "کالعدم کریں",
+  "cancelBookingYes": "جی ہاں، منسوخ کریں",
+  "noBookingsYet": "آپ کے پاس ابھی تک کوئی بکنگ نہیں ہے",
+  "loadingBookings": "آپ کی بکنگز لوڈ ہو رہی ہیں...",
+  "errorLoadBookings": "بکنگز لوڈ نہیں ہو سکیں، اپنا کنکشن چیک کریں",
+  "loginRequired": "آپ کو پہلے سائن ان کرنا ہوگا",
+  "roomTypeSectionTitle": "کمرے کی قسم",
+  "roomQueen": "کوئین روم (2 بستر)",
+  "roomKing": "کنگ روم",
+  "roomStudioSuite": "اسٹوڈیو سویٹ",
+  "aboutAreaTitle": "ارد گرد کے علاقے کے بارے میں",
+  "aboutAreaDescription": "یہ ہوٹل {city} میں ایک بہترین مقام پر واقع ہے، اہم مقامات اور ضروری سہولیات کے قریب، جو آپ کے قیام کے دوران آسانی سے آنے جانے کے لیے ایک آسان انتخاب بناتا ہے۔",
+  "@aboutAreaDescription": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentSucceededBookingError": "ادائیگی کامیاب رہی، لیکن بکنگ درج کرتے وقت ایک خرابی پیش آئی: {message}",
+  "@paymentSucceededBookingError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingCreateError": "بکنگ درج کرتے وقت ایک خرابی پیش آئی: {message}",
+  "@bookingCreateError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
+}

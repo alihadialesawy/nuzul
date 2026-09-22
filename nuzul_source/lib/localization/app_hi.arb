@@ -1,0 +1,73 @@
+{
+  "@@locale": "hi",
+  "appName": "Nuzul",
+  "login": "लॉग इन करें",
+  "register": "खाता बनाएं",
+  "email": "ईमेल",
+  "password": "पासवर्ड",
+  "confirmPassword": "पासवर्ड की पुष्टि करें",
+  "fullName": "पूरा नाम",
+  "noAccountRegister": "खाता नहीं है? एक बनाएं",
+  "haveAccountLogin": "पहले से खाता है? लॉग इन करें",
+  "whereTo": "कहाँ जाना है? (शहर)",
+  "guests": "मेहमान",
+  "search": "खोजें",
+  "bookNow": "अभी बुक करें",
+  "myBookings": "मेरी बुकिंग",
+  "searchPrompt": "उपलब्ध होटल देखने के लिए एक शहर खोजें",
+  "noResults": "इस शहर और तारीखों के लिए कोई होटल उपलब्ध नहीं है",
+  "searching": "होटल खोजे जा रहे हैं...",
+  "errorLoadResults": "परिणाम लोड नहीं हो सके, अपना कनेक्शन जांचें",
+  "retry": "पुनः प्रयास करें",
+  "perNight": "रात",
+  "confirmBookingTitle": "बुकिंग की पुष्टि करें",
+  "checkInLabel": "चेक-इन",
+  "checkOutLabel": "चेक-आउट",
+  "nightsLabel": "रातों की संख्या",
+  "guestsLabel": "मेहमानों की संख्या",
+  "totalLabel": "कुल",
+  "confirmBookingButton": "बुकिंग की पुष्टि करें",
+  "paymentNote": "नोट: Stripe के ज़रिए वास्तविक भुगतान अगले चरण में जोड़ा जाएगा — यह बुकिंग फ़िलहाल \"लंबित\" स्थिति में दर्ज है।",
+  "bookingSuccessTitle": "बुकिंग अनुरोध भेजा गया",
+  "ok": "ठीक है",
+  "statusPending": "लंबित",
+  "statusConfirmed": "पुष्टि हो गई",
+  "statusCancelled": "रद्द",
+  "cancelBooking": "बुकिंग रद्द करें",
+  "cancelBookingConfirmTitle": "बुकिंग रद्द करें",
+  "cancelBookingUndo": "पूर्ववत करें",
+  "cancelBookingYes": "हाँ, रद्द करें",
+  "noBookingsYet": "आपके पास अभी तक कोई बुकिंग नहीं है",
+  "loadingBookings": "आपकी बुकिंग लोड हो रही हैं...",
+  "errorLoadBookings": "बुकिंग लोड नहीं हो सकीं, अपना कनेक्शन जांचें",
+  "loginRequired": "आपको पहले साइन इन करना होगा",
+  "roomTypeSectionTitle": "कमरे का प्रकार",
+  "roomQueen": "क्वीन रूम (2 बिस्तर)",
+  "roomKing": "किंग रूम",
+  "roomStudioSuite": "स्टूडियो सुइट",
+  "aboutAreaTitle": "आसपास के क्षेत्र के बारे में",
+  "aboutAreaDescription": "यह होटल {city} में एक शानदार स्थान पर स्थित है, प्रमुख स्थलों और आवश्यक सुविधाओं के करीब, जो आपके ठहरने के दौरान आसानी से आने-जाने के लिए एक सुविधाजनक विकल्प बनाता है।",
+  "@aboutAreaDescription": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentSucceededBookingError": "भुगतान सफल हुआ, लेकिन बुकिंग दर्ज करते समय एक त्रुटि हुई: {message}",
+  "@paymentSucceededBookingError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingCreateError": "बुकिंग दर्ज करते समय एक त्रुटि हुई: {message}",
+  "@bookingCreateError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
+}

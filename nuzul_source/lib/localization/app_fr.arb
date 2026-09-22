@@ -1,0 +1,73 @@
+{
+  "@@locale": "fr",
+  "appName": "Nuzul",
+  "login": "Connexion",
+  "register": "Créer un compte",
+  "email": "E-mail",
+  "password": "Mot de passe",
+  "confirmPassword": "Confirmer le mot de passe",
+  "fullName": "Nom complet",
+  "noAccountRegister": "Vous n'avez pas de compte ? Créez-en un",
+  "haveAccountLogin": "Vous avez déjà un compte ? Connectez-vous",
+  "whereTo": "Où allez-vous ? (Ville)",
+  "guests": "voyageurs",
+  "search": "Rechercher",
+  "bookNow": "Réserver maintenant",
+  "myBookings": "Mes réservations",
+  "searchPrompt": "Recherchez une ville pour voir les hôtels disponibles",
+  "noResults": "Aucun hôtel disponible pour cette ville et ces dates",
+  "searching": "Recherche d'hôtels en cours...",
+  "errorLoadResults": "Impossible de charger les résultats, vérifiez votre connexion",
+  "retry": "Réessayer",
+  "perNight": "nuit",
+  "confirmBookingTitle": "Confirmer la réservation",
+  "checkInLabel": "Arrivée",
+  "checkOutLabel": "Départ",
+  "nightsLabel": "Nombre de nuits",
+  "guestsLabel": "Nombre de voyageurs",
+  "totalLabel": "Total",
+  "confirmBookingButton": "Confirmer la réservation",
+  "paymentNote": "Remarque : le paiement réel via Stripe sera ajouté à l'étape suivante — cette réservation est actuellement enregistrée avec le statut « en attente ».",
+  "bookingSuccessTitle": "Demande de réservation envoyée",
+  "ok": "OK",
+  "statusPending": "En attente",
+  "statusConfirmed": "Confirmée",
+  "statusCancelled": "Annulée",
+  "cancelBooking": "Annuler la réservation",
+  "cancelBookingConfirmTitle": "Annuler la réservation",
+  "cancelBookingUndo": "Annuler",
+  "cancelBookingYes": "Oui, annuler",
+  "noBookingsYet": "Vous n'avez encore aucune réservation",
+  "loadingBookings": "Chargement de vos réservations...",
+  "errorLoadBookings": "Impossible de charger les réservations, vérifiez votre connexion",
+  "loginRequired": "Vous devez d'abord vous connecter",
+  "roomTypeSectionTitle": "Type de chambre",
+  "roomQueen": "Chambre Queen (2 lits)",
+  "roomKing": "Chambre King",
+  "roomStudioSuite": "Suite studio",
+  "aboutAreaTitle": "À propos des environs",
+  "aboutAreaDescription": "Cet hôtel bénéficie d'un emplacement privilégié à {city}, à proximité des principaux sites touristiques et des commodités essentielles, ce qui en fait un choix pratique pour vous déplacer facilement pendant votre séjour.",
+  "@aboutAreaDescription": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentSucceededBookingError": "Le paiement a réussi, mais une erreur s'est produite lors de l'enregistrement de la réservation : {message}",
+  "@paymentSucceededBookingError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingCreateError": "Une erreur s'est produite lors de l'enregistrement de la réservation : {message}",
+  "@bookingCreateError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
+}

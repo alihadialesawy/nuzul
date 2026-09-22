@@ -20,6 +20,29 @@ class DuffelFlightOffer {
   /// بالظبط وقت إنشاء الحجز الفعلي (كل معرّف بيتقابل بمسافر واحد).
   final List<String> passengerIds;
 
+  /// عدد التوقفات الفعلي (0 = رحلة مباشرة). مأخوذ من عدد الأجزاء
+  /// (segments) في أول slice ناقص 1، عبر الـ Edge Function.
+  final int stops;
+
+  /// أكواد مطارات التوقف الفعلية (لو فيه توقفات)، بترتيب الرحلة.
+  final List<String> stopoverAirports;
+
+  /// كود IATA لمطار المغادرة الفعلي (ممكن يختلف عن كود المدينة نفسه
+  /// في المدن اللي فيها أكتر من مطار).
+  final String originAirportCode;
+
+  /// كود IATA لمطار الوصول الفعلي.
+  final String destinationAirportCode;
+
+  /// اسم/موديل الطائرة (لو Duffel رجّعه)، ممكن يكون null.
+  final String? aircraft;
+
+  /// مدة الرحلة الفعلية بالدقائق، جاية جاهزة من Duffel (segment/slice
+  /// duration بصيغة ISO 8601 زي "PT13H16M") -- مش محسوبة يدويًا من
+  /// فرق departureTime/arrivalTime، لأن دول توقيتان محليان مختلفان
+  /// لكل مطار من غير UTC offset، وطرحهم مباشرة بيدي مدة غلط.
+  final int durationMinutes;
+
   DuffelFlightOffer({
     required this.id,
     required this.airline,
@@ -33,6 +56,12 @@ class DuffelFlightOffer {
     required this.totalAmount,
     required this.totalCurrency,
     required this.passengerIds,
+    required this.stops,
+    required this.stopoverAirports,
+    required this.originAirportCode,
+    required this.destinationAirportCode,
+    this.aircraft,
+    required this.durationMinutes,
   });
 
   factory DuffelFlightOffer.fromJson(Map<String, dynamic> json) {
@@ -49,6 +78,12 @@ class DuffelFlightOffer {
       totalAmount: double.tryParse('${json['totalAmount']}') ?? 0,
       totalCurrency: json['totalCurrency'] as String? ?? 'USD',
       passengerIds: (json['passengerIds'] as List? ?? []).map((e) => '$e').toList(),
+      stops: (json['stops'] as num?)?.toInt() ?? 0,
+      stopoverAirports: (json['stopoverAirports'] as List? ?? []).map((e) => '$e').toList(),
+      originAirportCode: json['originAirportCode'] as String? ?? '',
+      destinationAirportCode: json['destinationAirportCode'] as String? ?? '',
+      aircraft: json['aircraft'] as String?,
+      durationMinutes: (json['durationMinutes'] as num?)?.toInt() ?? 0,
     );
   }
 }

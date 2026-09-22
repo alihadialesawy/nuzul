@@ -17,6 +17,7 @@ dependencies:
   # State management
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
+  geolocator: ^13.0.1
 
   # Routing
   go_router: ^14.2.0
@@ -38,6 +39,8 @@ dependencies:
   flutter_svg: ^2.0.10+1
   shared_preferences: ^2.2.3
   flutter_secure_storage: ^9.2.2
+  image_picker: ^1.1.2
+  image: ^4.1.7
 
   cupertino_icons: ^1.0.8
 
@@ -51,6 +54,7 @@ dev_dependencies:
   freezed: ^2.5.7
   json_serializable: ^6.8.0
   riverpod_generator: ^2.4.3
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -59,6 +63,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/destinations/
+    - assets/images/payment/
 
   # fonts:
   #   - family: Cairo
@@ -66,3 +71,10 @@ flutter:
   #       - asset: assets/fonts/Cairo-Regular.ttf
   #       - asset: assets/fonts/Cairo-Bold.ttf
   #         weight: 700
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "assets/icon/icon_background.png"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  remove_alpha_ios: true

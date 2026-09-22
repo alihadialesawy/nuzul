@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'widgets/us_destinations_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,15 +19,21 @@ import '../../core/widgets/currency_selector_button.dart';
 import '../../core/widgets/app_footer.dart';
 import '../../core/widgets/app_banner.dart';
 import 'widgets/trending_destinations.dart';
+import 'widgets/country_browser.dart';
 import 'widgets/deals_section.dart';
 import 'widgets/accommodation_types_section.dart';
+import 'widgets/accommodation_preview_section.dart';
 import 'widgets/featured_hotels_section.dart';
 import 'widgets/faq_section.dart';
 import 'widgets/search_filters_sidebar.dart';
 import 'controllers/hotel_filters_controller.dart';
 import 'controllers/duffel_flight_search_controller.dart';
+import 'controllers/flight_filters_controller.dart';
+import 'widgets/flight_filters_sidebar.dart';
+import 'widgets/flight_date_price_strip.dart';
 import '../../data/repositories/duffel_repository.dart';
 import '../../data/models/hotel_model.dart';
+import '../../data/models/destination_model.dart';
 import '../../data/models/flight_model.dart';
 import '../../data/models/car_model.dart';
 import '../../localization/app_localizations.dart';
@@ -33,19 +41,36 @@ import '../auth/controllers/auth_controller.dart';
 import '../favorites/controllers/favorites_controller.dart';
 import '../search/controllers/search_controller.dart';
 
-/// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني)، بدل الاعتماد
-/// على شرط ثنائي (عربي/غير عربي) اللي كان بيرجّع الإنجليزي دايمًا للإسباني.
+/// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني/تركي/إندونيسي/هندي/أوردو/فرنسي/بنغالي).
 String _t3(
     BuildContext context, {
       required String ar,
       required String en,
       required String es,
+      required String tr,
+      required String id,
+      required String hi,
+      required String ur,
+      required String fr,
+      required String bn,
     }) {
   switch (Localizations.localeOf(context).languageCode) {
     case 'ar':
       return ar;
     case 'es':
       return es;
+    case 'tr':
+      return tr;
+    case 'id':
+      return id;
+    case 'hi':
+      return hi;
+    case 'ur':
+      return ur;
+    case 'fr':
+      return fr;
+    case 'bn':
+      return bn;
     default:
       return en;
   }
@@ -71,7 +96,19 @@ class _HomePageState extends ConsumerState<HomePage> {
   // Car rental لسه شكلي بس ("قريبًا").
   String _activeTab = 'stays';
 
+  // نوع العقار المختار حاليًا من قسم "أنواع الإقامة الشائعة" (Hotels/
+  // Apartments/Villas/Resorts/Chalets)، أو null لو مفيش نوع متعلّم.
+  // بيتحكم في ظهور AccommodationPreviewSection تحت الأزرار مباشرة.
+  String? _selectedAccommodationType;
+
+  // لما نبحث في تبويب الطيران، فورم البحث بيتصغّر لشريط ملخّص واحد
+  // (عشان يوفّر مساحة رأسية لنتايج البحث)، وده اللي بيتحكم فيه.
+  bool _flightFormExpanded = true;
+
   final _cityController = TextEditingController();
+  DestinationModel? _selectedDestination;
+  List<DestinationModel> _destinationSuggestions = [];
+  Timer? _destinationDebounce;
   DateTime _checkIn = DateTime.now().add(const Duration(days: 1));
   DateTime _checkOut = DateTime.now().add(const Duration(days: 3));
   int _guests = 2;
@@ -106,14 +143,122 @@ class _HomePageState extends ConsumerState<HomePage> {
     _flightToController.dispose();
     _carPickupController.dispose();
     _carDropoffController.dispose();
+    _destinationDebounce?.cancel();
     super.dispose();
   }
 
-  void _runSearch() {
-    if (_cityController.text.trim().isEmpty) return;
+  void _onCityTextChanged(String query) {
+    _destinationDebounce?.cancel();
+    _selectedDestination = null;
+    if (query.trim().length < 2) {
+      setState(() => _destinationSuggestions = []);
+      return;
+    }
+    _destinationDebounce = Timer(const Duration(milliseconds: 300), () async {
+      final repo = ref.read(hotelRepositoryProvider);
+      final result = await repo.searchDestinations(query.trim());
+      if (!mounted) return;
+      result.when(
+        success: (list) => setState(() => _destinationSuggestions = list),
+        failure: (_) => setState(() => _destinationSuggestions = []),
+      );
+    });
+  }
+
+  void _selectDestinationSuggestion(DestinationModel destination) {
+    setState(() {
+      _cityController.text = destination.name;
+      _selectedDestination = destination;
+      _destinationSuggestions = [];
+    });
+  }
+
+  /// يفتح شاشة "تصفّح حسب الدولة" (bottom sheet) عشان المستخدم يقدر
+  /// يختار مدينة بالتصفح بدل الكتابة. لما يختار مدينة، بتتقفل الشاشة
+  /// تلقائيًا وتتحدد كوجهة البحث (نفس سلوك اختيار اقتراح من القائمة).
+  void _openCountryBrowser() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return CountryBrowser(
+          repository: ref.read(hotelRepositoryProvider),
+          onCitySelected: (destination) {
+            _selectDestinationSuggestion(destination);
+            Navigator.of(sheetContext).pop();
+          },
+        );
+      },
+    );
+  }
+
+  /// يُستدعى عند الدوس على نوع عقار جاهز في قسم "أنواع الإقامة
+  /// الشائعة" (Hotels/Apartments/Villas/Resorts/Chalets). بيبدّل ظهور
+  /// AccommodationPreviewSection تحت الأزرار مباشرة (Toggle: دوسة تانية
+  /// على نفس النوع بتلغي التحديد وتخفي القسم).
+  void _onAccommodationTypeSelected(String labelEn) {
+    setState(() {
+      _selectedAccommodationType = _selectedAccommodationType == labelEn ? null : labelEn;
+    });
+  }
+
+  Future<void> _runSearch() async {
+    // لو المستخدم كتب اسم مدينة بحرّيته من غير ما يدوس على أي اقتراح
+    // من القائمة، بندوّر على تطابق تمامًا (case-insensitive) لاسم
+    // المدينة المكتوب مع نتائج hotelbeds_destinations قبل ما نرفض
+    // البحث -- عشان مايبقاش لازم عليه يدوس على الاقتراح بالماوس لو
+    // هو أصلاً كتب الاسم صح وكامل.
+    if (_selectedDestination == null) {
+      final typed = _cityController.text.trim();
+      if (typed.isNotEmpty) {
+        final repo = ref.read(hotelRepositoryProvider);
+        final result = await repo.searchDestinations(typed);
+        if (!mounted) return;
+        result.when(
+          success: (list) {
+            for (final d in list) {
+              if (d.name.trim().toLowerCase() == typed.toLowerCase()) {
+                setState(() {
+                  _selectedDestination = d;
+                  _destinationSuggestions = [];
+                });
+                break;
+              }
+            }
+          },
+          failure: (_) {},
+        );
+      }
+    }
+
+    if (_selectedDestination == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t3(
+              context,
+              ar: 'من فضلك اختر وجهة من القائمة المقترحة',
+              en: 'Please pick a destination from the suggestions',
+              es: 'Selecciona un destino de las sugerencias',
+              tr: 'Lütfen önerilerden bir hedef seçin',
+              id: 'Silakan pilih destinasi dari saran',
+              hi: 'कृपया सुझावों में से एक गंतव्य चुनें',
+              ur: 'براہ کرم تجاویز میں سے ایک منزل منتخب کریں',
+              fr: 'Veuillez choisir une destination parmi les suggestions',
+              bn: 'অনুগ্রহ করে পরামর্শ থেকে একটি গন্তব্য বেছে নিন',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
     setState(() {
       _searchParams = {
-        'city': _cityController.text.trim(),
+        'destinationCode': _selectedDestination!.code,
+        'cityLabel': _selectedDestination!.name,
         'checkIn': _checkIn,
         'checkOut': _checkOut,
         'guests': _guests,
@@ -126,6 +271,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final destination = _flightToController.text.trim();
     if (origin.isEmpty || destination.isEmpty) return;
     setState(() {
+      _flightFormExpanded = false;
       _flightSearchParams = {
         'origin': origin,
         'destination': destination,
@@ -142,12 +288,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   /// الوجهة، مدينة الإقامة) تكون متملية، وإلا بنوريه رسالة توضيحية بدل
   /// ما نتجاهل الضغطة بصمت. تاريخ الذهاب بيتاخد من تاريخ check-in
   /// المشترك، وعدد المسافرين بيتاخد من عدد الضيوف نفسه لتبسيط الفورم.
-  void _runFlightHotelSearch() {
+  Future<void> _runFlightHotelSearch() async {
     final origin = _flightFromController.text.trim();
     final destination = _flightToController.text.trim();
-    final city = _cityController.text.trim();
 
-    if (origin.isEmpty || destination.isEmpty || city.isEmpty) {
+    if (origin.isEmpty || destination.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -156,8 +301,63 @@ class _HomePageState extends ConsumerState<HomePage> {
               ar: 'من فضلك أكمل بيانات الرحلة والإقامة كلها',
               en: 'Please fill in both the flight and stay details',
               es: 'Completa los datos del vuelo y la estancia',
+              tr: 'Lütfen hem uçuş hem de konaklama bilgilerini eksiksiz doldurun',
+              id: 'Mohon lengkapi detail penerbangan dan menginap',
+              hi: 'कृपया उड़ान और ठहरने दोनों की जानकारी भरें',
+              ur: 'براہ کرم پرواز اور قیام دونوں کی تفصیلات بھریں',
+              fr: 'Veuillez remplir les informations du vol et de l\'hébergement',
+              bn: 'অনুগ্রহ করে ফ্লাইট ও থাকার তথ্য উভয়ই পূরণ করুন',
             ),
           ),
+        ),
+      );
+      return;
+    }
+
+    // بدل ما نعتمد على اللي كتبه المستخدم بحقل "أين تقيم؟" (ممكن يكتبه
+    // بأي لغة، زي "بوسطن" بالعربي، بينما وجهة الطيران معروضة بالإنجليزي
+    // "Boston" -- مقارنة نصوص بين لغتين مختلفتين تفشل دايمًا حتى لو نفس
+    // المدينة بالظبط)، بهالتبويب تحديدًا (طيران+فندق) مدينة الفندق لازم
+    // تتبع وجهة الطيران نفسها دايمًا. فبندوّر مباشرة عن فنادق بنفس اسم
+    // وجهة الطيران (destination بالإنجليزي دايمًا)، ونحدّث حقل "أين
+    // تقيم؟" ليعرض نفس النتيجة -- فتختفي إمكانية التعارض من أساسها بدل
+    // ما نكتشفها بعد ما تصير (ونفس نمط _selectDestination بالملف: نطالب
+    // بأول نتيجة List.first مباشرة، لأن الـ API بيرجّع الاسم بصيغة أطول
+    // عادة زي "Boston, MA, United States").
+    final repo = ref.read(hotelRepositoryProvider);
+    final result = await repo.searchDestinations(destination);
+    if (!mounted) return;
+    result.when(
+      success: (list) {
+        if (list.isNotEmpty) {
+          setState(() {
+            _selectedDestination = list.first;
+            _cityController.text = list.first.name;
+            _destinationSuggestions = [];
+          });
+        }
+      },
+      failure: (_) {},
+    );
+
+    if (_selectedDestination == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t3(
+              context,
+              ar: 'ما قدرنا نلاقي فنادق في مدينة الوصول ($destination) -- جرب رحلة لوجهة ثانية',
+              en: 'We couldn\'t find hotels in the arrival city ($destination) — try a different destination',
+              es: 'No encontramos hoteles en la ciudad de llegada ($destination): prueba otro destino',
+              tr: 'Varış şehrinde ($destination) otel bulamadık — farklı bir varış noktası deneyin',
+              id: 'Kami tidak menemukan hotel di kota kedatangan ($destination) — coba tujuan lain',
+              hi: 'हमें आगमन शहर ($destination) में होटल नहीं मिले — कोई अन्य गंतव्य आज़माएँ',
+              ur: 'ہمیں آمد کے شہر ($destination) میں ہوٹل نہیں ملے — کوئی اور منزل آزمائیں',
+              fr: 'Nous n\'avons pas trouvé d\'hôtels dans la ville d\'arrivée ($destination) — essayez une autre destination',
+              bn: 'আমরা আগমন শহরে ($destination) হোটেল খুঁজে পাইনি — অন্য গন্তব্য চেষ্টা করুন',
+            ),
+          ),
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
@@ -166,7 +366,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     ref.read(flightHotelSelectionProvider.notifier).state = (offer: null, hotel: null);
     setState(() {
       _searchParams = {
-        'city': city,
+        'destinationCode': _selectedDestination!.code,
+        'cityLabel': _selectedDestination!.name,
         'checkIn': _checkIn,
         'checkOut': _checkOut,
         'guests': _guests,
@@ -180,6 +381,50 @@ class _HomePageState extends ConsumerState<HomePage> {
         'nonstopOnly': false,
       };
     });
+  }
+
+  /// شريط ملخّص مصغّر لبحث الطيران (Origin → Destination · التاريخ ·
+  /// عدد المسافرين) بيظهر بدل فورم البحث الكامل بعد ما يحصل بحث فعلي،
+  /// عشان يوفّر مساحة رأسية أكبر لعرض النتائج. زرار "تعديل" بيرجّع
+  /// الفورم الكامل تاني (_flightFormExpanded = true).
+  Widget _buildCollapsedFlightBar() {
+    final params = _flightSearchParams!;
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final date = params['departureDate'] as DateTime;
+    final dateLabel = '${months[date.month - 1]} ${date.day}';
+    return Container(
+      margin: const EdgeInsets.all(AppSizes.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primaryDark,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.flight_takeoff, color: Colors.white70, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${params['origin']} → ${params['destination']} · $dateLabel · ${params['travelers']}',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => setState(() => _flightFormExpanded = true),
+            icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+            label: Text(
+              _t3(context, ar: 'تعديل', en: 'Edit', es: 'Editar', tr: 'Düzenle',
+                  id: 'Edit', hi: 'संपादित करें', ur: 'ترمیم کریں', fr: 'Modifier', bn: 'সম্পাদনা করুন'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _runCarRentalSearch() {
@@ -332,11 +577,21 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  /// يُستدعى عند الضغط على وجهة من قسم "وجهات رائجة"، فيملأ حقل المدينة
-  /// وينفّذ البحث مباشرة.
-  void _selectDestination(String city) {
+  /// يُستدعى عند الضغط على وجهة من قسم "وجهات رائجة"، فيدوّر عن كود
+  /// الوجهة المطابق في hotelbeds_destinations وينفّذ البحث مباشرة.
+  Future<void> _selectDestination(String city) async {
     _cityController.text = city;
-    _runSearch();
+    final repo = ref.read(hotelRepositoryProvider);
+    final result = await repo.searchDestinations(city);
+    if (!mounted) return;
+    result.when(
+      success: (list) {
+        if (list.isEmpty) return;
+        setState(() => _selectedDestination = list.first);
+        _runSearch();
+      },
+      failure: (_) {},
+    );
   }
 
   /// يحسب مكان ظهور نافذة التاريخ أسفل الحقل اللي اتضغط عليه مباشرة،
@@ -399,7 +654,14 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // القسم العلوي (فورم البحث) بحجم ثابت وتحته Expanded لقائمة النتائج.
+      // بدون هذا السطر، فتح لوحة المفاتيح يضغط الشاشة فيحاول الـ Expanded
+      // ينضغط لصفر بينما فورم البحث الثابت ما بينضغط، فيصير Overflow.
+      // منع تصغير الشاشة هون بيخلي الكيبورد يغطي قائمة النتائج بالأسفل
+      // فقط (مو مشكلة، المستخدم مركّز بالكتابة بالحقل أصلاً) بدل ما يكسر التخطيط.
+      resizeToAvoidBottomInset: false,
       appBar: AppBanner(
+        activeTab: _activeTab,
         assetVariant: _activeTab == 'flights'
             ? 'flights'
             : _activeTab == 'carRental'
@@ -407,6 +669,13 @@ class _HomePageState extends ConsumerState<HomePage> {
             : _activeTab == 'flightHotel'
             ? 'flight_hotel'
             : null,
+        collapsed: _activeTab == 'flights'
+            ? _flightSearchParams != null
+            : _activeTab == 'carRental'
+            ? _carSearchParams != null
+            : _activeTab == 'flightHotel'
+            ? (_searchParams != null && _flightSearchParams != null)
+            : _searchParams != null,
         tabsBar: _TravelTabsBar(
           selectedTab: _activeTab,
           onTabSelected: (id) => setState(() => _activeTab = id),
@@ -423,7 +692,9 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: SafeArea(
           child: Column(
             children: [
-              Padding(
+              (_activeTab == 'flights' && _flightSearchParams != null && !_flightFormExpanded)
+                  ? _buildCollapsedFlightBar()
+                  : Padding(
                 padding: const EdgeInsets.all(AppSizes.md),
                 child: SizedBox(
                   width: double.infinity,
@@ -455,9 +726,44 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ? (_flightSearchParams == null
                     ? ListView(
                   padding: const EdgeInsets.all(AppSizes.md),
-                  children: const [_TrustSection(), AppFooter()],
+                  children: [
+                    UsDestinationsSection(
+                      onDestinationTap: (origin, destination) {
+                        _flightFromController.text = origin;
+                        _flightToController.text = destination;
+                        _runFlightSearch();
+                      },
+                    ),
+                    const SizedBox(height: AppSizes.md),
+                    const _TrustSection(),
+                    const AppFooter(),
+                  ],
                 )
-                    : _DuffelFlightSearchResults(params: _flightSearchParams!))
+                    : Column(
+                  children: [
+                    FlightDatePriceStrip(
+                      origin: _flightSearchParams!['origin'] as String,
+                      destination: _flightSearchParams!['destination'] as String,
+                      centerDate: _flightSearchParams!['departureDate'] as DateTime,
+                      selectedDate: _flightSearchParams!['departureDate'] as DateTime,
+                      travelers: _flightSearchParams!['travelers'] as int,
+                      cabinClass: _flightSearchParams!['cabinClass'] as String,
+                      nonstopOnly: _flightSearchParams!['nonstopOnly'] as bool,
+                      onDateSelected: (date) {
+                        setState(() {
+                          _flightSearchParams = {
+                            ..._flightSearchParams!,
+                            'departureDate': date,
+                          };
+                        });
+                      },
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: _DuffelFlightSearchResults(params: _flightSearchParams!),
+                    ),
+                  ],
+                ))
                     : _activeTab == 'carRental'
                     ? (_carSearchParams == null
                     ? ListView(
@@ -480,7 +786,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                   children: [
                     TrendingDestinations(onSelected: _selectDestination),
                     const DealsSection(),
-                    const AccommodationTypesSection(),
+                    AccommodationTypesSection(
+                      onTypeSelected: _onAccommodationTypeSelected,
+                      selectedType: _selectedAccommodationType,
+                    ),
+                    if (_selectedAccommodationType != null)
+                      AccommodationPreviewSection(selectedType: _selectedAccommodationType!),
                     const FeaturedHotelsSection(),
                     const FaqSection(),
                     const AppFooter(),
@@ -530,13 +841,54 @@ class _HomePageState extends ConsumerState<HomePage> {
                     border: InputBorder.none,
                     isDense: true,
                   ),
+                  onChanged: _onCityTextChanged,
                   onSubmitted: (_) => _runSearch(),
+                  onTap: () {
+                    if (_cityController.text.trim().isEmpty) _openCountryBrowser();
+                  },
                 ),
+              ),
+              IconButton(
+                onPressed: _openCountryBrowser,
+                icon: const Icon(Icons.public, color: Colors.white70, size: 20),
+                tooltip: _t3(context, ar: 'تصفّح حسب الدولة', en: 'Browse by country', es: 'Explorar por país', tr: 'Ülkeye göre gözat', id: 'Jelajahi berdasarkan negara',
+                    hi: 'देश के अनुसार ब्राउज़ करें',
+                    ur: 'ملک کے مطابق دیکھیں',
+                    fr: 'Parcourir par pays',
+                    bn: 'দেশ অনুযায়ী ব্রাউজ করুন'),
               ),
             ],
           ),
+          if (_destinationSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: _destinationSuggestions.length,
+                itemBuilder: (context, index) {
+                  final d = _destinationSuggestions[index];
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.place_outlined, size: 18),
+                    title: Text(d.name),
+                    subtitle: d.countryCode != null ? Text(d.countryCode!) : null,
+                    onTap: () => _selectDestinationSuggestion(d),
+                  );
+                },
+              ),
+            ),
+          ],
           const Divider(height: 16),
-          Row(
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               GestureDetector(
                 key: _dateFieldKey,
@@ -564,8 +916,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ),
                         child: Text(
                           nights == 1
-                              ? (_t3(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche'))
-                              : (_t3(context, ar: '$nights ليالي', en: '$nights nights', es: '$nights noches')),
+                              ? (_t3(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche', tr: '1 gece', id: '1 malam',
+                              hi: '1 रात',
+                              ur: '1 رات',
+                              fr: '1 nuit',
+                              bn: '১ রাত'))
+                              : (_t3(context, ar: '$nights ليالٍ', en: '$nights nights', es: '$nights noches', tr: '$nights gece', id: '$nights malam',
+                              hi: '$nights रातें',
+                              ur: '$nights راتیں',
+                              fr: '$nights nuits',
+                              bn: '$nights রাত')),
                           style: const TextStyle(fontSize: 12, color: Colors.white),
                         ),
                       ),
@@ -589,7 +949,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  _t3(context, ar: 'الضيوف', en: 'Guests', es: 'Huéspedes'),
+                                  _t3(context, ar: 'الضيوف', en: 'Guests', es: 'Huéspedes', tr: 'Misafirler', id: 'Tamu',
+                                      hi: 'मेहमान',
+                                      ur: 'مہمان',
+                                      fr: 'Voyageurs',
+                                      bn: 'অতিথি'),
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                 ),
                                 Row(
@@ -619,7 +983,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   width: double.infinity,
                                   child: ElevatedButton(
                                     onPressed: () => Navigator.of(context).pop(),
-                                    child: Text(_t3(context, ar: 'تم', en: 'Done', es: 'Listo')),
+                                    child: Text(_t3(context, ar: 'تم', en: 'Done', es: 'Listo', tr: 'Tamam', id: 'Selesai',
+                                        hi: 'हो गया',
+                                        ur: 'ہو گیا',
+                                        fr: 'Terminé',
+                                        bn: 'সম্পন্ন')),
                                   ),
                                 ),
                               ],
@@ -647,6 +1015,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                           ar: 'غرفة واحدة، $_guests ضيوف',
                           en: '1 room, $_guests ${_guests == 1 ? 'adult' : 'adults'}',
                           es: '1 habitación, $_guests ${_guests == 1 ? 'adulto' : 'adultos'}',
+                          tr: '1 oda, $_guests yetişkin',
+                          id: '1 kamar, $_guests dewasa',
+                          hi: '1 कमरा, $_guests वयस्क',
+                          ur: '1 کمرہ, $_guests بالغ',
+                          fr: '1 chambre, $_guests ${_guests == 1 ? 'adulte' : 'adultes'}',
+                          bn: '১টি রুম, $_guests জন প্রাপ্তবয়স্ক',
                         ),
                         style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
                       ),
@@ -654,19 +1028,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                 ),
               ),
-              const Spacer(),
-              Flexible(
-                child: ElevatedButton.icon(
-                  onPressed: _runSearch,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF87CEEB),
-                    foregroundColor: Colors.white,
-                    shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  ),
-                  icon: const Icon(Icons.search, size: 18),
-                  label: Text(l10n.search),
+              ElevatedButton.icon(
+                onPressed: _runSearch,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF87CEEB),
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
+                icon: const Icon(Icons.search, size: 18),
+                label: Text(l10n.search),
               ),
             ],
           ),
@@ -679,13 +1050,33 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _buildFlightsSearchBox() {
 
     final tripTypeLabels = <String, String>{
-      'roundtrip': _t3(context, ar: 'ذهاب وعودة', en: 'Roundtrip', es: 'Ida y vuelta'),
-      'oneWay': _t3(context, ar: 'ذهاب فقط', en: 'One-way', es: 'Solo ida'),
-      'multiCity': _t3(context, ar: 'وجهات متعددة', en: 'Multi-city', es: 'Multidestino'),
+      'roundtrip': _t3(context, ar: 'ذهاب وعودة', en: 'Roundtrip', es: 'Ida y vuelta', tr: 'Gidiş-dönüş', id: 'Pulang-pergi',
+          hi: 'राउंड ट्रिप',
+          ur: 'راؤنڈ ٹرپ',
+          fr: 'Aller-retour',
+          bn: 'রাউন্ডট্রিপ'),
+      'oneWay': _t3(context, ar: 'ذهاب فقط', en: 'One-way', es: 'Solo ida', tr: 'Tek yön', id: 'Sekali jalan',
+          hi: 'एक तरफ़ा',
+          ur: 'یک طرفہ',
+          fr: 'Aller simple',
+          bn: 'একমুখী'),
+      'multiCity': _t3(context, ar: 'وجهات متعددة', en: 'Multi-city', es: 'Multidestino', tr: 'Çoklu şehir', id: 'Multi-kota',
+          hi: 'मल्टी-सिटी',
+          ur: 'ملٹی سٹی',
+          fr: 'Multi-destinations',
+          bn: 'একাধিক শহর'),
     };
 
     final travelersLabel =
-        '$_flightTravelers ${_flightTravelers == 1 ? (_t3(context, ar: "مسافر", en: "traveler", es: "viajero")) : (_t3(context, ar: "مسافرين", en: "travelers", es: "viajeros"))}, $_flightCabinClass';
+        '$_flightTravelers ${_flightTravelers == 1 ? (_t3(context, ar: "مسافر", en: "traveler", es: "viajero", tr: "yolcu", id: "wisatawan",
+        hi: "यात्री",
+        ur: "مسافر",
+        fr: "voyageur",
+        bn: "ভ্রমণকারী")) : (_t3(context, ar: "مسافرين", en: "travelers", es: "viajeros", tr: "yolcu", id: "wisatawan",
+        hi: "यात्री",
+        ur: "مسافر",
+        fr: "voyageurs",
+        bn: "ভ্রমণকারী"))}, $_flightCabinClass';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -734,7 +1125,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                     onChanged: (v) => setState(() => _nonstopOnly = v ?? false),
                   ),
                   Text(
-                    _t3(context, ar: 'بدون توقف', en: 'Nonstop', es: 'Sin escalas'),
+                    _t3(context, ar: 'بدون توقف', en: 'Nonstop', es: 'Sin escalas', tr: 'Aktarmasız', id: 'Tanpa transit',
+                        hi: 'बिना रुके',
+                        ur: 'بلا رکاوٹ',
+                        fr: 'Sans escale',
+                        bn: 'সরাসরি'),
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                 ],
@@ -764,7 +1159,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                       controller: _flightFromController,
                       style: const TextStyle(color: Colors.black87),
                       decoration: InputDecoration(
-                        hintText: _t3(context, ar: 'المغادرة من', en: 'Leaving from', es: 'Saliendo de'),
+                        hintText: _t3(context, ar: 'المغادرة من', en: 'Leaving from', es: 'Saliendo de', tr: 'Nereden', id: 'Dari',
+                            hi: 'यहाँ से रवाना',
+                            ur: 'یہاں سے روانگی',
+                            fr: 'Départ de',
+                            bn: 'যেখান থেকে যাত্রা'),
                         hintStyle: const TextStyle(color: Colors.black45),
                         border: InputBorder.none,
                         isDense: true,
@@ -791,7 +1190,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                       controller: _flightToController,
                       style: const TextStyle(color: Colors.black87),
                       decoration: InputDecoration(
-                        hintText: _t3(context, ar: 'الوجهة', en: 'Going to', es: 'A dónde'),
+                        hintText: _t3(context, ar: 'الوجهة', en: 'Going to', es: 'A dónde', tr: 'Nereye', id: 'Ke',
+                            hi: 'यहाँ जाना है',
+                            ur: 'کہاں جانا ہے',
+                            fr: 'Destination',
+                            bn: 'যেখানে যাচ্ছেন'),
                         hintStyle: const TextStyle(color: Colors.black45),
                         border: InputBorder.none,
                         isDense: true,
@@ -801,7 +1204,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ],
               ),
               const Divider(height: 16),
-              Row(
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   GestureDetector(
                     key: _flightDateFieldKey,
@@ -819,7 +1225,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: _pickFlightTravelers,
@@ -835,17 +1240,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ],
                     ),
                   ),
-                  const Spacer(),
-                  Flexible(
-                    child: ElevatedButton.icon(
-                      onPressed: _runFlightSearch,
-                      style: ElevatedButton.styleFrom(
-                        shape: const StadiumBorder(),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      ),
-                      icon: const Icon(Icons.search, size: 18),
-                      label: Text(_t3(context, ar: 'بحث', en: 'Search', es: 'Buscar')),
+                  ElevatedButton.icon(
+                    onPressed: _runFlightSearch,
+                    style: ElevatedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
+                    icon: const Icon(Icons.search, size: 18),
+                    label: Text(_t3(context, ar: 'بحث', en: 'Search', es: 'Buscar', tr: 'Ara', id: 'Cari',
+                        hi: 'खोजें',
+                        ur: 'تلاش کریں',
+                        fr: 'Rechercher',
+                        bn: 'অনুসন্ধান করুন')),
                   ),
                 ],
               ),
@@ -861,13 +1267,21 @@ class _HomePageState extends ConsumerState<HomePage> {
               value: _addStay,
               onChanged: (v) => setState(() => _addStay = v ?? false),
             ),
-            Text(_t3(context, ar: 'أضف مكان إقامة', en: 'Add a place to stay', es: 'Añadir alojamiento')),
+            Text(_t3(context, ar: 'أضف مكان إقامة', en: 'Add a place to stay', es: 'Añadir alojamiento', tr: 'Konaklama ekle', id: 'Tambahkan penginapan',
+                hi: 'ठहरने की जगह जोड़ें',
+                ur: 'قیام کی جگہ شامل کریں',
+                fr: 'Ajouter un hébergement',
+                bn: 'থাকার জায়গা যোগ করুন')),
             const SizedBox(width: AppSizes.md),
             Checkbox(
               value: _addCar,
               onChanged: (v) => setState(() => _addCar = v ?? false),
             ),
-            Text(_t3(context, ar: 'أضف سيارة', en: 'Add a car', es: 'Añadir un coche')),
+            Text(_t3(context, ar: 'أضف سيارة', en: 'Add a car', es: 'Añadir un coche', tr: 'Araç ekle', id: 'Tambahkan mobil',
+                hi: 'कार जोड़ें',
+                ur: 'کار شامل کریں',
+                fr: 'Ajouter une voiture',
+                bn: 'গাড়ি যোগ করুন')),
           ],
         ),
       ],
@@ -906,7 +1320,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                   controller: _flightFromController,
                   style: const TextStyle(color: Colors.black87),
                   decoration: InputDecoration(
-                    hintText: _t3(context, ar: 'المغادرة من', en: 'Leaving from', es: 'Saliendo de'),
+                    hintText: _t3(context, ar: 'المغادرة من', en: 'Leaving from', es: 'Saliendo de', tr: 'Nereden', id: 'Dari',
+                        hi: 'यहाँ से रवाना',
+                        ur: 'یہاں سے روانگی',
+                        fr: 'Départ de',
+                        bn: 'যেখান থেকে যাত্রা'),
                     hintStyle: const TextStyle(color: Colors.black45),
                     border: InputBorder.none,
                     isDense: true,
@@ -933,7 +1351,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                   controller: _flightToController,
                   style: const TextStyle(color: Colors.black87),
                   decoration: InputDecoration(
-                    hintText: _t3(context, ar: 'الوجهة', en: 'Going to', es: 'A dónde'),
+                    hintText: _t3(context, ar: 'الوجهة', en: 'Going to', es: 'A dónde', tr: 'Nereye', id: 'Ke',
+                        hi: 'यहाँ जाना है',
+                        ur: 'کہاں جانا ہے',
+                        fr: 'Destination',
+                        bn: 'যেখানে যাচ্ছেন'),
                     hintStyle: const TextStyle(color: Colors.black45),
                     border: InputBorder.none,
                     isDense: true,
@@ -952,18 +1374,63 @@ class _HomePageState extends ConsumerState<HomePage> {
                   controller: _cityController,
                   style: const TextStyle(color: Colors.black87),
                   decoration: InputDecoration(
-                    hintText: _t3(context, ar: 'الإقامة في؟ (المدينة)', en: 'Stay in? (City)', es: '¿Dónde te alojas? (Ciudad)'),
+                    hintText: _t3(context, ar: 'أين تقيم؟ (المدينة)', en: 'Stay in? (City)', es: '¿Dónde te alojas? (Ciudad)', tr: 'Nerede kalıyorsunuz? (Şehir)', id: 'Menginap di? (Kota)',
+                        hi: 'कहाँ ठहरना है? (शहर)',
+                        ur: 'کہاں ٹھہرنا ہے؟ (شہر)',
+                        fr: 'Séjour à ? (Ville)',
+                        bn: 'কোথায় থাকবেন? (শহর)'),
                     hintStyle: const TextStyle(color: Colors.black45),
                     border: InputBorder.none,
                     isDense: true,
                   ),
+                  onChanged: _onCityTextChanged,
                   onSubmitted: (_) => _runFlightHotelSearch(),
+                  onTap: () {
+                    if (_cityController.text.trim().isEmpty) _openCountryBrowser();
+                  },
                 ),
+              ),
+              IconButton(
+                onPressed: _openCountryBrowser,
+                icon: const Icon(Icons.public, color: Colors.white70, size: 20),
+                tooltip: _t3(context, ar: 'تصفّح حسب الدولة', en: 'Browse by country', es: 'Explorar por país', tr: 'Ülkeye göre gözat', id: 'Jelajahi berdasarkan negara',
+                    hi: 'देश के अनुसार ब्राउज़ करें',
+                    ur: 'ملک کے مطابق دیکھیں',
+                    fr: 'Parcourir par pays',
+                    bn: 'দেশ অনুযায়ী ব্রাউজ করুন'),
               ),
             ],
           ),
+          if (_destinationSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: _destinationSuggestions.length,
+                itemBuilder: (context, index) {
+                  final d = _destinationSuggestions[index];
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.place_outlined, size: 18),
+                    title: Text(d.name),
+                    subtitle: d.countryCode != null ? Text(d.countryCode!) : null,
+                    onTap: () => _selectDestinationSuggestion(d),
+                  );
+                },
+              ),
+            ),
+          ],
           const Divider(height: 16),
-          Row(
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               GestureDetector(
                 key: _flightHotelDateFieldKey,
@@ -984,15 +1451,22 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                       child: Text(
                         nights == 1
-                            ? (_t3(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche'))
-                            : (_t3(context, ar: '$nights ليالي', en: '$nights nights', es: '$nights noches')),
+                            ? (_t3(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche', tr: '1 gece', id: '1 malam',
+                            hi: '1 रात',
+                            ur: '1 رات',
+                            fr: '1 nuit',
+                            bn: '১ রাত'))
+                            : (_t3(context, ar: '$nights ليالٍ', en: '$nights nights', es: '$nights noches', tr: '$nights gece', id: '$nights malam',
+                            hi: '$nights रातें',
+                            ur: '$nights راتیں',
+                            fr: '$nights nuits',
+                            bn: '$nights রাত')),
                         style: const TextStyle(fontSize: 12, color: Colors.white),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () async {
@@ -1008,7 +1482,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  _t3(context, ar: 'الضيوف', en: 'Guests', es: 'Huéspedes'),
+                                  _t3(context, ar: 'الضيوف', en: 'Guests', es: 'Huéspedes', tr: 'Misafirler', id: 'Tamu',
+                                      hi: 'मेहमान',
+                                      ur: 'مہمان',
+                                      fr: 'Voyageurs',
+                                      bn: 'অতিথি'),
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                 ),
                                 Row(
@@ -1038,7 +1516,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   width: double.infinity,
                                   child: ElevatedButton(
                                     onPressed: () => Navigator.of(context).pop(),
-                                    child: Text(_t3(context, ar: 'تم', en: 'Done', es: 'Listo')),
+                                    child: Text(_t3(context, ar: 'تم', en: 'Done', es: 'Listo', tr: 'Tamam', id: 'Selesai',
+                                        hi: 'हो गया',
+                                        ur: 'ہو گیا',
+                                        fr: 'Terminé',
+                                        bn: 'সম্পন্ন')),
                                   ),
                                 ),
                               ],
@@ -1060,25 +1542,28 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ar: 'غرفة واحدة، $_guests ضيوف',
                         en: '1 room, $_guests ${_guests == 1 ? 'adult' : 'adults'}',
                         es: '1 habitación, $_guests ${_guests == 1 ? 'adulto' : 'adultos'}',
+                        tr: '1 oda, $_guests yetişkin',
+                        id: '1 kamar, $_guests dewasa',
+                        hi: '1 कमरा, $_guests वयस्क',
+                        ur: '1 کمرہ, $_guests بالغ',
+                        fr: '1 chambre, $_guests ${_guests == 1 ? 'adulte' : 'adultes'}',
+                        bn: '১টি রুম, $_guests জন প্রাপ্তবয়স্ক',
                       ),
                       style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
                     ),
                   ],
                 ),
               ),
-              const Spacer(),
-              Flexible(
-                child: ElevatedButton.icon(
-                  onPressed: _runFlightHotelSearch,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8FB8D6),
-                    foregroundColor: Colors.white,
-                    shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  ),
-                  icon: const Icon(Icons.search, size: 18),
-                  label: Text(l10n.search),
+              ElevatedButton.icon(
+                onPressed: _runFlightHotelSearch,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8FB8D6),
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
+                icon: const Icon(Icons.search, size: 18),
+                label: Text(l10n.search),
               ),
             ],
           ),
@@ -1112,7 +1597,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                   controller: _carPickupController,
                   style: const TextStyle(color: Colors.black87),
                   decoration: InputDecoration(
-                    hintText: _t3(context, ar: 'مكان الاستلام', en: 'Pick-up location', es: 'Lugar de recogida'),
+                    hintText: _t3(context, ar: 'مكان الاستلام', en: 'Pick-up location', es: 'Lugar de recogida', tr: 'Alış noktası', id: 'Lokasi pengambilan',
+                        hi: 'पिक-अप स्थान',
+                        ur: 'پک اپ مقام',
+                        fr: 'Lieu de prise en charge',
+                        bn: 'পিকআপ স্থান'),
                     hintStyle: const TextStyle(color: Colors.black45),
                     border: InputBorder.none,
                     isDense: true,
@@ -1130,7 +1619,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onChanged: (v) => setState(() => _carDifferentDropoff = v ?? false),
               ),
               Text(
-                _t3(context, ar: 'مكان تسليم مختلف', en: 'Different drop-off location', es: 'Lugar de devolución diferente'),
+                _t3(context, ar: 'مكان تسليم مختلف', en: 'Different drop-off location', es: 'Lugar de devolución diferente', tr: 'Farklı bir teslim noktası', id: 'Lokasi pengembalian berbeda',
+                    hi: 'अलग ड्रॉप-ऑफ स्थान',
+                    ur: 'مختلف ڈراپ آف مقام',
+                    fr: 'Lieu de restitution différent',
+                    bn: 'ভিন্ন ড্রপ-অফ স্থান'),
                 style: const TextStyle(color: Colors.white),
               ),
             ],
@@ -1146,7 +1639,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                     controller: _carDropoffController,
                     style: const TextStyle(color: Colors.black87),
                     decoration: InputDecoration(
-                      hintText: _t3(context, ar: 'مكان التسليم', en: 'Drop-off location', es: 'Lugar de devolución'),
+                      hintText: _t3(context, ar: 'مكان التسليم', en: 'Drop-off location', es: 'Lugar de devolución', tr: 'Teslim noktası', id: 'Lokasi pengembalian',
+                          hi: 'ड्रॉप-ऑफ स्थान',
+                          ur: 'ڈراپ آف مقام',
+                          fr: 'Lieu de restitution',
+                          bn: 'ড্রপ-অফ স্থান'),
                       hintStyle: const TextStyle(color: Colors.black45),
                       border: InputBorder.none,
                       isDense: true,
@@ -1157,7 +1654,10 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             const Divider(height: 16),
           ],
-          Row(
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               GestureDetector(
                 key: _carDateFieldKey,
@@ -1172,17 +1672,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ],
                 ),
               ),
-              const Spacer(),
-              Flexible(
-                child: ElevatedButton.icon(
-                  onPressed: _runCarRentalSearch,
-                  style: ElevatedButton.styleFrom(
-                    shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  ),
-                  icon: const Icon(Icons.search, size: 18),
-                  label: Text(l10n.search),
+              ElevatedButton.icon(
+                onPressed: _runCarRentalSearch,
+                style: ElevatedButton.styleFrom(
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
+                icon: const Icon(Icons.search, size: 18),
+                label: Text(l10n.search),
               ),
             ],
           ),
@@ -1223,6 +1720,12 @@ class _SearchResults extends ConsumerWidget {
                 ar: 'لا توجد فنادق مطابقة للفلاتر المختارة',
                 en: 'No hotels match the selected filters',
                 es: 'Ningún hotel coincide con los filtros seleccionados',
+                tr: 'Seçilen filtrelere uygun otel yok',
+                id: 'Tidak ada hotel yang cocok dengan filter yang dipilih',
+                hi: 'चुने गए फ़िल्टर से कोई होटल मेल नहीं खाता',
+                ur: 'منتخب فلٹرز سے کوئی ہوٹل مماثل نہیں',
+                fr: 'Aucun hôtel ne correspond aux filtres sélectionnés',
+                bn: 'নির্বাচিত ফিল্টারের সাথে কোনো হোটেল মেলে না',
               ),
               icon: Icons.hotel_outlined,
             ),
@@ -1274,7 +1777,11 @@ class _FlightHotelSearchResults extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSizes.md),
       children: [
         Text(
-          _t3(context, ar: 'رحلات الطيران', en: 'Flights', es: 'Vuelos'),
+          _t3(context, ar: 'رحلات الطيران', en: 'Flights', es: 'Vuelos', tr: 'Uçuşlar', id: 'Penerbangan',
+              hi: 'उड़ानें',
+              ur: 'پروازیں',
+              fr: 'Vols',
+              bn: 'ফ্লাইট'),
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         const SizedBox(height: AppSizes.sm),
@@ -1295,6 +1802,12 @@ class _FlightHotelSearchResults extends ConsumerWidget {
                   ar: 'لا توجد رحلات متاحة لهذا المسار والتاريخ',
                   en: 'No flights available for this route and date',
                   es: 'No hay vuelos disponibles para esta ruta y fecha',
+                  tr: 'Bu güzergah ve tarih için uçuş bulunamadı',
+                  id: 'Tidak ada penerbangan yang tersedia untuk rute dan tanggal ini',
+                  hi: 'इस मार्ग और तारीख के लिए कोई उड़ान उपलब्ध नहीं है',
+                  ur: 'اس روٹ اور تاریخ کے لیے کوئی پرواز دستیاب نہیں',
+                  fr: 'Aucun vol disponible pour cet itinéraire et cette date',
+                  bn: 'এই রুট ও তারিখের জন্য কোনো ফ্লাইট নেই',
                 ),
                 icon: Icons.flight_outlined,
               );
@@ -1306,7 +1819,11 @@ class _FlightHotelSearchResults extends ConsumerWidget {
         ),
         const SizedBox(height: AppSizes.xl),
         Text(
-          _t3(context, ar: 'الفنادق', en: 'Hotels', es: 'Hoteles'),
+          _t3(context, ar: 'الفنادق', en: 'Hotels', es: 'Hoteles', tr: 'Oteller', id: 'Hotel',
+              hi: 'होटल',
+              ur: 'ہوٹلز',
+              fr: 'Hôtels',
+              bn: 'হোটেল'),
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         const SizedBox(height: AppSizes.sm),
@@ -1321,6 +1838,12 @@ class _FlightHotelSearchResults extends ConsumerWidget {
               ar: 'تعذر تحميل الفنادق',
               en: 'Could not load hotels',
               es: 'No se pudieron cargar los hoteles',
+              tr: 'Oteller yüklenemedi',
+              id: 'Gagal memuat hotel',
+              hi: 'होटल लोड नहीं हो सके',
+              ur: 'ہوٹل لوڈ نہیں ہو سکے',
+              fr: 'Impossible de charger les hôtels',
+              bn: 'হোটেল লোড করা যায়নি',
             ),
             onRetry: () => ref.invalidate(searchResultsProvider(hotelParams)),
           ),
@@ -1332,6 +1855,12 @@ class _FlightHotelSearchResults extends ConsumerWidget {
                   ar: 'لا توجد فنادق متاحة لهذه المدينة والتواريخ',
                   en: 'No hotels available for this city and dates',
                   es: 'No hay hoteles disponibles para esta ciudad y fechas',
+                  tr: 'Bu şehir ve tarihler için uygun otel yok',
+                  id: 'Tidak ada hotel yang tersedia untuk kota dan tanggal ini',
+                  hi: 'इस शहर और तारीखों के लिए कोई होटल उपलब्ध नहीं है',
+                  ur: 'اس شہر اور تاریخوں کے لیے کوئی ہوٹل دستیاب نہیں',
+                  fr: 'Aucun hôtel disponible pour cette ville et ces dates',
+                  bn: 'এই শহর ও তারিখের জন্য কোনো হোটেল নেই',
                 ),
                 icon: Icons.hotel_outlined,
               );
@@ -1391,11 +1920,28 @@ class _HotelCard extends ConsumerWidget {
               ar: 'تعذر فتح الخريطة',
               en: 'Could not open the map',
               es: 'No se pudo abrir el mapa',
+              tr: 'Harita açılamadı',
+              id: 'Gagal membuka peta',
+              hi: 'मानचित्र नहीं खोला जा सका',
+              ur: 'نقشہ نہیں کھل سکا',
+              fr: 'Impossible d\'ouvrir la carte',
+              bn: 'মানচিত্র খোলা যায়নি',
             ),
           ),
         ),
       );
     }
+  }
+
+  /// أيقونة مناسبة حسب نوع العقار (فندق/شقة فندقية/هوستيل/فيلا) —
+  /// تُستخدم مكان الصورة لما hotel.images تكون فاضية (زي نتائج
+  /// HotelBeds اللي مفيهاش روابط صور في الاستجابة المبسطة).
+  IconData _propertyIcon(String propertyType) {
+    final t = propertyType.toUpperCase();
+    if (t.contains('APART')) return Icons.apartment;
+    if (t.contains('HOSTEL')) return Icons.night_shelter_outlined;
+    if (t.contains('VILLA') || t.contains('HOUSE')) return Icons.villa_outlined;
+    return Icons.hotel;
   }
 
   @override
@@ -1421,14 +1967,22 @@ class _HotelCard extends ConsumerWidget {
                   children: [
                     Container(
                       color: AppColors.divider,
+                      alignment: Alignment.center,
                       child: hotel.images.isNotEmpty
                           ? Image.network(
                         hotel.images.first,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.hotel, color: AppColors.textHint),
+                        errorBuilder: (_, __, ___) => Icon(
+                          _propertyIcon(hotel.propertyType),
+                          size: 36,
+                          color: AppColors.textHint,
+                        ),
                       )
-                          : const Icon(Icons.hotel, color: AppColors.textHint),
+                          : Icon(
+                        _propertyIcon(hotel.propertyType),
+                        size: 36,
+                        color: AppColors.textHint,
+                      ),
                     ),
                     Positioned(
                       top: 8,
@@ -1505,7 +2059,11 @@ class _HotelCard extends ConsumerWidget {
                                     GestureDetector(
                                       onTap: () => _openInMap(context),
                                       child: Text(
-                                        _t3(context, ar: 'الخريطة', en: 'Map', es: 'Mapa'),
+                                        _t3(context, ar: 'الخريطة', en: 'Map', es: 'Mapa', tr: 'Harita', id: 'Peta',
+                                            hi: 'मानचित्र',
+                                            ur: 'نقشہ',
+                                            fr: 'Carte',
+                                            bn: 'মানচিত্র'),
                                         style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,
@@ -1518,20 +2076,14 @@ class _HotelCard extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          RatingBadge(
-                            rating: hotel.rating,
-                            reviewCount: hotel.reviewCount,
-                          ),
                         ],
                       ),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Expanded(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.baseline,
-                              textBaseline: TextBaseline.alphabetic,
+                            child: Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.end,
                               children: [
                                 PriceText(
                                   sarAmount: hotel.pricePerNight,
@@ -1551,7 +2103,9 @@ class _HotelCard extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          Flexible(
+                          SizedBox(
+                            width: 150,
+                            height: 40,
                             child: onSelect != null
                                 ? ElevatedButton.icon(
                               onPressed: onSelect,
@@ -1562,8 +2116,17 @@ class _HotelCard extends ConsumerWidget {
                               icon: Icon((selected ?? false) ? Icons.check_circle : Icons.add_circle_outline, size: 16),
                               label: Text(
                                 (selected ?? false)
-                                    ? _t3(context, ar: 'مختار', en: 'Selected', es: 'Seleccionado')
-                                    : _t3(context, ar: 'اختر', en: 'Select', es: 'Elegir'),
+                                    ? _t3(context, ar: 'مختار', en: 'Selected', es: 'Seleccionado', tr: 'Seçildi', id: 'Dipilih',
+                                    hi: 'चयनित',
+                                    ur: 'منتخب شدہ',
+                                    fr: 'Sélectionné',
+                                    bn: 'নির্বাচিত')
+                                    : _t3(context, ar: 'اختر', en: 'Select', es: 'Elegir', tr: 'Seç', id: 'Pilih',
+                                    hi: 'चुनें',
+                                    ur: 'منتخب کریں',
+                                    fr: 'Sélectionner',
+                                    bn: 'নির্বাচন করুন'),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             )
                                 : ElevatedButton.icon(
@@ -1571,7 +2134,7 @@ class _HotelCard extends ConsumerWidget {
                               style: ElevatedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                               ),
-                              icon: Text(l10n.bookNow),
+                              icon: Text(l10n.bookNow, overflow: TextOverflow.ellipsis),
                               label: const Icon(Icons.arrow_forward, size: 16),
                             ),
                           ),
@@ -1607,6 +2170,12 @@ class _DuffelFlightSearchResults extends ConsumerWidget {
           ar: 'يبحث عن رحلات الطيران...',
           en: 'Searching for flights...',
           es: 'Buscando vuelos...',
+          tr: 'Uçuşlar aranıyor...',
+          id: 'Mencari penerbangan...',
+          hi: 'उड़ानें खोजी जा रही हैं...',
+          ur: 'پروازیں تلاش کی جا رہی ہیں...',
+          fr: 'Recherche de vols en cours...',
+          bn: 'ফ্লাইট খোঁজা হচ্ছে...',
         ),
       ),
       error: (error, _) => ErrorView(
@@ -1614,32 +2183,65 @@ class _DuffelFlightSearchResults extends ConsumerWidget {
         onRetry: () => ref.invalidate(duffelFlightSearchResultsProvider(params)),
       ),
       data: (offers) {
-        if (offers.isEmpty) {
-          return ListView(
-            padding: const EdgeInsets.all(AppSizes.md),
-            children: [
-              EmptyView(
-                message: _t3(
-                  context,
-                  ar: 'لا توجد رحلات متاحة لهذا المسار والتاريخ',
-                  en: 'No flights available for this route and date',
-                  es: 'No hay vuelos disponibles para esta ruta y fecha',
-                ),
-                icon: Icons.flight_outlined,
-              ),
-              const _TrustSection(),
-              const AppFooter(),
-            ],
-          );
-        }
-        return ListView.builder(
+        final filters = ref.watch(flightFiltersProvider);
+        final filteredOffers = applyFlightFilters(offers, filters);
+
+        final resultsList = filteredOffers.isEmpty
+            ? ListView(
           padding: const EdgeInsets.all(AppSizes.md),
-          itemCount: offers.length + 2,
+          children: [
+            EmptyView(
+              message: offers.isEmpty
+                  ? _t3(
+                context,
+                ar: 'لا توجد رحلات متاحة لهذا المسار والتاريخ',
+                en: 'No flights available for this route and date',
+                es: 'No hay vuelos disponibles para esta ruta y fecha',
+                tr: 'Bu güzergah ve tarih için uçuş bulunamadı',
+                id: 'Tidak ada penerbangan yang tersedia untuk rute dan tanggal ini',
+                hi: 'इस मार्ग और तारीख के लिए कोई उड़ान उपलब्ध नहीं है',
+                ur: 'اس روٹ اور تاریخ کے لیے کوئی پرواز دستیاب نہیں',
+                fr: 'Aucun vol disponible pour cet itinéraire et cette date',
+                bn: 'এই রুট ও তারিখের জন্য কোনো ফ্লাইট নেই',
+              )
+                  : _t3(
+                context,
+                ar: 'لا توجد رحلات مطابقة للفلاتر المختارة',
+                en: 'No flights match the selected filters',
+                es: 'Ningún vuelo coincide con los filtros seleccionados',
+                tr: 'Seçilen filtrelere uygun uçuş yok',
+                id: 'Tidak ada penerbangan yang cocok dengan filter yang dipilih',
+                hi: 'चुने गए फ़िल्टर से कोई उड़ान मेल नहीं खाती',
+                ur: 'منتخب فلٹرز سے کوئی پرواز مماثل نہیں',
+                fr: 'Aucun vol ne correspond aux filtres sélectionnés',
+                bn: 'নির্বাচিত ফিল্টারের সাথে কোনো ফ্লাইট মেলে না',
+              ),
+              icon: Icons.flight_outlined,
+            ),
+            const _TrustSection(),
+            const AppFooter(),
+          ],
+        )
+            : ListView.builder(
+          padding: const EdgeInsets.all(AppSizes.md),
+          itemCount: filteredOffers.length + 2,
           itemBuilder: (context, index) {
-            if (index == offers.length) return const _TrustSection();
-            if (index == offers.length + 1) return const AppFooter();
-            return _DuffelFlightCard(offer: offers[index]);
+            if (index == filteredOffers.length) return const _TrustSection();
+            if (index == filteredOffers.length + 1) return const AppFooter();
+            return _DuffelFlightCard(offer: filteredOffers[index]);
           },
+        );
+
+        final showFiltersSidebar =
+            offers.isNotEmpty && MediaQuery.of(context).size.width >= 900;
+
+        if (!showFiltersSidebar) return resultsList;
+
+        return Row(
+          children: [
+            Expanded(child: resultsList),
+            FlightFiltersSidebar(allOffers: offers),
+          ],
         );
       },
     );
@@ -1669,9 +2271,8 @@ class _DuffelFlightCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final duration = offer.arrivalTime.difference(offer.departureTime);
-    final hours = duration.inMinutes ~/ 60;
-    final minutes = duration.inMinutes % 60;
+    final hours = offer.durationMinutes ~/ 60;
+    final minutes = offer.durationMinutes % 60;
 
     final ratesAsync = ref.watch(exchangeRatesProvider);
     final ratesPerUsd = ratesAsync.value ?? const {};
@@ -1707,7 +2308,11 @@ class _DuffelFlightCard extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _t3(context, ar: 'بدون توقف', en: 'Nonstop', es: 'Sin escalas'),
+                      _t3(context, ar: 'بدون توقف', en: 'Nonstop', es: 'Sin escalas', tr: 'Aktarmasız', id: 'Tanpa transit',
+                          hi: 'बिना रुके',
+                          ur: 'بلا رکاوٹ',
+                          fr: 'Sans escale',
+                          bn: 'সরাসরি'),
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),
@@ -1781,7 +2386,9 @@ class _DuffelFlightCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: AppSizes.sm),
-                Flexible(
+                SizedBox(
+                  width: 130,
+                  height: 40,
                   child: onSelect != null
                       ? ElevatedButton.icon(
                     onPressed: onSelect,
@@ -1791,8 +2398,17 @@ class _DuffelFlightCard extends ConsumerWidget {
                     icon: Icon((selected ?? false) ? Icons.check_circle : Icons.add_circle_outline, size: 16),
                     label: Text(
                       (selected ?? false)
-                          ? _t3(context, ar: 'مختارة', en: 'Selected', es: 'Seleccionado')
-                          : _t3(context, ar: 'اختر', en: 'Select', es: 'Elegir'),
+                          ? _t3(context, ar: 'مختارة', en: 'Selected', es: 'Seleccionado', tr: 'Seçildi', id: 'Dipilih',
+                          hi: 'चयनित',
+                          ur: 'منتخب شدہ',
+                          fr: 'Sélectionné',
+                          bn: 'নির্বাচিত')
+                          : _t3(context, ar: 'اختر', en: 'Select', es: 'Elegir', tr: 'Seç', id: 'Pilih',
+                          hi: 'चुनें',
+                          ur: 'منتخب کریں',
+                          fr: 'Sélectionner',
+                          bn: 'নির্বাচন করুন'),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   )
                       : ElevatedButton(
@@ -1802,7 +2418,7 @@ class _DuffelFlightCard extends ConsumerWidget {
                         extra: {'offer': offer},
                       );
                     },
-                    child: Text(l10n.bookNow),
+                    child: Text(l10n.bookNow, overflow: TextOverflow.ellipsis),
                   ),
                 ),
               ],
@@ -1829,6 +2445,12 @@ class _FlightSearchResults extends ConsumerWidget {
           ar: 'يبحث عن رحلات الطيران...',
           en: 'Searching for flights...',
           es: 'Buscando vuelos...',
+          tr: 'Uçuşlar aranıyor...',
+          id: 'Mencari penerbangan...',
+          hi: 'उड़ानें खोजी जा रही हैं...',
+          ur: 'پروازیں تلاش کی جا رہی ہیں...',
+          fr: 'Recherche de vols en cours...',
+          bn: 'ফ্লাইট খোঁজা হচ্ছে...',
         ),
       ),
       error: (error, _) => ErrorView(
@@ -1837,6 +2459,12 @@ class _FlightSearchResults extends ConsumerWidget {
           ar: 'تعذر تحميل النتائج، تحقق من الاتصال',
           en: 'Could not load results, check your connection',
           es: 'No se pudieron cargar los resultados, revisa tu conexión',
+          tr: 'Sonuçlar yüklenemedi, bağlantınızı kontrol edin',
+          id: 'Gagal memuat hasil, periksa koneksi Anda',
+          hi: 'परिणाम लोड नहीं हो सके, अपना कनेक्शन जांचें',
+          ur: 'نتائج لوڈ نہیں ہو سکے، اپنا کنکشن چیک کریں',
+          fr: 'Impossible de charger les résultats, vérifiez votre connexion',
+          bn: 'ফলাফল লোড করা যায়নি, আপনার সংযোগ পরীক্ষা করুন',
         ),
         onRetry: () => ref.invalidate(flightSearchResultsProvider(params)),
       ),
@@ -1851,6 +2479,12 @@ class _FlightSearchResults extends ConsumerWidget {
                   ar: 'لا توجد رحلات متاحة لهذا المسار والتاريخ',
                   en: 'No flights available for this route and date',
                   es: 'No hay vuelos disponibles para esta ruta y fecha',
+                  tr: 'Bu güzergah ve tarih için uçuş bulunamadı',
+                  id: 'Tidak ada penerbangan yang tersedia untuk rute dan tanggal ini',
+                  hi: 'इस मार्ग और तारीख के लिए कोई उड़ान उपलब्ध नहीं है',
+                  ur: 'اس روٹ اور تاریخ کے لیے کوئی پرواز دستیاب نہیں',
+                  fr: 'Aucun vol disponible pour cet itinéraire et cette date',
+                  bn: 'এই রুট ও তারিখের জন্য কোনো ফ্লাইট নেই',
                 ),
                 icon: Icons.flight_outlined,
               ),
@@ -1882,12 +2516,22 @@ class _TrustSection extends StatelessWidget {
       (
       icon: Icons.emoji_events_outlined,
       color: const Color(0xFFF39C12),
-      title: _t3(context, ar: 'المفضّل لدى المسافرين', en: "Travelers' favorite", es: 'Favorito de viajeros'),
+      title: _t3(context, ar: 'المفضّل لدى المسافرين', en: "Travelers' favorite", es: 'Favorito de viajeros', tr: 'Gezginlerin favorisi', id: 'Favorit para wisatawan',
+          hi: 'यात्रियों की पसंद',
+          ur: 'مسافروں کی پسندیدہ',
+          fr: 'Préféré des voyageurs',
+          bn: 'ভ্রমণকারীদের পছন্দ'),
       description: _t3(
         context,
-        ar: 'آلاف المسافرين اختاروا Safr-AI لحجز رحلاتهم والفنادق بثقة ورضا كامل',
+        ar: 'يختار آلاف المسافرين Safr-AI لحجز رحلاتهم وفنادقهم بثقة ورضا تامّ',
         en: 'Thousands of travelers choose Safr-AI to book their trips and hotels with confidence',
         es: 'Miles de viajeros eligen Safr-AI para reservar sus viajes y hoteles con confianza',
+        tr: 'Binlerce gezgin, seyahatlerini ve otellerini güvenle rezerve etmek için Safr-AI\'yi tercih ediyor',
+        id: 'Ribuan wisatawan memilih Safr-AI untuk memesan perjalanan dan hotel mereka dengan percaya diri',
+        hi: 'हज़ारों यात्री अपनी यात्राएं और होटल भरोसे के साथ बुक करने के लिए Safr-AI चुनते हैं',
+        ur: 'ہزاروں مسافر اپنی سفری منصوبہ بندی اور ہوٹل اعتماد کے ساتھ بک کرنے کے لیے Safr-AI کا انتخاب کرتے ہیں',
+        fr: 'Des milliers de voyageurs choisissent Safr-AI pour réserver leurs voyages et hôtels en toute confiance',
+        bn: 'হাজার হাজার ভ্রমণকারী নিশ্চিন্তে তাদের ভ্রমণ ও হোটেল বুক করতে Safr-AI বেছে নেন',
       ),
       ),
       (
@@ -1898,34 +2542,66 @@ class _TrustSection extends StatelessWidget {
         ar: 'دعم العملاء متاح ٢٤/٧',
         en: 'Customer support available 24/7',
         es: 'Atención al cliente 24/7',
+        tr: '7/24 müşteri desteği',
+        id: 'Dukungan pelanggan tersedia 24/7',
+        hi: '24/7 ग्राहक सहायता उपलब्ध है',
+        ur: '24/7 کسٹمر سپورٹ دستیاب',
+        fr: 'Assistance client disponible 24h/24 et 7j/7',
+        bn: 'গ্রাহক সহায়তা ২৪/৭ উপলব্ধ',
       ),
       description: _t3(
         context,
-        ar: 'فريق الدعم عندنا جاهز يساعدك في أي وقت طوال أيام الأسبوع بدون توقف',
+        ar: 'فريق الدعم لدينا جاهز لمساعدتك في أي وقت طوال أيام الأسبوع دون توقف',
         en: 'Our support team is ready to help you anytime, any day of the week, without stopping',
         es: 'Nuestro equipo de soporte está listo para ayudarte a cualquier hora, todos los días',
+        tr: 'Destek ekibimiz haftanın her günü, her an size yardımcı olmaya hazır',
+        id: 'Tim dukungan kami siap membantu Anda kapan saja, setiap hari, tanpa henti',
+        hi: 'हमारी सहायता टीम बिना रुके, हफ़्ते के किसी भी दिन, किसी भी समय आपकी मदद के लिए तैयार है',
+        ur: 'ہماری سپورٹ ٹیم ہفتے کے کسی بھی دن، کسی بھی وقت، بغیر رکے آپ کی مدد کے لیے تیار ہے',
+        fr: 'Notre équipe d\'assistance est prête à vous aider à tout moment, tous les jours de la semaine, sans interruption',
+        bn: 'আমাদের সহায়তা দল সপ্তাহের যেকোনো দিন, যেকোনো সময় আপনাকে সাহায্য করতে প্রস্তুত',
       ),
       ),
       (
       icon: Icons.sell_outlined,
       color: const Color(0xFF0984E3),
-      title: _t3(context, ar: 'أسعار شفافة', en: 'Transparent pricing', es: 'Precios transparentes'),
+      title: _t3(context, ar: 'أسعار شفافة', en: 'Transparent pricing', es: 'Precios transparentes', tr: 'Şeffaf fiyatlandırma', id: 'Harga transparan',
+          hi: 'पारदर्शी मूल्य निर्धारण',
+          ur: 'شفاف قیمتیں',
+          fr: 'Tarification transparente',
+          bn: 'স্বচ্ছ মূল্য'),
       description: _t3(
         context,
-        ar: 'كل الأسعار واضحة من غير رسوم مخفية، وتقدر تشوف التفاصيل قبل ما تأكد الحجز',
+        ar: 'جميع الأسعار واضحة دون رسوم خفية، ويمكنك الاطلاع على التفاصيل كاملة قبل تأكيد الحجز',
         en: 'All prices are clear with no hidden fees, and you can see full details before confirming',
         es: 'Todos los precios son claros sin cargos ocultos, y puedes ver los detalles antes de confirmar',
+        tr: 'Tüm fiyatlar gizli ücret olmadan nettir, onaylamadan önce tüm detayları görebilirsiniz',
+        id: 'Semua harga jelas tanpa biaya tersembunyi, dan Anda bisa melihat detail lengkap sebelum konfirmasi',
+        hi: 'सभी कीमतें बिना किसी छुपे शुल्क के स्पष्ट हैं, और पुष्टि करने से पहले आप पूरा विवरण देख सकते हैं',
+        ur: 'تمام قیمتیں واضح ہیں بغیر کسی چھپی ہوئی فیس کے، اور آپ تصدیق سے پہلے مکمل تفصیلات دیکھ سکتے ہیں',
+        fr: 'Tous les prix sont clairs, sans frais cachés, et vous pouvez voir tous les détails avant de confirmer',
+        bn: 'সব মূল্য স্পষ্ট, কোনো লুকানো ফি নেই, এবং নিশ্চিত করার আগে আপনি সম্পূর্ণ বিবরণ দেখতে পারেন',
       ),
       ),
       (
       icon: Icons.card_giftcard_outlined,
       color: const Color(0xFFE67E22),
-      title: _t3(context, ar: 'اكسب مكافآت مضاعفة', en: 'Earn double rewards', es: 'Gana recompensas dobles'),
+      title: _t3(context, ar: 'اكسب مكافآت مضاعفة', en: 'Earn double rewards', es: 'Gana recompensas dobles', tr: 'İki kat ödül kazanın', id: 'Dapatkan reward berlipat',
+          hi: 'डबल रिवॉर्ड कमाएं',
+          ur: 'ڈبل ریوارڈز حاصل کریں',
+          fr: 'Gagnez deux fois plus de récompenses',
+          bn: 'দ্বিগুণ পুরস্কার অর্জন করুন'),
       description: _t3(
         context,
-        ar: 'كل حجز تعمله من خلال Safr-AI بيقرّبك أكتر من مكافآت ونقاط إضافية حصرية',
+        ar: 'كل حجز تقوم به عبر Safr-AI يقرّبك أكثر من مكافآت ونقاط إضافية حصرية',
         en: 'Every booking you make through Safr-AI brings you closer to extra exclusive rewards and points',
         es: 'Cada reserva que hagas en Safr-AI te acerca a recompensas y puntos exclusivos adicionales',
+        tr: 'Safr-AI üzerinden yaptığınız her rezervasyon, sizi ekstra özel ödül ve puanlara yaklaştırır',
+        id: 'Setiap pemesanan melalui Safr-AI membawa Anda lebih dekat ke reward dan poin eksklusif tambahan',
+        hi: 'Safr-AI के ज़रिए की गई हर बुकिंग आपको अतिरिक्त खास रिवॉर्ड और पॉइंट्स के करीब लाती है',
+        ur: 'Safr-AI کے ذریعے کی گئی ہر بکنگ آپ کو اضافی خصوصی ریوارڈز اور پوائنٹس کے قریب لاتی ہے',
+        fr: 'Chaque réservation effectuée via Safr-AI vous rapproche de récompenses et de points exclusifs supplémentaires',
+        bn: 'Safr-AI এর মাধ্যমে করা প্রতিটি বুকিং আপনাকে অতিরিক্ত এক্সক্লুসিভ পুরস্কার ও পয়েন্টের কাছাকাছি নিয়ে যায়',
       ),
       ),
     ];
@@ -1936,7 +2612,11 @@ class _TrustSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _t3(context, ar: 'ثق بينا نوصلك', en: 'Trust us to take you there', es: 'Confía en nosotros'),
+            _t3(context, ar: 'ثق بنا لنوصّلك', en: 'Trust us to take you there', es: 'Confía en nosotros', tr: 'Sizi oraya götürmemize güvenin', id: 'Percayakan perjalanan Anda pada kami',
+                hi: 'हम पर भरोसा करें, हम आपको वहाँ पहुंचाएंगे',
+                ur: 'ہم پر بھروسہ کریں، ہم آپ کو وہاں لے جائیں گے',
+                fr: 'Faites-nous confiance pour vous y emmener',
+                bn: 'আপনাকে সেখানে পৌঁছে দিতে আমাদের বিশ্বাস করুন'),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
           const SizedBox(height: AppSizes.md),
@@ -1998,23 +2678,45 @@ class _CarTrustSection extends StatelessWidget {
         ar: 'عروض حصرية لضيوف الطيران/الفنادق',
         en: 'Flyer/hotel guest exclusive offers',
         es: 'Ofertas exclusivas para viajeros',
+        tr: 'Uçuş/otel misafirlerine özel teklifler',
+        id: 'Penawaran eksklusif untuk tamu penerbangan/hotel',
+        hi: 'उड़ान/होटल मेहमानों के लिए खास ऑफ़र',
+        ur: 'پرواز/ہوٹل مہمانوں کے لیے خصوصی آفرز',
+        fr: 'Offres exclusives pour les voyageurs/clients d\'hôtel',
+        bn: 'ফ্লাইট/হোটেল অতিথিদের জন্য এক্সক্লুসিভ অফার',
       ),
       description: _t3(
         context,
-        ar: 'احصل على أسعار تأجير سيارات حصرية لما تكون حاجز رحلة طيران أو فندق معانا',
+        ar: 'احصل على أسعار حصرية لتأجير السيارات عند حجز رحلة طيران أو فندق معنا',
         en: 'Unlock exclusive car rental prices for your booked flights or hotels',
         es: 'Desbloquea precios exclusivos de alquiler al reservar vuelos u hoteles',
+        tr: 'Bizimle bir uçuş veya otel rezervasyonu yaptığınızda özel araç kiralama fiyatlarının kilidini açın',
+        id: 'Dapatkan harga sewa mobil eksklusif saat Anda memesan penerbangan atau hotel bersama kami',
+        hi: 'अपनी बुक की गई उड़ानों या होटलों के लिए खास कार किराया कीमतें अनलॉक करें',
+        ur: 'اپنی بک کی گئی پروازوں یا ہوٹلوں کے لیے خصوصی کار کرایہ کی قیمتیں حاصل کریں',
+        fr: 'Débloquez des tarifs de location de voiture exclusifs pour vos vols ou hôtels réservés',
+        bn: 'আপনার বুক করা ফ্লাইট বা হোটেলের জন্য এক্সক্লুসিভ গাড়ি ভাড়ার মূল্য আনলক করুন',
       ),
       ),
       (
       icon: Icons.schedule_outlined,
       color: const Color(0xFF0984E3),
-      title: _t3(context, ar: 'تأجير مرن', en: 'Flexible rentals', es: 'Alquileres flexibles'),
+      title: _t3(context, ar: 'تأجير مرن', en: 'Flexible rentals', es: 'Alquileres flexibles', tr: 'Esnek kiralama', id: 'Sewa fleksibel',
+          hi: 'लचीली किराए की सुविधा',
+          ur: 'لچکدار کرایہ',
+          fr: 'Locations flexibles',
+          bn: 'নমনীয় ভাড়া'),
       description: _t3(
         context,
-        ar: 'سياسة إلغاء مرنة تخليك تخطط لرحلتك من غير قلق',
+        ar: 'سياسة إلغاء مرنة تتيح لك التخطيط لرحلتك دون قلق',
         en: 'Flexible cancellation policy - plan your trip with ease',
         es: 'Política de cancelación flexible: planifica tu viaje sin preocupaciones',
+        tr: 'Esnek iptal politikasıyla seyahatinizi rahatça planlayın',
+        id: 'Kebijakan pembatalan fleksibel - rencanakan perjalanan Anda dengan tenang',
+        hi: 'लचीली रद्दीकरण नीति - आसानी से अपनी यात्रा की योजना बनाएं',
+        ur: 'لچکدار منسوخی پالیسی - آسانی سے اپنے سفر کی منصوبہ بندی کریں',
+        fr: 'Politique d\'annulation flexible - planifiez votre voyage en toute tranquillité',
+        bn: 'নমনীয় বাতিল নীতি - সহজে আপনার ভ্রমণ পরিকল্পনা করুন',
       ),
       ),
       (
@@ -2025,23 +2727,45 @@ class _CarTrustSection extends StatelessWidget {
         ar: 'ضمان حجز وسيلة النقل',
         en: 'Transport booking guarantee',
         es: 'Garantía de reserva de transporte',
+        tr: 'Ulaşım rezervasyon garantisi',
+        id: 'Jaminan pemesanan transportasi',
+        hi: 'परिवहन बुकिंग गारंटी',
+        ur: 'ٹرانسپورٹ بکنگ گارنٹی',
+        fr: 'Garantie de réservation de transport',
+        bn: 'পরিবহন বুকিং গ্যারান্টি',
       ),
       description: _t3(
         context,
-        ar: 'لو رحلة الطيران أو القطار أو الباص اللي حجزتها اتأخرت أو اتلغت، تقدر تتواصل معانا نساعدك تفضي أو تلغي حجز السيارة مجانًا',
+        ar: 'إذا تأخّرت أو أُلغيت رحلة الطيران أو القطار أو الحافلة التي حجزتها، يمكنك التواصل معنا لمساعدتك في الاحتفاظ بحجز السيارة أو إلغائه مجانًا',
         en: 'If your flight, train, or bus is delayed or canceled, contact us for free help to keep or cancel your rental car',
         es: 'Si tu vuelo, tren o autobús se retrasa o cancela, contáctanos para ayuda gratuita con tu alquiler',
+        tr: 'Rezerve ettiğiniz uçuş, tren veya otobüs gecikir ya da iptal olursa, araç kiralamanızı ücretsiz olarak koruma veya iptal etme konusunda size yardımcı olmak için bizimle iletişime geçin',
+        id: 'Jika penerbangan, kereta, atau bus yang Anda pesan tertunda atau dibatalkan, hubungi kami untuk bantuan gratis menahan atau membatalkan sewa mobil Anda',
+        hi: 'अगर आपकी उड़ान, ट्रेन या बस देरी से चलती है या रद्द हो जाती है, तो अपनी किराए की कार रखने या रद्द करने में मुफ़्त मदद के लिए हमसे संपर्क करें',
+        ur: 'اگر آپ کی پرواز، ٹرین، یا بس تاخیر کا شکار ہو یا منسوخ ہو جائے، تو اپنی کرایہ کی کار رکھنے یا منسوخ کرنے کے لیے مفت مدد کے لیے ہم سے رابطہ کریں',
+        fr: 'Si votre vol, train ou bus est retardé ou annulé, contactez-nous pour une aide gratuite afin de conserver ou d\'annuler votre voiture de location',
+        bn: 'যদি আপনার ফ্লাইট, ট্রেন বা বাস বিলম্বিত বা বাতিল হয়, আপনার ভাড়া করা গাড়ি রাখা বা বাতিল করার জন্য বিনামূল্যে সাহায্যের জন্য আমাদের সাথে যোগাযোগ করুন',
       ),
       ),
       (
       icon: Icons.bolt_outlined,
       color: const Color(0xFFE67E22),
-      title: _t3(context, ar: 'دعم عملاء سريع', en: 'Rapid customer support', es: 'Soporte rápido'),
+      title: _t3(context, ar: 'دعم عملاء سريع', en: 'Rapid customer support', es: 'Soporte rápido', tr: 'Hızlı müşteri desteği', id: 'Dukungan pelanggan cepat',
+          hi: 'तेज़ ग्राहक सहायता',
+          ur: 'تیز کسٹمر سپورٹ',
+          fr: 'Assistance client rapide',
+          bn: 'দ্রুত গ্রাহক সহায়তা'),
       description: _t3(
         context,
-        ar: 'بنرد على مكالمتك عادةً خلال ٣٠ ثانية، ودعم موثوق طول رحلة تأجير السيارة',
+        ar: 'نرد على اتصالك عادةً خلال ٣٠ ثانية، مع دعم موثوق طوال فترة تأجير السيارة',
         en: 'We usually answer your call within 30 seconds, ensuring reliable support throughout your rental',
         es: 'Solemos responder tu llamada en 30 segundos, con soporte confiable durante todo tu alquiler',
+        tr: 'Aramanıza genellikle 30 saniye içinde yanıt veririz ve kiralama süreniz boyunca güvenilir destek sağlarız',
+        id: 'Kami biasanya menjawab panggilan Anda dalam 30 detik, memastikan dukungan andal selama masa sewa Anda',
+        hi: 'हम आमतौर पर आपकी कॉल का जवाब 30 सेकंड के भीतर देते हैं, जिससे आपके किराए की पूरी अवधि में भरोसेमंद सहायता मिलती है',
+        ur: 'ہم عام طور پر آپ کی کال کا جواب 30 سیکنڈ کے اندر دیتے ہیں، جس سے آپ کے کرایہ کی پوری مدت میں قابل اعتماد سپورٹ یقینی بنتی ہے',
+        fr: 'Nous répondons généralement à votre appel en 30 secondes, garantissant une assistance fiable tout au long de votre location',
+        bn: 'আমরা সাধারণত ৩০ সেকেন্ডের মধ্যে আপনার কল ধরি, যা আপনার ভাড়ার পুরো সময় নির্ভরযোগ্য সহায়তা নিশ্চিত করে',
       ),
       ),
     ];
@@ -2054,9 +2778,15 @@ class _CarTrustSection extends StatelessWidget {
           Text(
             _t3(
               context,
-              ar: 'مميزات تأجير السيارات معانا',
+              ar: 'مميزات تأجير السيارات معنا',
               en: 'Why rent a car with us',
               es: 'Por qué alquilar con nosotros',
+              tr: 'Bizimle araç kiralamanın avantajları',
+              id: 'Kenapa sewa mobil bersama kami',
+              hi: 'हमसे कार किराए पर क्यों लें',
+              ur: 'ہم سے کار کیوں کرایہ پر لیں',
+              fr: 'Pourquoi louer une voiture chez nous',
+              bn: 'কেন আমাদের কাছ থেকে গাড়ি ভাড়া নেবেন',
             ),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
@@ -2146,7 +2876,11 @@ class _FlightCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _t3(context, ar: 'بدون توقف', en: 'Nonstop', es: 'Sin escalas'),
+                      _t3(context, ar: 'بدون توقف', en: 'Nonstop', es: 'Sin escalas', tr: 'Aktarmasız', id: 'Tanpa transit',
+                          hi: 'बिना रुके',
+                          ur: 'بلا رکاوٹ',
+                          fr: 'Sans escale',
+                          bn: 'সরাসরি'),
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),
@@ -2250,6 +2984,12 @@ class _CarSearchResults extends ConsumerWidget {
           ar: 'يبحث عن سيارات متاحة...',
           en: 'Searching for available cars...',
           es: 'Buscando coches disponibles...',
+          tr: 'Uygun araçlar aranıyor...',
+          id: 'Mencari mobil yang tersedia...',
+          hi: 'उपलब्ध कारें खोजी जा रही हैं...',
+          ur: 'دستیاب کاریں تلاش کی جا رہی ہیں...',
+          fr: 'Recherche de voitures disponibles...',
+          bn: 'উপলব্ধ গাড়ি খোঁজা হচ্ছে...',
         ),
       ),
       error: (error, _) => ErrorView(
@@ -2258,6 +2998,12 @@ class _CarSearchResults extends ConsumerWidget {
           ar: 'تعذر تحميل النتائج، تحقق من الاتصال',
           en: 'Could not load results, check your connection',
           es: 'No se pudieron cargar los resultados, revisa tu conexión',
+          tr: 'Sonuçlar yüklenemedi, bağlantınızı kontrol edin',
+          id: 'Gagal memuat hasil, periksa koneksi Anda',
+          hi: 'परिणाम लोड नहीं हो सके, अपना कनेक्शन जांचें',
+          ur: 'نتائج لوڈ نہیں ہو سکے، اپنا کنکشن چیک کریں',
+          fr: 'Impossible de charger les résultats, vérifiez votre connexion',
+          bn: 'ফলাফল লোড করা যায়নি, আপনার সংযোগ পরীক্ষা করুন',
         ),
         onRetry: () => ref.invalidate(carSearchResultsProvider(params)),
       ),
@@ -2272,6 +3018,12 @@ class _CarSearchResults extends ConsumerWidget {
                   ar: 'لا توجد سيارات متاحة في هذه المدينة',
                   en: 'No cars available in this city',
                   es: 'No hay coches disponibles en esta ciudad',
+                  tr: 'Bu şehirde uygun araç yok',
+                  id: 'Tidak ada mobil yang tersedia di kota ini',
+                  hi: 'इस शहर में कोई कार उपलब्ध नहीं है',
+                  ur: 'اس شہر میں کوئی کار دستیاب نہیں',
+                  fr: 'Aucune voiture disponible dans cette ville',
+                  bn: 'এই শহরে কোনো গাড়ি নেই',
                 ),
                 icon: Icons.directions_car_outlined,
               ),
@@ -2374,7 +3126,11 @@ class _CarCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        _t3(context, ar: '/يوم', en: '/day', es: '/día'),
+                        _t3(context, ar: '/يوم', en: '/day', es: '/día', tr: '/gün', id: '/hari',
+                            hi: '/दिन',
+                            ur: '/دن',
+                            fr: '/jour',
+                            bn: '/দিন'),
                         style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 12),
                       ),
                     ],
@@ -2414,7 +3170,11 @@ class _TravelTabsBar extends StatelessWidget {
   });
 
   static String _comingSoonText(BuildContext context) {
-    return _t3(context, ar: 'قريبًا', en: 'Coming soon', es: 'Próximamente');
+    return _t3(context, ar: 'قريبًا', en: 'Coming soon', es: 'Próximamente', tr: 'Yakında', id: 'Segera hadir',
+        hi: 'जल्द आ रहा है',
+        ur: 'جلد آ رہا ہے',
+        fr: 'Bientôt disponible',
+        bn: 'শীঘ্রই আসছে');
   }
 
   @override
@@ -2424,28 +3184,35 @@ class _TravelTabsBar extends StatelessWidget {
       _TravelTab(
         id: 'stays',
         icon: Icons.bed_outlined,
-        label: _t3(context, ar: 'الإقامة', en: 'Stays', es: 'Alojamientos'),
+        label: _t3(context, ar: 'الإقامة', en: 'Stays', es: 'Alojamientos', tr: 'Konaklama', id: 'Menginap',
+            hi: 'ठहरना',
+            ur: 'قیام',
+            fr: 'Séjours',
+            bn: 'থাকার ব্যবস্থা'),
       ),
       _TravelTab(
         id: 'flights',
         icon: Icons.flight_takeoff,
-        label: _t3(context, ar: 'رحلات الطيران', en: 'Flights', es: 'Vuelos'),
+        label: _t3(context, ar: 'رحلات الطيران', en: 'Flights', es: 'Vuelos', tr: 'Uçuşlar', id: 'Penerbangan',
+            hi: 'उड़ानें',
+            ur: 'پروازیں',
+            fr: 'Vols',
+            bn: 'ফ্লাইট'),
       ),
       _TravelTab(
         id: 'flightHotel',
         icon: Icons.airplane_ticket_outlined,
-        label: _t3(context, ar: 'طيران + فندق', en: 'Flight + Hotel', es: 'Vuelo + Hotel'),
-      ),
-      _TravelTab(
-        id: 'carRental',
-        icon: Icons.directions_car_filled_outlined,
-        label: _t3(context, ar: 'تأجير السيارات', en: 'Car rental', es: 'Alquiler de coches'),
+        label: _t3(context, ar: 'طيران + فندق', en: 'Flight + Hotel', es: 'Vuelo + Hotel', tr: 'Uçuş + Otel', id: 'Penerbangan + Hotel',
+            hi: 'उड़ान + होटल',
+            ur: 'پرواز + ہوٹل',
+            fr: 'Vol + Hôtel',
+            bn: 'ফ্লাইট + হোটেল'),
       ),
     ];
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 18),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
@@ -2469,10 +3236,10 @@ class _TravelTabsBar extends StatelessWidget {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: isActive ? AppColors.primaryDark : Colors.transparent,
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(20),
                     border: isActive
                         ? null
                         : Border.all(color: Colors.white.withOpacity(0.4)),
@@ -2482,16 +3249,16 @@ class _TravelTabsBar extends StatelessWidget {
                     children: [
                       Icon(
                         tab.icon,
-                        size: 22,
+                        size: 16,
                         color: Colors.white,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
                         tab.label,
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 16,
+                          fontSize: 13,
                         ),
                       ),
                     ],

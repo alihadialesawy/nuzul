@@ -1,0 +1,72 @@
+{
+  "appName": "Nuzul",
+  "login": "লগ ইন করুন",
+  "register": "অ্যাকাউন্ট তৈরি করুন",
+  "email": "ইমেইল",
+  "password": "পাসওয়ার্ড",
+  "confirmPassword": "পাসওয়ার্ড নিশ্চিত করুন",
+  "fullName": "পুরো নাম",
+  "noAccountRegister": "অ্যাকাউন্ট নেই? নতুন অ্যাকাউন্ট তৈরি করুন",
+  "haveAccountLogin": "আগে থেকেই অ্যাকাউন্ট আছে? লগ ইন করুন",
+  "whereTo": "কোথায় যাচ্ছেন? (শহর)",
+  "guests": "অতিথি",
+  "search": "অনুসন্ধান করুন",
+  "bookNow": "এখনই বুক করুন",
+  "myBookings": "আমার বুকিং",
+  "searchPrompt": "উপলব্ধ হোটেল দেখতে একটি শহর খুঁজুন",
+  "noResults": "এই শহর ও তারিখের জন্য কোনো হোটেল পাওয়া যায়নি",
+  "searching": "হোটেল খোঁজা হচ্ছে...",
+  "errorLoadResults": "ফলাফল লোড করা যায়নি, আপনার সংযোগ পরীক্ষা করুন",
+  "retry": "আবার চেষ্টা করুন",
+  "perNight": "প্রতি রাত",
+  "confirmBookingTitle": "বুকিং নিশ্চিত করুন",
+  "checkInLabel": "চেক-ইন তারিখ",
+  "checkOutLabel": "চেক-আউট তারিখ",
+  "nightsLabel": "রাতের সংখ্যা",
+  "guestsLabel": "অতিথির সংখ্যা",
+  "totalLabel": "মোট",
+  "confirmBookingButton": "বুকিং নিশ্চিত করুন",
+  "paymentNote": "দ্রষ্টব্য: Stripe এর মাধ্যমে প্রকৃত পেমেন্ট পরবর্তী ধাপে যোগ করা হবে — এই বুকিং বর্তমানে \"অপেক্ষমাণ\" অবস্থায় সংরক্ষিত।",
+  "bookingSuccessTitle": "বুকিং অনুরোধ পাঠানো হয়েছে",
+  "ok": "ঠিক আছে",
+  "statusPending": "অপেক্ষমাণ",
+  "statusConfirmed": "নিশ্চিত হয়েছে",
+  "statusCancelled": "বাতিল হয়েছে",
+  "cancelBooking": "বুকিং বাতিল করুন",
+  "cancelBookingConfirmTitle": "বুকিং বাতিল করুন",
+  "cancelBookingUndo": "পূর্বাবস্থায় ফিরুন",
+  "cancelBookingYes": "হ্যাঁ, বাতিল করুন",
+  "noBookingsYet": "এখনও আপনার কোনো বুকিং নেই",
+  "loadingBookings": "আপনার বুকিং লোড হচ্ছে...",
+  "errorLoadBookings": "বুকিং লোড করা যায়নি, আপনার সংযোগ পরীক্ষা করুন",
+  "loginRequired": "প্রথমে আপনাকে লগ ইন করতে হবে",
+  "roomTypeSectionTitle": "রুমের ধরন",
+  "roomQueen": "দুই বিছানার কুইন রুম",
+  "roomKing": "কিং রুম",
+  "roomStudioSuite": "স্টুডিও স্যুট",
+  "aboutAreaTitle": "আশেপাশের এলাকা সম্পর্কে",
+  "aboutAreaDescription": "এই হোটেলটি {city}-এ একটি চমৎকার অবস্থানে রয়েছে, গুরুত্বপূর্ণ স্থান ও সুবিধার কাছাকাছি, যা আপনার থাকাকালীন চলাচল সহজ করে তোলে।",
+  "@aboutAreaDescription": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentSucceededBookingError": "পেমেন্ট সফল হয়েছে, কিন্তু বুকিং রেকর্ড করার সময় একটি ত্রুটি ঘটেছে: {message}",
+  "@paymentSucceededBookingError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingCreateError": "বুকিং রেকর্ড করার সময় একটি ত্রুটি ঘটেছে: {message}",
+  "@bookingCreateError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
+}
