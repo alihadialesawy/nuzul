@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app.dart';
 import '../constants/app_colors.dart';
@@ -7,14 +8,30 @@ import '../constants/app_sizes.dart';
 import 'currency_selector_button.dart';
 
 /// فوتر مشترك يُضاف في نهاية كل صفحة رئيسية بالتطبيق. كل قسم
-/// (Support/Discover/Terms/Partners/About) عمود مستقل بجانب الباقي،
+/// (Support/Discover/Terms/About) عمود مستقل بجانب الباقي،
 /// وكل روابط القسم ظاهرة تحت عنوانه بشكل دائم من غير حاجة للضغط.
 /// روابط قسم "الدعم" فقط مفعّلة فعليًا وتنقل لصفحات حقيقية؛ باقي الروابط
 /// لسه شكلية (تعرض "قريبًا") إلى أن تُبنى صفحات فعلية لها لاحقًا.
+/// ملحوظة: قسم "Partners" اتشال بالكامل، وشوية روابط اتشالت من باقي
+/// الأقسام (مرحلة أولى من تنظيف الفوتر) لأنها إما مش منطبقة على نموذج
+/// العمل الحالي (وسيط/aggregator، مش مالك فنادق/أسطول سيارات)، أو
+/// سابقة لأوانها (Business/Travel Agents/Investor relations/Press
+/// center)، أو خارج نطاق النشاط (حجوزات مطاعم).
+///
+/// روابط التواصل الاجتماعي (Facebook/Instagram/TikTok/YouTube) تظهر في الشريط السفلي
+/// بجانب زر العملة، وتفتح حساب Flynoom الرسمي في تبويب جديد على الويب،
+/// أو داخل تطبيق فيسبوك/إنستغرام/تيك توك/يوتيوب على الجوال إن كان مثبتًا.
 class AppFooter extends StatelessWidget {
   const AppFooter({super.key});
 
   static const double _columnWidth = 180;
+
+  /// الحسابات الرسمية — نفس اسم المستخدم على المنصتين.
+  static const String facebookUrl = 'https://www.facebook.com/flynoom.booking';
+  static const String instagramUrl = 'https://www.instagram.com/flynoom.booking';
+  static const String tiktokUrl = 'https://www.tiktok.com/@flynoom';
+  static const String youtubeUrl =
+      'https://www.youtube.com/channel/UCfa_VHdzyOsXlKmj4-w5VQg';
 
   static List<_FooterSectionData> _footerSections(String languageCode) {
     if (languageCode == 'ar') {
@@ -25,39 +42,22 @@ class AppFooter extends StatelessWidget {
           _FooterLinkData('مركز مصادر الأمان', route: AppRoutes.support),
         ]),
         _FooterSectionData('استكشف', const [
-          _FooterLinkData('برنامج الولاء'),
-          _FooterLinkData('عروض موسمية وعطلات'),
-          _FooterLinkData('مقالات سفر'),
-          _FooterLinkData('نزل للأعمال'),
-          _FooterLinkData('جوائز تقييم المسافرين'),
-          _FooterLinkData('تأجير السيارات'),
+          _FooterLinkData('برنامج الولاء', route: AppRoutes.myCoins),
+          _FooterLinkData('عروض موسمية وعطلات', route: AppRoutes.seasonalDeals),
+          _FooterLinkData('مقالات سفر', route: AppRoutes.travelArticles),
           _FooterLinkData('محرك بحث الرحلات', route: AppRoutes.flights),
-          _FooterLinkData('حجوزات المطاعم'),
-          _FooterLinkData('نزل لوكلاء السفر'),
         ]),
-        _FooterSectionData('الشروط والإعدادات', const [
-          _FooterLinkData('إشعار الخصوصية'),
-          _FooterLinkData('شروط الخدمة'),
-          _FooterLinkData('بيان إمكانية الوصول'),
-          _FooterLinkData('حل النزاعات'),
-          _FooterLinkData('بيان مكافحة العمل القسري'),
-          _FooterLinkData('بيان حقوق الإنسان'),
+        _FooterSectionData('الشروط والإعدادات', [
+          _FooterLinkData('إشعار الخصوصية', route: AppRoutes.privacyNotice),
+          _FooterLinkData('شروط الخدمة', route: AppRoutes.termsOfService),
+          _FooterLinkData('بيان إمكانية الوصول', route: AppRoutes.accessibilityStatement),
+          _FooterLinkData('حل النزاعات', route: AppRoutes.disputeResolution),
         ]),
-        _FooterSectionData('الشركاء', const [
-          _FooterLinkData('تسجيل دخول الشركاء'),
-          _FooterLinkData('مساعدة الشركاء'),
-          _FooterLinkData('أضف عقارك'),
-          _FooterLinkData('انضم كشريك تسويق'),
-        ]),
-        _FooterSectionData('عن نزل', const [
-          _FooterLinkData('عن نزل'),
-          _FooterLinkData('كيف نعمل'),
-          _FooterLinkData('الاستدامة'),
-          _FooterLinkData('المركز الصحفي'),
-          _FooterLinkData('الوظائف'),
-          _FooterLinkData('علاقات المستثمرين'),
-          _FooterLinkData('التواصل المؤسسي'),
-          _FooterLinkData('إرشادات المحتوى والتبليغ'),
+        _FooterSectionData('عن Flynoom', [
+          _FooterLinkData('عن Flynoom', route: AppRoutes.about),
+          _FooterLinkData('كيف نعمل', route: AppRoutes.howWeWork),
+          _FooterLinkData('الوظائف', route: AppRoutes.careers),
+          _FooterLinkData('إرشادات المحتوى والتبليغ', route: AppRoutes.contentGuidelines),
         ]),
       ];
     }
@@ -70,39 +70,22 @@ class AppFooter extends StatelessWidget {
           _FooterLinkData('Güvenlik kaynak merkezi', route: AppRoutes.support),
         ]),
         _FooterSectionData('Keşfet', const [
-          _FooterLinkData('Sadakat programı'),
-          _FooterLinkData('Sezonluk ve tatil fırsatları'),
-          _FooterLinkData('Seyahat yazıları'),
-          _FooterLinkData('İşletmeler için Nuzul'),
-          _FooterLinkData('Gezgin değerlendirme ödülleri'),
-          _FooterLinkData('Araç kiralama'),
+          _FooterLinkData('Sadakat programı', route: AppRoutes.myCoins),
+          _FooterLinkData('Sezonluk ve tatil fırsatları', route: AppRoutes.seasonalDeals),
+          _FooterLinkData('Seyahat yazıları', route: AppRoutes.travelArticles),
           _FooterLinkData('Uçuş bulucu', route: AppRoutes.flights),
-          _FooterLinkData('Restoran rezervasyonları'),
-          _FooterLinkData('Seyahat acenteleri için Nuzul'),
         ]),
-        _FooterSectionData('Şartlar ve ayarlar', const [
-          _FooterLinkData('Gizlilik bildirimi'),
-          _FooterLinkData('Hizmet şartları'),
-          _FooterLinkData('Erişilebilirlik beyanı'),
-          _FooterLinkData('Uyuşmazlık çözümü'),
-          _FooterLinkData('Modern kölelik beyanı'),
-          _FooterLinkData('İnsan hakları beyanı'),
+        _FooterSectionData('Şartlar ve ayarlar', [
+          _FooterLinkData('Gizlilik bildirimi', route: AppRoutes.privacyNotice),
+          _FooterLinkData('Hizmet şartları', route: AppRoutes.termsOfService),
+          _FooterLinkData('Erişilebilirlik beyanı', route: AppRoutes.accessibilityStatement),
+          _FooterLinkData('Uyuşmazlık çözümü', route: AppRoutes.disputeResolution),
         ]),
-        _FooterSectionData('Ortaklar', const [
-          _FooterLinkData('Ortak girişi'),
-          _FooterLinkData('Ortak yardımı'),
-          _FooterLinkData('Mülkünüzü listeleyin'),
-          _FooterLinkData('Ortak olun'),
-        ]),
-        _FooterSectionData('Hakkında', const [
-          _FooterLinkData('Nuzul hakkında'),
-          _FooterLinkData('Nasıl çalışırız'),
-          _FooterLinkData('Sürdürülebilirlik'),
-          _FooterLinkData('Basın merkezi'),
-          _FooterLinkData('Kariyer'),
-          _FooterLinkData('Yatırımcı ilişkileri'),
-          _FooterLinkData('Kurumsal iletişim'),
-          _FooterLinkData('İçerik kuralları ve bildirim'),
+        _FooterSectionData('Hakkında', [
+          _FooterLinkData('Flynoom hakkında', route: AppRoutes.about),
+          _FooterLinkData('Nasıl çalışırız', route: AppRoutes.howWeWork),
+          _FooterLinkData('Kariyer', route: AppRoutes.careers),
+          _FooterLinkData('İçerik kuralları ve bildirim', route: AppRoutes.contentGuidelines),
         ]),
       ];
     }
@@ -115,39 +98,22 @@ class AppFooter extends StatelessWidget {
           _FooterLinkData('Centro de recursos de seguridad', route: AppRoutes.support),
         ]),
         _FooterSectionData('Descubre', const [
-          _FooterLinkData('Programa de fidelidad'),
-          _FooterLinkData('Ofertas de temporada y vacaciones'),
-          _FooterLinkData('Artículos de viaje'),
-          _FooterLinkData('Nuzul para empresas'),
-          _FooterLinkData('Premios de reseñas de viajeros'),
-          _FooterLinkData('Alquiler de coches'),
+          _FooterLinkData('Programa de fidelidad', route: AppRoutes.myCoins),
+          _FooterLinkData('Ofertas de temporada y vacaciones', route: AppRoutes.seasonalDeals),
+          _FooterLinkData('Artículos de viaje', route: AppRoutes.travelArticles),
           _FooterLinkData('Buscador de vuelos', route: AppRoutes.flights),
-          _FooterLinkData('Reservas de restaurantes'),
-          _FooterLinkData('Nuzul para agentes de viajes'),
         ]),
-        _FooterSectionData('Términos y configuración', const [
-          _FooterLinkData('Aviso de privacidad'),
-          _FooterLinkData('Términos de servicio'),
-          _FooterLinkData('Declaración de accesibilidad'),
-          _FooterLinkData('Resolución de disputas'),
-          _FooterLinkData('Declaración contra la esclavitud moderna'),
-          _FooterLinkData('Declaración de derechos humanos'),
+        _FooterSectionData('Términos y configuración', [
+          _FooterLinkData('Aviso de privacidad', route: AppRoutes.privacyNotice),
+          _FooterLinkData('Términos de servicio', route: AppRoutes.termsOfService),
+          _FooterLinkData('Declaración de accesibilidad', route: AppRoutes.accessibilityStatement),
+          _FooterLinkData('Resolución de disputas', route: AppRoutes.disputeResolution),
         ]),
-        _FooterSectionData('Socios', const [
-          _FooterLinkData('Acceso para socios'),
-          _FooterLinkData('Ayuda para socios'),
-          _FooterLinkData('Publica tu propiedad'),
-          _FooterLinkData('Conviértete en afiliado'),
-        ]),
-        _FooterSectionData('Sobre Nuzul', const [
-          _FooterLinkData('Sobre Nuzul'),
-          _FooterLinkData('Cómo trabajamos'),
-          _FooterLinkData('Sostenibilidad'),
-          _FooterLinkData('Centro de prensa'),
-          _FooterLinkData('Empleo'),
-          _FooterLinkData('Relación con inversores'),
-          _FooterLinkData('Contacto corporativo'),
-          _FooterLinkData('Directrices de contenido y reportes'),
+        _FooterSectionData('Sobre Flynoom', [
+          _FooterLinkData('Sobre Flynoom', route: AppRoutes.about),
+          _FooterLinkData('Cómo trabajamos', route: AppRoutes.howWeWork),
+          _FooterLinkData('Empleo', route: AppRoutes.careers),
+          _FooterLinkData('Directrices de contenido y reportes', route: AppRoutes.contentGuidelines),
         ]),
       ];
     }
@@ -160,39 +126,22 @@ class AppFooter extends StatelessWidget {
           _FooterLinkData('Pusat sumber daya keamanan', route: AppRoutes.support),
         ]),
         _FooterSectionData('Jelajahi', const [
-          _FooterLinkData('Program loyalitas'),
-          _FooterLinkData('Penawaran musiman dan liburan'),
-          _FooterLinkData('Artikel perjalanan'),
-          _FooterLinkData('Nuzul untuk Bisnis'),
-          _FooterLinkData('Penghargaan ulasan wisatawan'),
-          _FooterLinkData('Sewa mobil'),
+          _FooterLinkData('Program loyalitas', route: AppRoutes.myCoins),
+          _FooterLinkData('Penawaran musiman dan liburan', route: AppRoutes.seasonalDeals),
+          _FooterLinkData('Artikel perjalanan', route: AppRoutes.travelArticles),
           _FooterLinkData('Pencari penerbangan', route: AppRoutes.flights),
-          _FooterLinkData('Reservasi restoran'),
-          _FooterLinkData('Nuzul untuk Agen Perjalanan'),
         ]),
-        _FooterSectionData('Syarat dan pengaturan', const [
-          _FooterLinkData('Pemberitahuan privasi'),
-          _FooterLinkData('Syarat layanan'),
-          _FooterLinkData('Pernyataan aksesibilitas'),
-          _FooterLinkData('Penyelesaian sengketa'),
-          _FooterLinkData('Pernyataan anti-perbudakan modern'),
-          _FooterLinkData('Pernyataan hak asasi manusia'),
+        _FooterSectionData('Syarat dan pengaturan', [
+          _FooterLinkData('Pemberitahuan privasi', route: AppRoutes.privacyNotice),
+          _FooterLinkData('Syarat layanan', route: AppRoutes.termsOfService),
+          _FooterLinkData('Pernyataan aksesibilitas', route: AppRoutes.accessibilityStatement),
+          _FooterLinkData('Penyelesaian sengketa', route: AppRoutes.disputeResolution),
         ]),
-        _FooterSectionData('Mitra', const [
-          _FooterLinkData('Masuk mitra'),
-          _FooterLinkData('Bantuan mitra'),
-          _FooterLinkData('Daftarkan properti Anda'),
-          _FooterLinkData('Menjadi afiliasi'),
-        ]),
-        _FooterSectionData('Tentang Nuzul', const [
-          _FooterLinkData('Tentang Nuzul'),
-          _FooterLinkData('Cara kami bekerja'),
-          _FooterLinkData('Keberlanjutan'),
-          _FooterLinkData('Pusat pers'),
-          _FooterLinkData('Karier'),
-          _FooterLinkData('Hubungan investor'),
-          _FooterLinkData('Kontak korporat'),
-          _FooterLinkData('Pedoman konten dan pelaporan'),
+        _FooterSectionData('Tentang Flynoom', [
+          _FooterLinkData('Tentang Flynoom', route: AppRoutes.about),
+          _FooterLinkData('Cara kami bekerja', route: AppRoutes.howWeWork),
+          _FooterLinkData('Karier', route: AppRoutes.careers),
+          _FooterLinkData('Pedoman konten dan pelaporan', route: AppRoutes.contentGuidelines),
         ]),
       ];
     }
@@ -205,39 +154,22 @@ class AppFooter extends StatelessWidget {
           _FooterLinkData('सुरक्षा संसाधन केंद्र', route: AppRoutes.support),
         ]),
         _FooterSectionData('खोजें', const [
-          _FooterLinkData('लॉयल्टी प्रोग्राम'),
-          _FooterLinkData('मौसमी और छुट्टियों के ऑफ़र'),
-          _FooterLinkData('यात्रा लेख'),
-          _FooterLinkData('व्यवसायों के लिए Nuzul'),
-          _FooterLinkData('यात्री समीक्षा पुरस्कार'),
-          _FooterLinkData('कार किराए पर लें'),
+          _FooterLinkData('लॉयल्टी प्रोग्राम', route: AppRoutes.myCoins),
+          _FooterLinkData('मौसमी और छुट्टियों के ऑफ़र', route: AppRoutes.seasonalDeals),
+          _FooterLinkData('यात्रा लेख', route: AppRoutes.travelArticles),
           _FooterLinkData('उड़ान खोजक', route: AppRoutes.flights),
-          _FooterLinkData('रेस्टोरेंट आरक्षण'),
-          _FooterLinkData('यात्रा एजेंटों के लिए Nuzul'),
         ]),
-        _FooterSectionData('शर्तें और सेटिंग्स', const [
-          _FooterLinkData('गोपनीयता सूचना'),
-          _FooterLinkData('सेवा की शर्तें'),
-          _FooterLinkData('सुगम्यता विवरण'),
-          _FooterLinkData('विवाद समाधान'),
-          _FooterLinkData('आधुनिक दासता विवरण'),
-          _FooterLinkData('मानवाधिकार विवरण'),
+        _FooterSectionData('शर्तें और सेटिंग्स', [
+          _FooterLinkData('गोपनीयता सूचना', route: AppRoutes.privacyNotice),
+          _FooterLinkData('सेवा की शर्तें', route: AppRoutes.termsOfService),
+          _FooterLinkData('सुगम्यता विवरण', route: AppRoutes.accessibilityStatement),
+          _FooterLinkData('विवाद समाधान', route: AppRoutes.disputeResolution),
         ]),
-        _FooterSectionData('साझेदार', const [
-          _FooterLinkData('पार्टनर लॉगिन'),
-          _FooterLinkData('पार्टनर सहायता'),
-          _FooterLinkData('अपनी संपत्ति सूचीबद्ध करें'),
-          _FooterLinkData('सहबद्ध बनें'),
-        ]),
-        _FooterSectionData('Nuzul के बारे में', const [
-          _FooterLinkData('Nuzul के बारे में'),
-          _FooterLinkData('हम कैसे काम करते हैं'),
-          _FooterLinkData('स्थिरता'),
-          _FooterLinkData('प्रेस केंद्र'),
-          _FooterLinkData('करियर'),
-          _FooterLinkData('निवेशक संबंध'),
-          _FooterLinkData('कॉर्पोरेट संपर्क'),
-          _FooterLinkData('सामग्री दिशानिर्देश और रिपोर्टिंग'),
+        _FooterSectionData('Flynoom के बारे में', [
+          _FooterLinkData('Flynoom के बारे में', route: AppRoutes.about),
+          _FooterLinkData('हम कैसे काम करते हैं', route: AppRoutes.howWeWork),
+          _FooterLinkData('करियर', route: AppRoutes.careers),
+          _FooterLinkData('सामग्री दिशानिर्देश और रिपोर्टिंग', route: AppRoutes.contentGuidelines),
         ]),
       ];
     }
@@ -250,39 +182,22 @@ class AppFooter extends StatelessWidget {
           _FooterLinkData('নিরাপত্তা রিসোর্স সেন্টার', route: AppRoutes.support),
         ]),
         _FooterSectionData('আবিষ্কার করুন', const [
-          _FooterLinkData('লয়্যালটি প্রোগ্রাম'),
-          _FooterLinkData('মৌসুমি ও ছুটির অফার'),
-          _FooterLinkData('ভ্রমণ নিবন্ধ'),
-          _FooterLinkData('ব্যবসার জন্য Nuzul'),
-          _FooterLinkData('ভ্রমণকারী পর্যালোচনা পুরস্কার'),
-          _FooterLinkData('গাড়ি ভাড়া'),
+          _FooterLinkData('লয়্যালটি প্রোগ্রাম', route: AppRoutes.myCoins),
+          _FooterLinkData('মৌসুমি ও ছুটির অফার', route: AppRoutes.seasonalDeals),
+          _FooterLinkData('ভ্রমণ নিবন্ধ', route: AppRoutes.travelArticles),
           _FooterLinkData('ফ্লাইট অনুসন্ধানকারী', route: AppRoutes.flights),
-          _FooterLinkData('রেস্টুরেন্ট রিজার্ভেশন'),
-          _FooterLinkData('ভ্রমণ এজেন্টদের জন্য Nuzul'),
         ]),
-        _FooterSectionData('শর্তাবলী ও সেটিংস', const [
-          _FooterLinkData('গোপনীয়তা নোটিশ'),
-          _FooterLinkData('সেবার শর্তাবলী'),
-          _FooterLinkData('অ্যাক্সেসিবিলিটি বিবৃতি'),
-          _FooterLinkData('বিরোধ নিষ্পত্তি'),
-          _FooterLinkData('আধুনিক দাসত্ব বিরোধী বিবৃতি'),
-          _FooterLinkData('মানবাধিকার বিবৃতি'),
+        _FooterSectionData('শর্তাবলী ও সেটিংস', [
+          _FooterLinkData('গোপনীয়তা নোটিশ', route: AppRoutes.privacyNotice),
+          _FooterLinkData('সেবার শর্তাবলী', route: AppRoutes.termsOfService),
+          _FooterLinkData('অ্যাক্সেসিবিলিটি বিবৃতি', route: AppRoutes.accessibilityStatement),
+          _FooterLinkData('বিরোধ নিষ্পত্তি', route: AppRoutes.disputeResolution),
         ]),
-        _FooterSectionData('অংশীদার', const [
-          _FooterLinkData('পার্টনার লগইন'),
-          _FooterLinkData('পার্টনার সহায়তা'),
-          _FooterLinkData('আপনার সম্পত্তি তালিকাভুক্ত করুন'),
-          _FooterLinkData('অ্যাফিলিয়েট হন'),
-        ]),
-        _FooterSectionData('Nuzul সম্পর্কে', const [
-          _FooterLinkData('Nuzul সম্পর্কে'),
-          _FooterLinkData('আমরা কীভাবে কাজ করি'),
-          _FooterLinkData('স্থায়িত্ব'),
-          _FooterLinkData('প্রেস সেন্টার'),
-          _FooterLinkData('ক্যারিয়ার'),
-          _FooterLinkData('বিনিয়োগকারী সম্পর্ক'),
-          _FooterLinkData('কর্পোরেট যোগাযোগ'),
-          _FooterLinkData('কন্টেন্ট নির্দেশিকা ও রিপোর্টিং'),
+        _FooterSectionData('Flynoom সম্পর্কে', [
+          _FooterLinkData('Flynoom সম্পর্কে', route: AppRoutes.about),
+          _FooterLinkData('আমরা কীভাবে কাজ করি', route: AppRoutes.howWeWork),
+          _FooterLinkData('ক্যারিয়ার', route: AppRoutes.careers),
+          _FooterLinkData('কন্টেন্ট নির্দেশিকা ও রিপোর্টিং', route: AppRoutes.contentGuidelines),
         ]),
       ];
     }
@@ -295,39 +210,22 @@ class AppFooter extends StatelessWidget {
           _FooterLinkData('Centre de ressources de sécurité', route: AppRoutes.support),
         ]),
         _FooterSectionData('Découvrir', const [
-          _FooterLinkData('Programme de fidélité'),
-          _FooterLinkData('Offres saisonnières et de vacances'),
-          _FooterLinkData('Articles de voyage'),
-          _FooterLinkData('Nuzul pour les entreprises'),
-          _FooterLinkData('Prix des avis voyageurs'),
-          _FooterLinkData('Location de voitures'),
+          _FooterLinkData('Programme de fidélité', route: AppRoutes.myCoins),
+          _FooterLinkData('Offres saisonnières et de vacances', route: AppRoutes.seasonalDeals),
+          _FooterLinkData('Articles de voyage', route: AppRoutes.travelArticles),
           _FooterLinkData('Recherche de vols', route: AppRoutes.flights),
-          _FooterLinkData('Réservations de restaurants'),
-          _FooterLinkData('Nuzul pour les agents de voyage'),
         ]),
-        _FooterSectionData('Conditions et paramètres', const [
-          _FooterLinkData('Avis de confidentialité'),
-          _FooterLinkData("Conditions d'utilisation"),
-          _FooterLinkData("Déclaration d'accessibilité"),
-          _FooterLinkData('Résolution des litiges'),
-          _FooterLinkData("Déclaration contre l'esclavage moderne"),
-          _FooterLinkData('Déclaration des droits humains'),
+        _FooterSectionData('Conditions et paramètres', [
+          _FooterLinkData('Avis de confidentialité', route: AppRoutes.privacyNotice),
+          _FooterLinkData("Conditions d'utilisation", route: AppRoutes.termsOfService),
+          _FooterLinkData("Déclaration d'accessibilité", route: AppRoutes.accessibilityStatement),
+          _FooterLinkData('Résolution des litiges', route: AppRoutes.disputeResolution),
         ]),
-        _FooterSectionData('Partenaires', const [
-          _FooterLinkData('Connexion partenaire'),
-          _FooterLinkData('Aide aux partenaires'),
-          _FooterLinkData('Référencer votre établissement'),
-          _FooterLinkData('Devenir affilié'),
-        ]),
-        _FooterSectionData('À propos de Nuzul', const [
-          _FooterLinkData('À propos de Nuzul'),
-          _FooterLinkData('Comment nous travaillons'),
-          _FooterLinkData('Durabilité'),
-          _FooterLinkData('Centre de presse'),
-          _FooterLinkData('Carrières'),
-          _FooterLinkData('Relations investisseurs'),
-          _FooterLinkData('Contact entreprise'),
-          _FooterLinkData('Directives de contenu et signalement'),
+        _FooterSectionData('À propos de Flynoom', [
+          _FooterLinkData('À propos de Flynoom', route: AppRoutes.about),
+          _FooterLinkData('Comment nous travaillons', route: AppRoutes.howWeWork),
+          _FooterLinkData('Carrières', route: AppRoutes.careers),
+          _FooterLinkData('Directives de contenu et signalement', route: AppRoutes.contentGuidelines),
         ]),
       ];
     }
@@ -340,39 +238,22 @@ class AppFooter extends StatelessWidget {
           _FooterLinkData('حفاظتی وسائل کا مرکز', route: AppRoutes.support),
         ]),
         _FooterSectionData('دریافت کریں', const [
-          _FooterLinkData('لائلٹی پروگرام'),
-          _FooterLinkData('موسمی اور تعطیلات کے آفرز'),
-          _FooterLinkData('سفری مضامین'),
-          _FooterLinkData('کاروبار کے لیے Nuzul'),
-          _FooterLinkData('مسافر جائزہ ایوارڈز'),
-          _FooterLinkData('کار کرایہ پر لیں'),
+          _FooterLinkData('لائلٹی پروگرام', route: AppRoutes.myCoins),
+          _FooterLinkData('موسمی اور تعطیلات کے آفرز', route: AppRoutes.seasonalDeals),
+          _FooterLinkData('سفری مضامین', route: AppRoutes.travelArticles),
           _FooterLinkData('پرواز تلاش کنندہ', route: AppRoutes.flights),
-          _FooterLinkData('ریسٹورنٹ ریزرویشن'),
-          _FooterLinkData('سفری ایجنٹوں کے لیے Nuzul'),
         ]),
-        _FooterSectionData('شرائط اور ترتیبات', const [
-          _FooterLinkData('پرائیویسی نوٹس'),
-          _FooterLinkData('سروس کی شرائط'),
-          _FooterLinkData('رسائی کا بیان'),
-          _FooterLinkData('تنازعات کا حل'),
-          _FooterLinkData('جدید غلامی کا بیان'),
-          _FooterLinkData('انسانی حقوق کا بیان'),
+        _FooterSectionData('شرائط اور ترتیبات', [
+          _FooterLinkData('پرائیویسی نوٹس', route: AppRoutes.privacyNotice),
+          _FooterLinkData('سروس کی شرائط', route: AppRoutes.termsOfService),
+          _FooterLinkData('رسائی کا بیان', route: AppRoutes.accessibilityStatement),
+          _FooterLinkData('تنازعات کا حل', route: AppRoutes.disputeResolution),
         ]),
-        _FooterSectionData('پارٹنرز', const [
-          _FooterLinkData('پارٹنر لاگ ان'),
-          _FooterLinkData('پارٹنر مدد'),
-          _FooterLinkData('اپنی جائیداد درج کریں'),
-          _FooterLinkData('ملحق بنیں'),
-        ]),
-        _FooterSectionData('Nuzul کے بارے میں', const [
-          _FooterLinkData('Nuzul کے بارے میں'),
-          _FooterLinkData('ہم کیسے کام کرتے ہیں'),
-          _FooterLinkData('پائیداری'),
-          _FooterLinkData('پریس سینٹر'),
-          _FooterLinkData('کیریئر'),
-          _FooterLinkData('سرمایہ کاروں کے تعلقات'),
-          _FooterLinkData('کارپوریٹ رابطہ'),
-          _FooterLinkData('مواد کے رہنما اصول اور رپورٹنگ'),
+        _FooterSectionData('Flynoom کے بارے میں', [
+          _FooterLinkData('Flynoom کے بارے میں', route: AppRoutes.about),
+          _FooterLinkData('ہم کیسے کام کرتے ہیں', route: AppRoutes.howWeWork),
+          _FooterLinkData('کیریئر', route: AppRoutes.careers),
+          _FooterLinkData('مواد کے رہنما اصول اور رپورٹنگ', route: AppRoutes.contentGuidelines),
         ]),
       ];
     }
@@ -384,41 +265,38 @@ class AppFooter extends StatelessWidget {
         _FooterLinkData('Safety Resource Center', route: AppRoutes.support),
       ]),
       _FooterSectionData('Discover', const [
-        _FooterLinkData('Loyalty program'),
-        _FooterLinkData('Seasonal and holiday deals'),
-        _FooterLinkData('Travel articles'),
-        _FooterLinkData('Nuzul for Business'),
-        _FooterLinkData('Traveller Review Awards'),
-        _FooterLinkData('Car rental'),
+        _FooterLinkData('Loyalty program', route: AppRoutes.myCoins),
+        _FooterLinkData('Seasonal and holiday deals', route: AppRoutes.seasonalDeals),
+        _FooterLinkData('Travel articles', route: AppRoutes.travelArticles),
         _FooterLinkData('Flight finder', route: AppRoutes.flights),
-        _FooterLinkData('Restaurant reservations'),
-        _FooterLinkData('Nuzul for Travel Agents'),
       ]),
-      _FooterSectionData('Terms and settings', const [
-        _FooterLinkData('Privacy Notice'),
-        _FooterLinkData('Terms of Service'),
-        _FooterLinkData('Accessibility Statement'),
-        _FooterLinkData('Dispute resolution'),
-        _FooterLinkData('Modern Slavery Statement'),
-        _FooterLinkData('Human Rights Statement'),
+      _FooterSectionData('Terms and settings', [
+        _FooterLinkData('Privacy Notice', route: AppRoutes.privacyNotice),
+        _FooterLinkData('Terms of Service', route: AppRoutes.termsOfService),
+        _FooterLinkData('Accessibility Statement', route: AppRoutes.accessibilityStatement),
+        _FooterLinkData('Dispute resolution', route: AppRoutes.disputeResolution),
       ]),
-      _FooterSectionData('Partners', const [
-        _FooterLinkData('Extranet login'),
-        _FooterLinkData('Partner help'),
-        _FooterLinkData('List your property'),
-        _FooterLinkData('Become an affiliate'),
-      ]),
-      _FooterSectionData('About', const [
-        _FooterLinkData('About Nuzul'),
-        _FooterLinkData('How We Work'),
-        _FooterLinkData('Sustainability'),
-        _FooterLinkData('Press center'),
-        _FooterLinkData('Careers'),
-        _FooterLinkData('Investor relations'),
-        _FooterLinkData('Corporate contact'),
-        _FooterLinkData('Content guidelines and reporting'),
+      _FooterSectionData('About', [
+        _FooterLinkData('About Flynoom', route: AppRoutes.about),
+        _FooterLinkData('How We Work', route: AppRoutes.howWeWork),
+        _FooterLinkData('Careers', route: AppRoutes.careers),
+        _FooterLinkData('Content guidelines and reporting', route: AppRoutes.contentGuidelines),
       ]),
     ];
+  }
+
+  static String _followUsLabel(String languageCode) {
+    return switch (languageCode) {
+      'ar' => 'تابعنا',
+      'tr' => 'Bizi takip edin',
+      'es' => 'Síguenos',
+      'id' => 'Ikuti kami',
+      'hi' => 'हमें फ़ॉलो करें',
+      'ur' => 'ہمیں فالو کریں',
+      'fr' => 'Suivez-nous',
+      'bn' => 'আমাদের অনুসরণ করুন',
+      _ => 'Follow us',
+    };
   }
 
   void _showComingSoon(BuildContext context, String languageCode) {
@@ -511,9 +389,16 @@ class AppFooter extends StatelessWidget {
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(AppSizes.md),
-            child: Row(
+            // Wrap بدل Row: على الشاشات الضيقة ينزل قسم "تابعنا" لسطر جديد
+            // بدل ما يحصل overflow.
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSizes.md,
+              runSpacing: AppSizes.sm,
               children: [
-                const CurrencySelectorButton(),
+                const CurrencySelectorButton(footerStyle: true),
+                _SocialLinks(label: _followUsLabel(languageCode)),
               ],
             ),
           ),
@@ -525,15 +410,15 @@ class AppFooter extends StatelessWidget {
             ),
             child: Text(
               switch (languageCode) {
-                'ar' => '© 2026 نزل. جميع الحقوق محفوظة.',
-                'tr' => '© 2026 Nuzul. Tüm hakları saklıdır.',
-                'es' => '© 2026 Nuzul. Todos los derechos reservados.',
-                'id' => '© 2026 Nuzul. Semua hak dilindungi.',
-                'hi' => '© 2026 Nuzul. सर्वाधिकार सुरक्षित।',
-                'ur' => '© 2026 Nuzul. جملہ حقوق محفوظ ہیں۔',
-                'fr' => '© 2026 Nuzul. Tous droits réservés.',
-                'bn' => '© ২০২৬ Nuzul. সর্বস্বত্ব সংরক্ষিত।',
-                _ => '© 2026 Nuzul. All rights reserved.',
+                'ar' => '© 2026 Flynoom. جميع الحقوق محفوظة.',
+                'tr' => '© 2026 Flynoom. Tüm hakları saklıdır.',
+                'es' => '© 2026 Flynoom. Todos los derechos reservados.',
+                'id' => '© 2026 Flynoom. Semua hak dilindungi.',
+                'hi' => '© 2026 Flynoom. सर्वाधिकार सुरक्षित।',
+                'ur' => '© 2026 Flynoom. جملہ حقوق محفوظ ہیں۔',
+                'fr' => '© 2026 Flynoom. Tous droits réservés.',
+                'bn' => '© ২০২৬ Flynoom. সর্বস্বত্ব সংরক্ষিত।',
+                _ => '© 2026 Flynoom. All rights reserved.',
               },
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textHint, fontSize: 12),
@@ -543,6 +428,277 @@ class AppFooter extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "تابعنا" + أيقونات فيسبوك وإنستغرام وتيك توك ويوتيوب بألوانها الرسمية.
+class _SocialLinks extends StatelessWidget {
+  final String label;
+  const _SocialLinks({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(width: AppSizes.md),
+        const _SocialIconButton(
+          tooltip: 'Facebook',
+          url: AppFooter.facebookUrl,
+          kind: _SocialKind.facebook,
+        ),
+        const SizedBox(width: AppSizes.sm),
+        const _SocialIconButton(
+          tooltip: 'Instagram',
+          url: AppFooter.instagramUrl,
+          kind: _SocialKind.instagram,
+        ),
+        const SizedBox(width: AppSizes.sm),
+        const _SocialIconButton(
+          tooltip: 'TikTok',
+          url: AppFooter.tiktokUrl,
+          kind: _SocialKind.tiktok,
+        ),
+        const SizedBox(width: AppSizes.sm),
+        const _SocialIconButton(
+          tooltip: 'YouTube',
+          url: AppFooter.youtubeUrl,
+          kind: _SocialKind.youtube,
+        ),
+      ],
+    );
+  }
+}
+
+enum _SocialKind { facebook, instagram, tiktok, youtube }
+
+class _SocialIconButton extends StatefulWidget {
+  final String tooltip;
+  final String url;
+  final _SocialKind kind;
+
+  const _SocialIconButton({
+    required this.tooltip,
+    required this.url,
+    required this.kind,
+  });
+
+  @override
+  State<_SocialIconButton> createState() => _SocialIconButtonState();
+}
+
+class _SocialIconButtonState extends State<_SocialIconButton> {
+  static const double _badgeSize = 40;
+  static const Color _facebookBlue = Color(0xFF1877F2);
+  static const List<Color> _instagramGradient = [
+    Color(0xFFFEDA75),
+    Color(0xFFFA7E1E),
+    Color(0xFFD62976),
+    Color(0xFF962FBF),
+    Color(0xFF4F5BD5),
+  ];
+
+  bool _hovered = false;
+
+  Future<void> _open() async {
+    final uri = Uri.parse(widget.url);
+    try {
+      // externalApplication: على الويب يفتح تبويب جديد، وعلى الجوال يفتح
+      // تطبيق فيسبوك/إنستغرام مباشرة إن كان مثبتًا، وإلا المتصفح.
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+        webOnlyWindowName: '_blank',
+      );
+    } catch (e) {
+      debugPrint('Could not open ${widget.url}: $e');
+    }
+  }
+
+  Widget _buildBadge() {
+    switch (widget.kind) {
+      case _SocialKind.facebook:
+        return Container(
+          width: _badgeSize,
+          height: _badgeSize,
+          decoration: const BoxDecoration(
+            color: _facebookBlue,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: const Text(
+            'f',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              height: 1.15,
+            ),
+          ),
+        );
+      case _SocialKind.instagram:
+        return Container(
+          width: _badgeSize,
+          height: _badgeSize,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_badgeSize * 0.28),
+            gradient: const LinearGradient(
+              begin: Alignment.bottomLeft,
+              end: Alignment.topRight,
+              colors: _instagramGradient,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: CustomPaint(
+            size: const Size.square(_badgeSize * 0.62),
+            painter: _InstagramGlyphPainter(Colors.white),
+          ),
+        );
+      case _SocialKind.tiktok:
+        return Container(
+          width: _badgeSize,
+          height: _badgeSize,
+          decoration: const BoxDecoration(
+            color: Colors.black,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: CustomPaint(
+            size: const Size.square(_badgeSize * 0.6),
+            painter: _TikTokGlyphPainter(),
+          ),
+        );
+      case _SocialKind.youtube:
+        return Container(
+          width: _badgeSize,
+          height: _badgeSize,
+          decoration: const BoxDecoration(
+            color: Color(0xFFFF0000),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.play_arrow_rounded,
+            color: Colors.white,
+            size: _badgeSize * 0.72,
+          ),
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: widget.tooltip,
+      child: Semantics(
+        link: true,
+        label: widget.tooltip,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            onTap: _open,
+            child: AnimatedScale(
+              scale: _hovered ? 1.1 : 1.0,
+              duration: const Duration(milliseconds: 150),
+              child: _buildBadge(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// رسم شعار إنستغرام البسيط (مربع مستدير + دائرة + نقطة) بدون الحاجة
+/// لمكتبة أيقونات خارجية — Material Icons ما فيها أيقونة إنستغرام.
+class _InstagramGlyphPainter extends CustomPainter {
+  final Color color;
+  _InstagramGlyphPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width;
+    final stroke = s * 0.1;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke;
+
+    final inset = stroke / 2;
+    final rect = Rect.fromLTWH(inset, inset, s - inset * 2, s - inset * 2);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(s * 0.28)),
+      paint,
+    );
+
+    canvas.drawCircle(Offset(s / 2, s / 2), s * 0.22, paint);
+
+    canvas.drawCircle(
+      Offset(s * 0.76, s * 0.24),
+      s * 0.07,
+      Paint()..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _InstagramGlyphPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+/// رسم شعار تيك توك (نوتة موسيقية بظلال سماوية وحمراء) بدون مكتبة خارجية.
+class _TikTokGlyphPainter extends CustomPainter {
+  static const Color _cyan = Color(0xFF25F4EE);
+  static const Color _red = Color(0xFFFE2C55);
+
+  void _drawNote(Canvas canvas, double s, Offset shift, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s * 0.13
+      ..strokeCap = StrokeCap.round;
+
+    canvas.save();
+    canvas.translate(shift.dx, shift.dy);
+
+    // الحلقة السفلية
+    canvas.drawCircle(Offset(s * 0.40, s * 0.68), s * 0.15, paint);
+
+    // العمود
+    canvas.drawLine(
+      Offset(s * 0.55, s * 0.68),
+      Offset(s * 0.55, s * 0.12),
+      paint,
+    );
+
+    // الذيل العلوي
+    final flag = Path()
+      ..moveTo(s * 0.55, s * 0.12)
+      ..quadraticBezierTo(s * 0.60, s * 0.34, s * 0.82, s * 0.36);
+    canvas.drawPath(flag, paint);
+
+    canvas.restore();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width;
+    final d = s * 0.045;
+    _drawNote(canvas, s, Offset(-d, -d), _cyan);
+    _drawNote(canvas, s, Offset(d, d), _red);
+    _drawNote(canvas, s, Offset.zero, Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TikTokGlyphPainter oldDelegate) => false;
 }
 
 class _FooterSectionData {

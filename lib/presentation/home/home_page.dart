@@ -1,10 +1,12 @@
+import '../../fast_scroll_behavior.dart';
 import 'dart:async';
 import 'widgets/us_destinations_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'widgets/travel_inspiration_section.dart';
+import 'package:flutter/gestures.dart';
 import '../../app.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
@@ -19,6 +21,8 @@ import '../../core/widgets/currency_selector_button.dart';
 import '../../core/widgets/app_footer.dart';
 import '../../core/widgets/app_banner.dart';
 import 'widgets/trending_destinations.dart';
+import 'widgets/promo_banner_carousel.dart';
+import 'widgets/travel_style_section.dart';
 import 'widgets/country_browser.dart';
 import 'widgets/deals_section.dart';
 import 'widgets/accommodation_types_section.dart';
@@ -26,6 +30,7 @@ import 'widgets/accommodation_preview_section.dart';
 import 'widgets/featured_hotels_section.dart';
 import 'widgets/faq_section.dart';
 import 'widgets/search_filters_sidebar.dart';
+import 'widgets/explore_countries_section.dart';
 import 'controllers/hotel_filters_controller.dart';
 import 'controllers/duffel_flight_search_controller.dart';
 import 'controllers/flight_filters_controller.dart';
@@ -40,20 +45,20 @@ import '../../localization/app_localizations.dart';
 import '../auth/controllers/auth_controller.dart';
 import '../favorites/controllers/favorites_controller.dart';
 import '../search/controllers/search_controller.dart';
+import 'widgets/flight_hotel_deals_section.dart';
 
 /// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني/تركي/إندونيسي/هندي/أوردو/فرنسي/بنغالي).
-String _t3(
-    BuildContext context, {
-      required String ar,
-      required String en,
-      required String es,
-      required String tr,
-      required String id,
-      required String hi,
-      required String ur,
-      required String fr,
-      required String bn,
-    }) {
+String _t3(BuildContext context, {
+  required String ar,
+  required String en,
+  required String es,
+  required String tr,
+  required String id,
+  required String hi,
+  required String ur,
+  required String fr,
+  required String bn,
+}) {
   switch (Localizations.localeOf(context).languageCode) {
     case 'ar':
       return ar;
@@ -105,6 +110,19 @@ class _HomePageState extends ConsumerState<HomePage> {
   // (عشان يوفّر مساحة رأسية لنتايج البحث)، وده اللي بيتحكم فيه.
   bool _flightFormExpanded = true;
 
+  // نفس فكرة _flightFormExpanded بالظبط، لكن لتبويب Stays -- لما
+  // البحث يشتغل (_searchParams != null)، فورم الفنادق (الوجهة +
+  // التواريخ + الضيوف) بيتقلّص لشريط ملخّص واحد بدل ما يفضل ظاهر
+  // كامل ويشغل مساحة رأسية كبيرة أثناء تصفح النتايج.
+  bool _staysFormExpanded = true;
+
+  // بيتحكم في طي بانر Stays فعليًا حسب موضع السكرول في قائمة النتايج
+  // (مش بمجرد ما البحث يشتغل) -- بيتحدّث عن طريق _onStaysScroll.
+  bool _staysBannerCollapsed = false;
+  final _staysScrollController = ScrollController();
+  bool _flightsBannerCollapsed = false;
+  final _flightsScrollController = ScrollController();
+
   final _cityController = TextEditingController();
   DestinationModel? _selectedDestination;
   List<DestinationModel> _destinationSuggestions = [];
@@ -137,6 +155,31 @@ class _HomePageState extends ConsumerState<HomePage> {
   Map<String, dynamic>? _carSearchParams;
 
   @override
+  void initState() {
+    super.initState();
+    _staysScrollController.addListener(_onStaysScroll);
+    _flightsScrollController.addListener(_onFlightsScroll);
+  }
+
+  void _onFlightsScroll() {
+    final shouldCollapse = _flightsScrollController.hasClients &&
+        _flightsScrollController.offset > 40;
+    if (shouldCollapse != _flightsBannerCollapsed) {
+      setState(() => _flightsBannerCollapsed = shouldCollapse);
+    }
+  }
+
+  /// بيراقب موضع سكرول قائمة نتايج Stays، وبيطي/يفتح بانر الصفحة
+  /// تبعًا لكده بدل ما يتقلّص فورًا بمجرد وجود نتايج بحث.
+  void _onStaysScroll() {
+    final shouldCollapse = _staysScrollController.hasClients &&
+        _staysScrollController.offset > 40;
+    if (shouldCollapse != _staysBannerCollapsed) {
+      setState(() => _staysBannerCollapsed = shouldCollapse);
+    }
+  }
+
+  @override
   void dispose() {
     _cityController.dispose();
     _flightFromController.dispose();
@@ -144,6 +187,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     _carPickupController.dispose();
     _carDropoffController.dispose();
     _destinationDebounce?.cancel();
+    _staysScrollController.dispose();
+    _flightsScrollController.dispose();
     super.dispose();
   }
 
@@ -256,6 +301,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
     setState(() {
+      _staysFormExpanded = false;
       _searchParams = {
         'destinationCode': _selectedDestination!.code,
         'cityLabel': _selectedDestination!.name,
@@ -288,11 +334,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   /// الوجهة، مدينة الإقامة) تكون متملية، وإلا بنوريه رسالة توضيحية بدل
   /// ما نتجاهل الضغطة بصمت. تاريخ الذهاب بيتاخد من تاريخ check-in
   /// المشترك، وعدد المسافرين بيتاخد من عدد الضيوف نفسه لتبسيط الفورم.
-  Future<void> _runFlightHotelSearch() async {
+  void _runFlightHotelSearch() {
     final origin = _flightFromController.text.trim();
     final destination = _flightToController.text.trim();
 
-    if (origin.isEmpty || destination.isEmpty) {
+    if (origin.isEmpty || destination.isEmpty || _selectedDestination == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -309,55 +355,6 @@ class _HomePageState extends ConsumerState<HomePage> {
               bn: 'অনুগ্রহ করে ফ্লাইট ও থাকার তথ্য উভয়ই পূরণ করুন',
             ),
           ),
-        ),
-      );
-      return;
-    }
-
-    // بدل ما نعتمد على اللي كتبه المستخدم بحقل "أين تقيم؟" (ممكن يكتبه
-    // بأي لغة، زي "بوسطن" بالعربي، بينما وجهة الطيران معروضة بالإنجليزي
-    // "Boston" -- مقارنة نصوص بين لغتين مختلفتين تفشل دايمًا حتى لو نفس
-    // المدينة بالظبط)، بهالتبويب تحديدًا (طيران+فندق) مدينة الفندق لازم
-    // تتبع وجهة الطيران نفسها دايمًا. فبندوّر مباشرة عن فنادق بنفس اسم
-    // وجهة الطيران (destination بالإنجليزي دايمًا)، ونحدّث حقل "أين
-    // تقيم؟" ليعرض نفس النتيجة -- فتختفي إمكانية التعارض من أساسها بدل
-    // ما نكتشفها بعد ما تصير (ونفس نمط _selectDestination بالملف: نطالب
-    // بأول نتيجة List.first مباشرة، لأن الـ API بيرجّع الاسم بصيغة أطول
-    // عادة زي "Boston, MA, United States").
-    final repo = ref.read(hotelRepositoryProvider);
-    final result = await repo.searchDestinations(destination);
-    if (!mounted) return;
-    result.when(
-      success: (list) {
-        if (list.isNotEmpty) {
-          setState(() {
-            _selectedDestination = list.first;
-            _cityController.text = list.first.name;
-            _destinationSuggestions = [];
-          });
-        }
-      },
-      failure: (_) {},
-    );
-
-    if (_selectedDestination == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t3(
-              context,
-              ar: 'ما قدرنا نلاقي فنادق في مدينة الوصول ($destination) -- جرب رحلة لوجهة ثانية',
-              en: 'We couldn\'t find hotels in the arrival city ($destination) — try a different destination',
-              es: 'No encontramos hoteles en la ciudad de llegada ($destination): prueba otro destino',
-              tr: 'Varış şehrinde ($destination) otel bulamadık — farklı bir varış noktası deneyin',
-              id: 'Kami tidak menemukan hotel di kota kedatangan ($destination) — coba tujuan lain',
-              hi: 'हमें आगमन शहर ($destination) में होटल नहीं मिले — कोई अन्य गंतव्य आज़माएँ',
-              ur: 'ہمیں آمد کے شہر ($destination) میں ہوٹل نہیں ملے — کوئی اور منزل آزمائیں',
-              fr: 'Nous n\'avons pas trouvé d\'hôtels dans la ville d\'arrivée ($destination) — essayez une autre destination',
-              bn: 'আমরা আগমন শহরে ($destination) হোটেল খুঁজে পাইনি — অন্য গন্তব্য চেষ্টা করুন',
-            ),
-          ),
-          duration: const Duration(seconds: 4),
         ),
       );
       return;
@@ -417,8 +414,62 @@ class _HomePageState extends ConsumerState<HomePage> {
             onPressed: () => setState(() => _flightFormExpanded = true),
             icon: const Icon(Icons.edit, size: 16, color: Colors.white),
             label: Text(
-              _t3(context, ar: 'تعديل', en: 'Edit', es: 'Editar', tr: 'Düzenle',
-                  id: 'Edit', hi: 'संपादित करें', ur: 'ترمیم کریں', fr: 'Modifier', bn: 'সম্পাদনা করুন'),
+              _t3(context, ar: 'تعديل', en: 'Edit', es: 'Editar', tr: 'Düzenle', id: 'Edit',
+                  hi: 'संपादित करें',
+                  ur: 'ترمیم کریں',
+                  fr: 'Modifier',
+                  bn: 'সম্পাদনা করুন'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// نفس فكرة _buildCollapsedFlightBar بالظبط، لكن لتبويب Stays --
+  /// بيعرض شريط ملخّص واحد (المدينة · التواريخ · عدد الضيوف) بدل فورم
+  /// البحث الكامل، بمجرد ما نتايج بحث فعلية تظهر.
+  Widget _buildCollapsedStaysBar() {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final params = _searchParams!;
+    final label = params['cityLabel'] as String;
+    final checkIn = params['checkIn'] as DateTime;
+    final checkOut = params['checkOut'] as DateTime;
+    final guests = params['guests'] as int;
+    final dateLabel =
+        '${months[checkIn.month - 1]} ${checkIn.day} - ${months[checkOut.month - 1]} ${checkOut.day}';
+
+    return Container(
+      margin: const EdgeInsets.all(AppSizes.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primaryDark,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.location_on_outlined, color: Colors.white70, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$label · $dateLabel · $guests',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => setState(() => _staysFormExpanded = true),
+            icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+            label: Text(
+              _t3(context, ar: 'تعديل', en: 'Edit', es: 'Editar', tr: 'Düzenle', id: 'Edit',
+                  hi: 'संपादित करें',
+                  ur: 'ترمیم کریں',
+                  fr: 'Modifier',
+                  bn: 'সম্পাদনা করুন'),
               style: const TextStyle(color: Colors.white),
             ),
           ),
@@ -579,6 +630,9 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   /// يُستدعى عند الضغط على وجهة من قسم "وجهات رائجة"، فيدوّر عن كود
   /// الوجهة المطابق في hotelbeds_destinations وينفّذ البحث مباشرة.
+  /// ملحوظة: بنعرض رسالة واضحة لو البحث فشل أو رجّع نتيجة فاضية، بدل
+  /// ما نتجاهل الحالة دي بصمت (كان ده سبب "مفيش أي حاجة بتحصل" اللي
+  /// ظهر وقت التشخيص).
   Future<void> _selectDestination(String city) async {
     _cityController.text = city;
     final repo = ref.read(hotelRepositoryProvider);
@@ -586,11 +640,20 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (!mounted) return;
     result.when(
       success: (list) {
-        if (list.isEmpty) return;
+        if (list.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('DEBUG: لا توجد نتائج بحث لـ "$city" في hotelbeds_destinations')),
+          );
+          return;
+        }
         setState(() => _selectedDestination = list.first);
         _runSearch();
       },
-      failure: (_) {},
+      failure: (message) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('DEBUG: فشل البحث عن "$city" — $message')),
+        );
+      },
     );
   }
 
@@ -654,12 +717,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // القسم العلوي (فورم البحث) بحجم ثابت وتحته Expanded لقائمة النتائج.
-      // بدون هذا السطر، فتح لوحة المفاتيح يضغط الشاشة فيحاول الـ Expanded
-      // ينضغط لصفر بينما فورم البحث الثابت ما بينضغط، فيصير Overflow.
-      // منع تصغير الشاشة هون بيخلي الكيبورد يغطي قائمة النتائج بالأسفل
-      // فقط (مو مشكلة، المستخدم مركّز بالكتابة بالحقل أصلاً) بدل ما يكسر التخطيط.
-      resizeToAvoidBottomInset: false,
       appBar: AppBanner(
         activeTab: _activeTab,
         assetVariant: _activeTab == 'flights'
@@ -675,7 +732,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             ? _carSearchParams != null
             : _activeTab == 'flightHotel'
             ? (_searchParams != null && _flightSearchParams != null)
-            : _searchParams != null,
+            : (_searchParams != null && _staysBannerCollapsed),
         tabsBar: _TravelTabsBar(
           selectedTab: _activeTab,
           onTabSelected: (id) => setState(() => _activeTab = id),
@@ -694,6 +751,8 @@ class _HomePageState extends ConsumerState<HomePage> {
             children: [
               (_activeTab == 'flights' && _flightSearchParams != null && !_flightFormExpanded)
                   ? _buildCollapsedFlightBar()
+                  : (_activeTab == 'stays' && _searchParams != null && !_staysFormExpanded)
+                  ? _buildCollapsedStaysBar()
                   : Padding(
                 padding: const EdgeInsets.all(AppSizes.md),
                 child: SizedBox(
@@ -724,20 +783,57 @@ class _HomePageState extends ConsumerState<HomePage> {
               Expanded(
                 child: _activeTab == 'flights'
                     ? (_flightSearchParams == null
-                    ? ListView(
-                  padding: const EdgeInsets.all(AppSizes.md),
-                  children: [
-                    UsDestinationsSection(
-                      onDestinationTap: (origin, destination) {
-                        _flightFromController.text = origin;
-                        _flightToController.text = destination;
-                        _runFlightSearch();
-                      },
-                    ),
-                    const SizedBox(height: AppSizes.md),
-                    const _TrustSection(),
-                    const AppFooter(),
-                  ],
+                    ? FastWheelScroll(
+                  controller: _flightsScrollController,
+                  child: ListView(
+                    controller: _flightsScrollController,
+                    padding: const EdgeInsets.all(AppSizes.md),
+                    children: [
+                      UsDestinationsSection(
+                        onDestinationTap: (origin, destination) {
+                          _flightFromController.text = origin;
+                          _flightToController.text = destination;
+                          _runFlightSearch();
+                        },
+                      ),
+                      const SizedBox(height: AppSizes.md),
+                      TravelInspirationSection(
+                        originCity: 'Los Angeles',
+                        exploreTags: const [
+                          ExploreWorldTag(city: 'Vancouver', price: '\$85.90'),
+                          ExploreWorldTag(city: 'Guadalajara', price: '\$113.10'),
+                        ],
+                        lists: [
+                          TravelDestinationList(
+                            title: 'Popular to Asia',
+                            titleColor: Colors.deepOrange,
+                            badgeColor: Colors.deepOrange,
+                            items: const [
+                              TravelDestinationItem(
+                                name: 'Tokyo',
+                                date: 'Sat, Sep 26',
+                                price: '\$412.10',
+                                imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf',
+                              ),
+                              TravelDestinationItem(
+                                name: 'Kuala Lumpur',
+                                date: 'Tue, Sep 29',
+                                price: '\$389.80',
+                                imageUrl: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07',
+                              ),
+                            ],
+                          ),
+                        ],
+                        onItemTap: (item) {
+                          _flightToController.text = item.name;
+                          _runFlightSearch();
+                        },
+                      ),
+                      const SizedBox(height: AppSizes.md),
+                      const _TrustSection(),
+                      const AppFooter(),
+                    ],
+                  ),
                 )
                     : Column(
                   children: [
@@ -775,7 +871,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ? ((_searchParams == null || _flightSearchParams == null)
                     ? ListView(
                   padding: const EdgeInsets.all(AppSizes.md),
-                  children: const [_TrustSection(), AppFooter()],
+                  children: [
+                    FlightHotelDealsSection(
+                      onDealSelected: (origin, deal) {
+                        context.push(
+                          AppRoutes.flightHotelDealDetails,
+                          extra: {'origin': origin, 'deal': deal},
+                        );
+                      },
+                    ),
+                    const _TrustSection(),
+                    const AppFooter(),
+                  ],
                 )
                     : _FlightHotelSearchResults(
                   flightParams: _flightSearchParams!,
@@ -784,7 +891,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     : (_searchParams == null
                     ? ListView(
                   children: [
+                    PromoBannerCarousel(slides: defaultStaysPromoSlides(context)),
                     TrendingDestinations(onSelected: _selectDestination),
+                    TravelStyleSection(onSelected: _selectDestination),
                     const DealsSection(),
                     AccommodationTypesSection(
                       onTypeSelected: _onAccommodationTypeSelected,
@@ -793,11 +902,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                     if (_selectedAccommodationType != null)
                       AccommodationPreviewSection(selectedType: _selectedAccommodationType!),
                     const FeaturedHotelsSection(),
+                    const ExploreCountriesSection(),
                     const FaqSection(),
                     const AppFooter(),
                   ],
                 )
-                    : _SearchResults(params: _searchParams!)),
+                    : _SearchResults(params: _searchParams!, scrollController: _staysScrollController)),
               ),
             ],
           ),
@@ -816,6 +926,221 @@ class _HomePageState extends ConsumerState<HomePage> {
     final datesLabel =
         '${months[_checkIn.month - 1]} ${_checkIn.day} - ${months[_checkOut.month - 1]} ${_checkOut.day}';
 
+    final cityField = Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextField(
+        controller: _cityController,
+        style: const TextStyle(color: Colors.black87),
+        decoration: InputDecoration(
+          hintText: l10n.whereTo,
+          hintStyle: const TextStyle(color: Colors.black45),
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        ),
+        onChanged: _onCityTextChanged,
+        onSubmitted: (_) => _runSearch(),
+        onTap: () {
+          if (_cityController.text.trim().isEmpty) _openCountryBrowser();
+        },
+      ),
+    );
+
+    final datesPill = GestureDetector(
+      key: _dateFieldKey,
+      behavior: HitTestBehavior.opaque,
+      onTap: _pickDateRange,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF87CEEB),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.calendar_today_outlined, size: 18, color: Colors.white70),
+            const SizedBox(width: 6),
+            Text(datesLabel, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF87CEEB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white38),
+              ),
+              child: Text(
+                nights == 1
+                    ? (_t3(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche', tr: '1 gece', id: '1 malam',
+                    hi: '1 रात',
+                    ur: '1 رات',
+                    fr: '1 nuit',
+                    bn: '১ রাত'))
+                    : (_t3(context, ar: '$nights ليالٍ', en: '$nights nights', es: '$nights noches', tr: '$nights gece', id: '$nights malam',
+                    hi: '$nights रातें',
+                    ur: '$nights راتیں',
+                    fr: '$nights nuits',
+                    bn: '$nights রাত')),
+                style: const TextStyle(fontSize: 12, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final guestsPill = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () async {
+        await showModalBottomSheet(
+          context: context,
+          builder: (context) {
+            return StatefulBuilder(
+              builder: (context, setSheetState) {
+                return Padding(
+                  padding: const EdgeInsets.all(AppSizes.md),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _t3(context, ar: 'الضيوف', en: 'Guests', es: 'Huéspedes', tr: 'Misafirler', id: 'Tamu',
+                            hi: 'मेहमान',
+                            ur: 'مہمان',
+                            fr: 'Voyageurs',
+                            bn: 'অতিথি'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(l10n.guests),
+                          Row(
+                            children: [
+                              IconButton(
+                                onPressed: _guests > 1
+                                    ? () => setSheetState(() => setState(() => _guests--))
+                                    : null,
+                                icon: const Icon(Icons.remove_circle_outline),
+                              ),
+                              Text('$_guests'),
+                              IconButton(
+                                onPressed: () =>
+                                    setSheetState(() => setState(() => _guests++)),
+                                icon: const Icon(Icons.add_circle_outline),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSizes.md),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text(_t3(context, ar: 'تم', en: 'Done', es: 'Listo', tr: 'Tamam', id: 'Selesai',
+                              hi: 'हो गया',
+                              ur: 'ہو گیا',
+                              fr: 'Terminé',
+                              bn: 'সম্পন্ন')),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF87CEEB),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.people_outline, size: 18, color: Colors.white70),
+            const SizedBox(width: 6),
+            Text(
+              _t3(
+                context,
+                ar: 'غرفة واحدة، $_guests ضيوف',
+                en: '1 room, $_guests ${_guests == 1 ? 'adult' : 'adults'}',
+                es: '1 habitación, $_guests ${_guests == 1 ? 'adulto' : 'adultos'}',
+                tr: '1 oda, $_guests yetişkin',
+                id: '1 kamar, $_guests dewasa',
+                hi: '1 कमरा, $_guests वयस्क',
+                ur: '1 کمرہ, $_guests بالغ',
+                fr: '1 chambre, $_guests ${_guests == 1 ? 'adulte' : 'adultes'}',
+                bn: '১টি রুম, $_guests জন প্রাপ্তবয়স্ক',
+              ),
+              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final searchButton = ElevatedButton.icon(
+      onPressed: _runSearch,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF87CEEB),
+        foregroundColor: Colors.white,
+        shape: const StadiumBorder(),
+        minimumSize: Size.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      ),
+      icon: const Icon(Icons.search, size: 18),
+      label: Text(l10n.search),
+    );
+
+    // أيقونة "تصفّح حسب الدولة" -- بلون بارز (كهرماني) بدل الرمادي
+    // الشفاف الباهت، عشان تبقى واضحة ومميزة على خلفية الشريط الغامقة.
+    final browseIcon = IconButton(
+      onPressed: _openCountryBrowser,
+      icon: const Icon(Icons.public, color: Color(0xFFFFC107), size: 22),
+      tooltip: _t3(context, ar: 'تصفّح حسب الدولة', en: 'Browse by country', es: 'Explorar por país', tr: 'Ülkeye göre gözat', id: 'Jelajahi berdasarkan negara',
+          hi: 'देश के अनुसार ब्राउज़ करें',
+          ur: 'ملک کے مطابق دیکھیں',
+          fr: 'Parcourir par pays',
+          bn: 'দেশ অনুযায়ী ব্রাউজ করুন'),
+    );
+
+    final suggestionsList = _destinationSuggestions.isNotEmpty
+        ? Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        constraints: const BoxConstraints(maxHeight: 220),
+        child: ListView.builder(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          itemCount: _destinationSuggestions.length,
+          itemBuilder: (context, index) {
+            final d = _destinationSuggestions[index];
+            return ListTile(
+              dense: true,
+              leading: const Icon(Icons.place_outlined, size: 18),
+              title: Text(d.name),
+              subtitle: d.countryCode != null ? Text(d.countryCode!) : null,
+              onTap: () => _selectDestinationSuggestion(d),
+            );
+          },
+        ),
+      ),
+    )
+        : const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.all(AppSizes.sm),
       decoration: BoxDecoration(
@@ -823,232 +1148,75 @@ class _HomePageState extends ConsumerState<HomePage> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.primaryDark, width: 2),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+      // LayoutBuilder بيحدد المساحة المتاحة فعليًا: على الشاشات
+      // العريضة (ديسكتوب/ويب) كل الحقول بتتحط في صف واحد (Row مع
+      // Expanded لحقل المدينة). على الشاشات الضيقة (موبايل)، حقل
+      // المدينة بياخد صف كامل لوحده، والباقي (تواريخ/ضيوف/بحث/دول)
+      // بيتحط في Wrap تحته عشان يلف تلقائيًا من غير ما يفيض برّه
+      // حدود الشاشة (overflow).
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const wideBreakpoint = 640.0;
+          final isWide = constraints.maxWidth >= wideBreakpoint;
+
+          if (isWide) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const SizedBox(width: 4),
+                    const Icon(Icons.location_on_outlined, size: 20, color: Colors.white70),
+                    const SizedBox(width: 8),
+                    Expanded(child: cityField),
+                    const SizedBox(width: 12),
+                    datesPill,
+                    const SizedBox(width: 12),
+                    guestsPill,
+                    const SizedBox(width: 12),
+                    searchButton,
+                    const SizedBox(width: 8),
+                    browseIcon,
+                  ],
+                ),
+                suggestionsList,
+              ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(width: 4),
-              const Icon(Icons.location_on_outlined, size: 20, color: Colors.white70),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _cityController,
-                  style: const TextStyle(color: Colors.black87),
-                  decoration: InputDecoration(
-                    hintText: l10n.whereTo,
-                    hintStyle: const TextStyle(color: Colors.black45),
-                    border: InputBorder.none,
-                    isDense: true,
-                  ),
-                  onChanged: _onCityTextChanged,
-                  onSubmitted: (_) => _runSearch(),
-                  onTap: () {
-                    if (_cityController.text.trim().isEmpty) _openCountryBrowser();
-                  },
-                ),
+              Row(
+                children: [
+                  const SizedBox(width: 4),
+                  const Icon(Icons.location_on_outlined, size: 20, color: Colors.white70),
+                  const SizedBox(width: 8),
+                  Expanded(child: cityField),
+                  const SizedBox(width: 4),
+                  browseIcon,
+                ],
               ),
-              IconButton(
-                onPressed: _openCountryBrowser,
-                icon: const Icon(Icons.public, color: Colors.white70, size: 20),
-                tooltip: _t3(context, ar: 'تصفّح حسب الدولة', en: 'Browse by country', es: 'Explorar por país', tr: 'Ülkeye göre gözat', id: 'Jelajahi berdasarkan negara',
-                    hi: 'देश के अनुसार ब्राउज़ करें',
-                    ur: 'ملک کے مطابق دیکھیں',
-                    fr: 'Parcourir par pays',
-                    bn: 'দেশ অনুযায়ী ব্রাউজ করুন'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  datesPill,
+                  guestsPill,
+                  searchButton,
+                ],
               ),
+              suggestionsList,
             ],
-          ),
-          if (_destinationSuggestions.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              constraints: const BoxConstraints(maxHeight: 220),
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: _destinationSuggestions.length,
-                itemBuilder: (context, index) {
-                  final d = _destinationSuggestions[index];
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.place_outlined, size: 18),
-                    title: Text(d.name),
-                    subtitle: d.countryCode != null ? Text(d.countryCode!) : null,
-                    onTap: () => _selectDestinationSuggestion(d),
-                  );
-                },
-              ),
-            ),
-          ],
-          const Divider(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              GestureDetector(
-                key: _dateFieldKey,
-                behavior: HitTestBehavior.opaque,
-                onTap: _pickDateRange,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF87CEEB),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.calendar_today_outlined, size: 18, color: Colors.white70),
-                      const SizedBox(width: 6),
-                      Text(datesLabel, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF87CEEB),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white38),
-                        ),
-                        child: Text(
-                          nights == 1
-                              ? (_t3(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche', tr: '1 gece', id: '1 malam',
-                              hi: '1 रात',
-                              ur: '1 رات',
-                              fr: '1 nuit',
-                              bn: '১ রাত'))
-                              : (_t3(context, ar: '$nights ليالٍ', en: '$nights nights', es: '$nights noches', tr: '$nights gece', id: '$nights malam',
-                              hi: '$nights रातें',
-                              ur: '$nights راتیں',
-                              fr: '$nights nuits',
-                              bn: '$nights রাত')),
-                          style: const TextStyle(fontSize: 12, color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () async {
-                  await showModalBottomSheet(
-                    context: context,
-                    builder: (context) {
-                      return StatefulBuilder(
-                        builder: (context, setSheetState) {
-                          return Padding(
-                            padding: const EdgeInsets.all(AppSizes.md),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _t3(context, ar: 'الضيوف', en: 'Guests', es: 'Huéspedes', tr: 'Misafirler', id: 'Tamu',
-                                      hi: 'मेहमान',
-                                      ur: 'مہمان',
-                                      fr: 'Voyageurs',
-                                      bn: 'অতিথি'),
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(l10n.guests),
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          onPressed: _guests > 1
-                                              ? () => setSheetState(() => setState(() => _guests--))
-                                              : null,
-                                          icon: const Icon(Icons.remove_circle_outline),
-                                        ),
-                                        Text('$_guests'),
-                                        IconButton(
-                                          onPressed: () =>
-                                              setSheetState(() => setState(() => _guests++)),
-                                          icon: const Icon(Icons.add_circle_outline),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSizes.md),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: () => Navigator.of(context).pop(),
-                                    child: Text(_t3(context, ar: 'تم', en: 'Done', es: 'Listo', tr: 'Tamam', id: 'Selesai',
-                                        hi: 'हो गया',
-                                        ur: 'ہو گیا',
-                                        fr: 'Terminé',
-                                        bn: 'সম্পন্ন')),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF87CEEB),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.people_outline, size: 18, color: Colors.white70),
-                      const SizedBox(width: 6),
-                      Text(
-                        _t3(
-                          context,
-                          ar: 'غرفة واحدة، $_guests ضيوف',
-                          en: '1 room, $_guests ${_guests == 1 ? 'adult' : 'adults'}',
-                          es: '1 habitación, $_guests ${_guests == 1 ? 'adulto' : 'adultos'}',
-                          tr: '1 oda, $_guests yetişkin',
-                          id: '1 kamar, $_guests dewasa',
-                          hi: '1 कमरा, $_guests वयस्क',
-                          ur: '1 کمرہ, $_guests بالغ',
-                          fr: '1 chambre, $_guests ${_guests == 1 ? 'adulte' : 'adultes'}',
-                          bn: '১টি রুম, $_guests জন প্রাপ্তবয়স্ক',
-                        ),
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: _runSearch,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF87CEEB),
-                  foregroundColor: Colors.white,
-                  shape: const StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                ),
-                icon: const Icon(Icons.search, size: 18),
-                label: Text(l10n.search),
-              ),
-            ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-
   Widget _buildFlightsSearchBox() {
-
     final tripTypeLabels = <String, String>{
       'roundtrip': _t3(context, ar: 'ذهاب وعودة', en: 'Roundtrip', es: 'Ida y vuelta', tr: 'Gidiş-dönüş', id: 'Pulang-pergi',
           hi: 'राउंड ट्रिप',
@@ -1138,7 +1306,6 @@ class _HomePageState extends ConsumerState<HomePage> {
           ],
         ),
         const SizedBox(height: AppSizes.md),
-
         Container(
           padding: const EdgeInsets.all(AppSizes.sm),
           decoration: BoxDecoration(
@@ -1201,6 +1368,22 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  IntrinsicWidth(
+                    child: ElevatedButton.icon(
+                      onPressed: _runFlightSearch,
+                      style: ElevatedButton.styleFrom(
+                        shape: const StadiumBorder(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      ),
+                      icon: const Icon(Icons.search, size: 18),
+                      label: Text(_t3(context, ar: 'بحث', en: 'Search', es: 'Buscar', tr: 'Ara', id: 'Cari',
+                          hi: 'खोजें',
+                          ur: 'تلاش کریں',
+                          fr: 'Rechercher',
+                          bn: 'অনুসন্ধান করুন')),
+                    ),
+                  ),
                 ],
               ),
               const Divider(height: 16),
@@ -1240,26 +1423,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ],
                     ),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: _runFlightSearch,
-                    style: ElevatedButton.styleFrom(
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    ),
-                    icon: const Icon(Icons.search, size: 18),
-                    label: Text(_t3(context, ar: 'بحث', en: 'Search', es: 'Buscar', tr: 'Ara', id: 'Cari',
-                        hi: 'खोजें',
-                        ur: 'تلاش کریں',
-                        fr: 'Rechercher',
-                        bn: 'অনুসন্ধান করুন')),
-                  ),
                 ],
               ),
             ],
           ),
         ),
-
-
         const SizedBox(height: AppSizes.sm),
         Row(
           children: [
@@ -1691,7 +1859,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
 class _SearchResults extends ConsumerWidget {
   final Map<String, dynamic> params;
-  const _SearchResults({required this.params});
+  final ScrollController? scrollController;
+  const _SearchResults({required this.params, this.scrollController});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1711,6 +1880,7 @@ class _SearchResults extends ConsumerWidget {
 
         final resultsList = filteredHotels.isEmpty
             ? ListView(
+          controller: scrollController,
           children: [
             EmptyView(
               message: hotels.isEmpty
@@ -1733,6 +1903,7 @@ class _SearchResults extends ConsumerWidget {
           ],
         )
             : ListView.builder(
+          controller: scrollController,
           padding: const EdgeInsets.all(AppSizes.md),
           itemCount: filteredHotels.length + 1,
           itemBuilder: (context, index) {
@@ -1773,7 +1944,7 @@ class _FlightHotelSearchResults extends ConsumerWidget {
     final flightsAsync = ref.watch(duffelFlightSearchResultsProvider(flightParams));
     final hotelsAsync = ref.watch(searchResultsProvider(hotelParams));
 
-    return ListView(
+    final mainContent = ListView(
       padding: const EdgeInsets.all(AppSizes.md),
       children: [
         Text(
@@ -1812,8 +1983,27 @@ class _FlightHotelSearchResults extends ConsumerWidget {
                 icon: Icons.flight_outlined,
               );
             }
+            final filters = ref.watch(flightFiltersProvider);
+            final filteredOffers = applyFlightFilters(offers, filters);
+            if (filteredOffers.isEmpty) {
+              return EmptyView(
+                message: _t3(
+                  context,
+                  ar: 'لا توجد رحلات مطابقة للفلاتر المختارة',
+                  en: 'No flights match the selected filters',
+                  es: 'Ningún vuelo coincide con los filtros seleccionados',
+                  tr: 'Seçilen filtrelere uygun uçuş yok',
+                  id: 'Tidak ada penerbangan yang cocok dengan filter yang dipilih',
+                  hi: 'चुने गए फ़िल्टर से कोई उड़ान मेल नहीं खाती',
+                  ur: 'منتخب فلٹرز سے کوئی پرواز مماثل نہیں',
+                  fr: 'Aucun vol ne correspond aux filtres sélectionnés',
+                  bn: 'নির্বাচিত ফিল্টারের সাথে কোনো ফ্লাইট মেলে না',
+                ),
+                icon: Icons.flight_outlined,
+              );
+            }
             return Column(
-              children: offers.map((o) => _DuffelFlightCard(offer: o)).toList(),
+              children: filteredOffers.map((o) => _DuffelFlightCard(offer: o)).toList(),
             );
           },
         ),
@@ -1865,8 +2055,27 @@ class _FlightHotelSearchResults extends ConsumerWidget {
                 icon: Icons.hotel_outlined,
               );
             }
+            final activeFilters = ref.watch(hotelFiltersProvider);
+            final filteredHotels = applyHotelFilters(hotels, activeFilters);
+            if (filteredHotels.isEmpty) {
+              return EmptyView(
+                message: _t3(
+                  context,
+                  ar: 'لا توجد فنادق مطابقة للفلاتر المختارة',
+                  en: 'No hotels match the selected filters',
+                  es: 'Ningún hotel coincide con los filtros seleccionados',
+                  tr: 'Seçilen filtrelere uygun otel yok',
+                  id: 'Tidak ada hotel yang cocok dengan filter yang dipilih',
+                  hi: 'चुने गए फ़िल्टर से कोई होटल मेल नहीं खाता',
+                  ur: 'منتخب فلٹرز سے کوئی ہوٹل مماثل نہیں',
+                  fr: 'Aucun hôtel ne correspond aux filtres sélectionnés',
+                  bn: 'নির্বাচিত ফিল্টারের সাথে কোনো হোটেল মেলে না',
+                ),
+                icon: Icons.hotel_outlined,
+              );
+            }
             return Column(
-              children: hotels
+              children: filteredHotels
                   .map((h) => _HotelCard(hotel: h, searchParams: hotelParams))
                   .toList(),
             );
@@ -1875,6 +2084,37 @@ class _FlightHotelSearchResults extends ConsumerWidget {
         const SizedBox(height: AppSizes.lg),
         const _TrustSection(),
         const AppFooter(),
+      ],
+    );
+
+    // فلاتر الطيران والفنادق -- بنستخدم نفس الـ widgets الحقيقية
+    // الشغالة في تبويبي Flights وStays لوحدهم، بس دلوقتي مع بعض في
+    // عمود واحد جنب النتائج، وبتظهر بس لو فيه نتائج فعلية ترشّح.
+    final flightOffers = flightsAsync.value ?? const [];
+    final hotels = hotelsAsync.value ?? const [];
+    final showFiltersSidebar =
+        (flightOffers.isNotEmpty || hotels.isNotEmpty) &&
+            MediaQuery.of(context).size.width >= 900;
+
+    if (!showFiltersSidebar) return mainContent;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: mainContent),
+        SizedBox(
+          width: 280,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: AppSizes.md),
+            child: Column(
+              children: [
+                if (flightOffers.isNotEmpty) FlightFiltersSidebar(allOffers: flightOffers),
+                if (flightOffers.isNotEmpty && hotels.isNotEmpty) const SizedBox(height: AppSizes.lg),
+                if (hotels.isNotEmpty) const SearchFiltersSidebar(),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1972,6 +2212,7 @@ class _HotelCard extends ConsumerWidget {
                           ? Image.network(
                         hotel.images.first,
                         fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
                         errorBuilder: (_, __, ___) => Icon(
                           _propertyIcon(hotel.propertyType),
                           size: 36,

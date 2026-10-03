@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +14,7 @@ import '../../data/models/hotel_model.dart';
 import '../../data/models/selected_room.dart';
 import '../../localization/app_localizations.dart';
 import '../auth/controllers/auth_controller.dart';
+import '../../data/repositories/hotelbeds_repository.dart';
 
 /// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني/تركي/إندونيسي/هندي/أوردو/فرنسي/بنغالي).
 String _t3(
@@ -126,6 +128,56 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
   // المختارة بكمية أكبر من صفر في حجز واحد.
   late List<int> _quantities = List.filled(_roomOptions.length, 0);
 
+  // نسخة قابلة للتحديث من الفندق، تُستخدم بدل widget.hotel مباشرة عشان
+  // نقدر نضيف الصور الفعلية بعد ما تتجاب من HotelBeds Content API (لو
+  // الفندق مصدره HotelBeds ومفيهوش صور جاهزة من الأساس).
+  late HotelModel _hotel = widget.hotel;
+
+  // حالة معرض الصور المصغّر (شكل كارت Booking.com): متحكّم التنقل بين
+  // الصور، الصفحة الحالية لعرض النقطة المفعّلة، وحالة القلب (مفضّلة).
+  final PageController _imageController = PageController();
+  int _currentImagePage = 0;
+  bool _isFavorite = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // فنادق HotelBeds بتيجي بمعرّف بادئته hb_ ومن غير صور من استعلام
+    // البحث المبسط -- نجيب الصور الفعلية لحظيًا هنا بس (مش في قائمة
+    // البحث كلها) عشان نتجنب إبطاء صفحة النتائج.
+    if (_hotel.id.startsWith('hb_') && _hotel.images.length <= 1) {
+      _loadHotelBedsImages();
+    }
+  }
+
+  @override
+  void dispose() {
+    _imageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadHotelBedsImages() async {
+    final code = _hotel.id.replaceFirst('hb_', '');
+    final repo = HotelBedsRepository();
+    final result = await repo.getHotelImages(code);
+
+    if (!mounted) return;
+
+    result.when(
+      success: (images) {
+        if (images.isNotEmpty) {
+          setState(() {
+            _hotel = _hotel.copyWith(images: images);
+          });
+        }
+      },
+      failure: (_) {
+        // لو فشل الجلب، نسيب الفندق من غير صور (الشاشة أصلاً بتعرض
+        // أيقونة بديلة لو مفيش صور)، بدون ما نعطّل باقي الصفحة.
+      },
+    );
+  }
+
   void _onQuantityChanged(int index, int quantity) {
     setState(() {
       _quantities[index] = quantity;
@@ -140,7 +192,7 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
         if (_quantities[i] > 0)
           SelectedRoom(
             label: _roomOptions[i].label(l10n),
-            pricePerNight: widget.hotel.pricePerNight * _roomOptions[i].priceMultiplier,
+            pricePerNight: _hotel.pricePerNight * _roomOptions[i].priceMultiplier,
             quantity: _quantities[i],
           ),
     ];
@@ -157,7 +209,7 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
     context.push(
       AppRoutes.booking,
       extra: {
-        'hotel': widget.hotel,
+        'hotel': _hotel,
         'checkIn': widget.checkIn,
         'checkOut': widget.checkOut,
         'guests': widget.guests,
@@ -166,20 +218,95 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
     );
   }
 
+  /// كارت صورة مصغّر بشكل يشبه Booking.com: مربع صغير مع أيقونة قلب
+  /// (مفضّلة) فوق يمين، ونقط تنقل تحت لو فيه أكتر من صورة. بنعرض أول 8
+  /// صور بس كحد أقصى لتفادي عدد نقط تنقل ضخم لما يكون فيه عشرات الصور.
+  Widget _buildImageGallery(HotelModel hotel) {
+    final displayImages = hotel.images.take(8).toList();
+
+    return Center(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+        child: SizedBox(
+          width: 260,
+          height: 260,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(
+                color: AppColors.divider,
+                child: displayImages.isNotEmpty
+                    ? PageView.builder(
+                  controller: _imageController,
+                  onPageChanged: (i) => setState(() => _currentImagePage = i),
+                  itemCount: displayImages.length,
+                  itemBuilder: (context, i) => Image.network(
+                    displayImages[i],
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
+                  ),
+                )
+                    : const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: GestureDetector(
+                  onTap: () => setState(() => _isFavorite = !_isFavorite),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _isFavorite ? Icons.favorite : Icons.favorite_border,
+                      size: 18,
+                      color: _isFavorite ? AppColors.error : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+              if (displayImages.length > 1)
+                Positioned(
+                  bottom: 8,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(displayImages.length, (i) {
+                      final isActive = i == _currentImagePage;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        width: isActive ? 8 : 6,
+                        height: isActive ? 8 : 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isActive ? Colors.white : Colors.white70,
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final hotel = widget.hotel;
+    final hotel = _hotel;
 
     return Scaffold(
       appBar: const AppBanner(),
       // LayoutBuilder عشان نحدد عرض أقصى للمحتوى على الشاشات العريضة
-      // (ويندوز/ويب)، بنفس منطق صفحة المجتمع والملف الشخصي -- بدونها،
-      // صورة الفندق الرئيسية (اللي كانت بارتفاع ثابت 200 بكسل) بتمتد
-      // على عرض الشاشة كامل (~1900 بكسل على ويندوز)، فنسبة العرض
-      // للارتفاع بتبقى ضيقة جدًا وطويلة جدًا (~9.5:1)، فيحصل قص شديد
-      // ومشوّه للصورة. AspectRatio(16:9) كمان بيضمن نسبة طبيعية
-      // للصورة مهما كان عرض الحاوية، بدل ارتفاع ثابت بالبكسل.
+      // (ويندوز/ويب)، بنفس منطق صفحة المجتمع والملف الشخصي.
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -194,24 +321,8 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                 child: ListView(
                   padding: const EdgeInsets.all(AppSizes.md),
                   children: [
-                    // صورة الفندق
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                      child: AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: Container(
-                          color: AppColors.divider,
-                          child: hotel.images.isNotEmpty
-                              ? Image.network(
-                            hotel.images.first,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
-                          )
-                              : const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
-                        ),
-                      ),
-                    ),
+                    // معرض صورة الفندق المصغّر (شكل كارت Booking.com)
+                    _buildImageGallery(hotel),
 
                     const SizedBox(height: AppSizes.md),
 
@@ -1136,9 +1247,6 @@ class _PaymentChip extends StatelessWidget {
       child: Image.asset(
         imageAsset,
         fit: BoxFit.contain,
-        // لو صورة الشعار الفعلية مش مضافة بعد في assets/images/payment/،
-        // نرجع لشارة نصية بسيطة (اسم الشركة + أيقونة بطاقة عامة) بدل
-        // ما نفشل أو نعرض مساحة فاضية.
         errorBuilder: (_, __, ___) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -176,6 +176,15 @@ class _PassengerFormCard extends StatefulWidget {
 }
 
 class _PassengerFormCardState extends State<_PassengerFormCard> {
+  // ألوان مميزة لكل مسافر حسب ترتيبه (بتتكرر تلقائيًا لو عدد
+  // المسافرين زاد عن 4).
+  static const List<Color> _passengerColors = [
+    Color(0xFF2E86AB), // أزرق - المسافر الأول
+    Color(0xFFE67E22), // برتقالي - المسافر الثاني
+    Color(0xFF27AE60), // أخضر - المسافر الثالث
+    Color(0xFF8E44AD), // بنفسجي - المسافر الرابع
+  ];
+
   late TextEditingController _givenNameController;
   late TextEditingController _familyNameController;
   late TextEditingController _emailController;
@@ -221,17 +230,40 @@ class _PassengerFormCardState extends State<_PassengerFormCard> {
         ? _t3(context, ar: 'تاريخ الميلاد', en: 'Date of birth', es: 'Fecha de nacimiento')
         : '${p.bornOn!.year}-${p.bornOn!.month.toString().padLeft(2, '0')}-${p.bornOn!.day.toString().padLeft(2, '0')}';
 
+    final passengerColor = _passengerColors[widget.index % _passengerColors.length];
+
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: passengerColor, width: 2),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              widget.index == 0
-                  ? _t3(context, ar: 'المسافر الرئيسي', en: 'Lead passenger', es: 'Pasajero principal')
-                  : '${_t3(context, ar: 'المسافر', en: 'Passenger', es: 'Pasajero')} ${widget.index + 1}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: passengerColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  widget.index == 0
+                      ? _t3(context, ar: 'المسافر الرئيسي', en: 'Lead passenger', es: 'Pasajero principal')
+                      : '${_t3(context, ar: 'المسافر', en: 'Passenger', es: 'Pasajero')} ${widget.index + 1}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: passengerColor,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSizes.sm),
             DropdownButtonFormField<String>(

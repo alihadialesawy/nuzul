@@ -35,6 +35,11 @@ const List<_UsCity> _usCities = [
   _UsCity('Las Vegas', 36.1699, -115.1398),
 ];
 
+// المدينة الافتراضية اللي بتتعرض فورًا لحد ما (أو لو) تحديد الموقع
+// الفعلي ينجح. اختيارها Detroit زي ما كانت شغالة وقت الاختبار، لكن
+// أي مدينة من _usCities تصلح كقيمة افتراضية.
+const String _defaultCity = 'Detroit';
+
 class _PopularDestination {
   final String cityEn;
   final String cityAr;
@@ -137,9 +142,12 @@ const List<_PopularDestination> _asiaDestinations = [
 
 /// يجيب أقرب مدينة أمريكية كبرى لموقع المستخدم الفعلي (بعد طلب إذن
 /// الموقع)، عشان تُستخدم كنقطة مغادرة (origin) في كل صفوف "رحلات من
-/// مدينتك". لو المستخدم رفض الإذن، أو خدمة الموقع مقفولة، أو حصل أي
-/// خطأ، الدالة بترجّع null -- والواجهة بتخفي القسم بالكامل بدل ما
-/// تعرض بيانات تخمينية أو رسالة خطأ مزعجة لمستخدم لسه ما بدأش بحث.
+/// مدينتك". بحد أقصى 5 ثوانٍ انتظار (timeout) -- على الويب تحديدًا
+/// طلب الإذن وGPS ممكن ياخدوا وقت طويل جدًا أو ميردّوش خالص، فمش
+/// منطقي نخلي المستخدم يستنى أكتر من كده قبل ما يشوف أي محتوى. لو
+/// المستخدم رفض الإذن، أو خدمة الموقع مقفولة، أو حصل timeout أو أي
+/// خطأ تاني، الدالة بترجّع null -- والواجهة وقتها بتفضل عارضة
+/// المدينة الافتراضية (_defaultCity) بدل ما تختفي أو تستنى أكتر.
 Future<String?> _detectNearestUsCity() async {
   try {
     var permission = await Geolocator.checkPermission();
@@ -156,7 +164,7 @@ Future<String?> _detectNearestUsCity() async {
 
     final position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.low,
-    );
+    ).timeout(const Duration(seconds: 5));
 
     _UsCity? nearest;
     double bestDistance = double.infinity;
@@ -180,9 +188,10 @@ Future<String?> _detectNearestUsCity() async {
 
 /// أقسام "رحلات من مدينتك" في شاشة بحث الطيران (قبل ما المستخدم يعمل
 /// بحث): ثلاث صفوف متتالية -- وجهات أمريكية، أوروبية، وآسيوية شائعة،
-/// كلها بنفس نقطة المغادرة (أقرب مدينة أمريكية كبرى لموقع المستخدم
-/// الفعلي). لو تعذر تحديد الموقع، الأقسام التلاتة بتختفي بالكامل من
-/// غير أي أثر بصري (مفيش placeholder ولا رسالة خطأ).
+/// كلها بنفس نقطة المغادرة. القسم بيظهر فورًا بمدينة افتراضية
+/// (_defaultCity)، وبعدين لو تحديد الموقع الفعلي نجح (خلال 5 ثوانٍ)،
+/// بيتحدّث تلقائيًا لأقرب مدينة حقيقية -- بدل ما يستنى تحديد الموقع
+/// قبل ما يعرض أي حاجة خالص.
 class UsDestinationsSection extends StatefulWidget {
   final void Function(String origin, String destination) onDestinationTap;
 
@@ -193,8 +202,7 @@ class UsDestinationsSection extends StatefulWidget {
 }
 
 class _UsDestinationsSectionState extends State<UsDestinationsSection> {
-  String? _origin;
-  bool _loading = true;
+  String _origin = _defaultCity;
 
   @override
   void initState() {
@@ -205,16 +213,13 @@ class _UsDestinationsSectionState extends State<UsDestinationsSection> {
   Future<void> _load() async {
     final city = await _detectNearestUsCity();
     if (!mounted) return;
-    setState(() {
-      _origin = city;
-      _loading = false;
-    });
+    if (city != null && city != _origin) {
+      setState(() => _origin = city);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading || _origin == null) return const SizedBox.shrink();
-
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
 
     return Column(
@@ -222,7 +227,7 @@ class _UsDestinationsSectionState extends State<UsDestinationsSection> {
       children: [
         _DestinationsRow(
           title: isArabic ? 'رحلات من $_origin' : 'Flights from $_origin',
-          origin: _origin!,
+          origin: _origin,
           destinations: _usDestinations,
           isArabic: isArabic,
           onDestinationTap: widget.onDestinationTap,
@@ -230,7 +235,7 @@ class _UsDestinationsSectionState extends State<UsDestinationsSection> {
         const SizedBox(height: AppSizes.md),
         _DestinationsRow(
           title: isArabic ? 'وجهات أوروبية شائعة' : 'Popular in Europe',
-          origin: _origin!,
+          origin: _origin,
           destinations: _europeDestinations,
           isArabic: isArabic,
           onDestinationTap: widget.onDestinationTap,
@@ -238,7 +243,7 @@ class _UsDestinationsSectionState extends State<UsDestinationsSection> {
         const SizedBox(height: AppSizes.md),
         _DestinationsRow(
           title: isArabic ? 'وجهات آسيوية شائعة' : 'Popular in Asia',
-          origin: _origin!,
+          origin: _origin,
           destinations: _asiaDestinations,
           isArabic: isArabic,
           onDestinationTap: widget.onDestinationTap,

@@ -57,7 +57,7 @@ class MyCoinsPage extends ConsumerWidget {
     final displayName = user?.email?.split('@').first ?? '';
 
     return Scaffold(
-      appBar: const AppBanner(),
+      appBar: const AppBanner(assetVariant: 'rewards'),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -80,7 +80,7 @@ class MyCoinsPage extends ConsumerWidget {
                       child: Column(
                         children: [
                           const Text(
-                            'SkyNoom',
+                            'FlyNoom',
                             style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
                           ),
                           Text(
@@ -95,14 +95,13 @@ class MyCoinsPage extends ConsumerWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _t3(context, ar: 'برنامج ولاء SkyNoom', en: "SkyNoom's loyalty program", es: 'Programa de fidelidad de SkyNoom', tr: 'SkyNoom sadakat programı',
-                                id: 'Program loyalitas SkyNoom', hi: 'SkyNoom का लॉयल्टी प्रोग्राम', ur: 'SkyNoom کا وفاداری پروگرام', fr: 'Programme de fidélité SkyNoom', bn: 'SkyNoom-এর লয়্যালটি প্রোগ্রাম'),
+                            _t3(context, ar: 'برنامج ولاء FlyNoom', en: "FlyNoom's loyalty program", es: 'Programa de fidelidad de FlyNoom', tr: 'FlyNoom sadakat programı',
+                                id: 'Program loyalitas FlyNoom', hi: 'FlyNoom का लॉयल्टी प्रोग्राम', ur: 'FlyNoom کا وفاداری پروگرام', fr: 'Programme de fidélité FlyNoom', bn: 'FlyNoom-এর লয়্যালটি প্রোগ্রাম'),
                             style: const TextStyle(color: Colors.white70, fontSize: 13),
                           ),
                         ],
                       ),
                     ),
-
                     Padding(
                       padding: const EdgeInsets.all(AppSizes.md),
                       child: Column(
@@ -426,15 +425,15 @@ class _FaqSectionState extends State<_FaqSection> {
           (
           q: _t3(context, ar: 'كيف أترقّى بين المستويات؟', en: 'How to progress?', es: '¿Cómo progreso?', tr: 'Nasıl ilerlerim?',
               id: 'Bagaimana cara naik tingkat?', hi: 'प्रगति कैसे करें?', ur: 'ترقی کیسے کریں؟', fr: 'Comment progresser ?', bn: 'কীভাবে অগ্রসর হবেন?'),
-          a: _t3(context, ar: 'كل ما تكمّل حجوزات أكتر عبر SkyNoom، كل ما تترقّى لمستوى أعلى ومزايا أكثر.',
-              en: 'The more bookings you complete through SkyNoom, the higher your tier climbs and the more perks you unlock.',
-              es: 'Cuantas más reservas completes en SkyNoom, más alto será tu nivel y más ventajas desbloquearás.',
-              tr: 'SkyNoom üzerinden ne kadar çok rezervasyon tamamlarsanız, seviyeniz o kadar yükselir ve daha fazla avantaj açarsınız.',
-              id: 'Semakin banyak pemesanan yang Anda selesaikan melalui SkyNoom, semakin tinggi tingkat Anda dan semakin banyak keuntungan yang terbuka.',
-              hi: 'आप SkyNoom के ज़रिए जितनी अधिक बुकिंग पूरी करेंगे, आपका स्तर उतना ही ऊँचा होगा और उतने ही अधिक लाभ खुलेंगे।',
-              ur: 'آپ SkyNoom کے ذریعے جتنی زیادہ بکنگز مکمل کریں گے، آپ کا ٹیئر اتنا ہی بلند ہوگا اور اتنے ہی زیادہ فوائد کھلیں گے۔',
-              fr: 'Plus vous effectuez de réservations via SkyNoom, plus votre niveau augmente et plus vous débloquez d\'avantages.',
-              bn: 'SkyNoom-এর মাধ্যমে আপনি যত বেশি বুকিং সম্পন্ন করবেন, আপনার স্তর তত উঁচুতে উঠবে এবং তত বেশি সুবিধা আনলক হবে।'),
+          a: _t3(context, ar: 'كل ما تكمّل حجوزات أكتر عبر Flynoom، كل ما تترقّى لمستوى أعلى ومزايا أكثر.',
+              en: 'The more bookings you complete through Flynoom, the higher your tier climbs and the more perks you unlock.',
+              es: 'Cuantas más reservas completes en Flynoom, más alto será tu nivel y más ventajas desbloquearás.',
+              tr: 'Flynoom üzerinden ne kadar çok rezervasyon tamamlarsanız, seviyeniz o kadar yükselir ve daha fazla avantaj açarsınız.',
+              id: 'Semakin banyak pemesanan yang Anda selesaikan melalui Flynoom, semakin tinggi tingkat Anda dan semakin banyak keuntungan yang terbuka.',
+              hi: 'आप Flynoom के ज़रिए जितनी अधिक बुकिंग पूरी करेंगे, आपका स्तर उतना ही ऊँचा होगा और उतने ही अधिक लाभ खुलेंगे।',
+              ur: 'آپ Flynoom کے ذریعے جتنی زیادہ بکنگز مکمل کریں گے، آپ کا ٹیئر اتنا ہی بلند ہوگا اور اتنے ہی زیادہ فوائد کھلیں گے۔',
+              fr: 'Plus vous effectuez de réservations via Flynoom, plus votre niveau augmente et plus vous débloquez d\'avantages.',
+              bn: 'Flynoom-এর মাধ্যমে আপনি যত বেশি বুকিং সম্পন্ন করবেন, আপনার স্তর তত উঁচুতে উঠবে এবং তত বেশি সুবিধা আনলক হবে।'),
           ),
           (
           q: _t3(context, ar: 'إزاي أحافظ على مستواي؟', en: 'How do I maintain my tier?', es: '¿Cómo mantengo mi nivel?', tr: 'Seviyemi nasıl korurum?',
@@ -510,15 +509,15 @@ class _FaqSectionState extends State<_FaqSection> {
           (
           q: _t3(context, ar: 'إزاي أكسب عملات؟', en: 'How do I earn coins?', es: '¿Cómo gano monedas?', tr: 'Puanları nasıl kazanırım?',
               id: 'Bagaimana cara mendapatkan koin?', hi: 'मैं कॉइन कैसे कमाऊं?', ur: 'میں کوائنز کیسے کماؤں؟', fr: 'Comment gagner des points ?', bn: 'কীভাবে কয়েন অর্জন করব?'),
-          a: _t3(context, ar: 'بتكسب عملات تلقائيًا مقابل كل حجز مكتمل عبر SkyNoom، والنسبة بتزيد كل ما مستواك يعلى.',
-              en: 'You earn coins automatically for every completed booking through SkyNoom, and the earning rate increases as your tier goes up.',
-              es: 'Ganas monedas automáticamente por cada reserva completada en SkyNoom, y la tasa aumenta con tu nivel.',
-              tr: 'SkyNoom üzerinden tamamlanan her rezervasyon için otomatik olarak puan kazanırsınız ve seviyeniz yükseldikçe kazanım oranı artar.',
-              id: 'Anda mendapatkan koin secara otomatis untuk setiap pemesanan yang selesai melalui SkyNoom, dan tingkat perolehannya meningkat seiring naiknya tingkat Anda.',
-              hi: 'SkyNoom के ज़रिए हर पूर्ण बुकिंग पर आप स्वतः कॉइन कमाते हैं, और आपका स्तर बढ़ने के साथ अर्जन दर भी बढ़ती है।',
-              ur: 'SkyNoom کے ذریعے ہر مکمل بکنگ پر آپ خودکار طور پر کوائنز کماتے ہیں، اور آپ کا ٹیئر بڑھنے کے ساتھ کمانے کی شرح بھی بڑھتی ہے۔',
-              fr: 'Vous gagnez automatiquement des points pour chaque réservation terminée via SkyNoom, et le taux de gain augmente avec votre niveau.',
-              bn: 'SkyNoom-এর মাধ্যমে প্রতিটি সম্পন্ন বুকিংয়ের জন্য আপনি স্বয়ংক্রিয়ভাবে কয়েন অর্জন করেন, এবং আপনার স্তর বাড়ার সাথে সাথে অর্জনের হারও বাড়ে।'),
+          a: _t3(context, ar: 'بتكسب عملات تلقائيًا مقابل كل حجز مكتمل عبر Flynoom، والنسبة بتزيد كل ما مستواك يعلى.',
+              en: 'You earn coins automatically for every completed booking through Flynoom, and the earning rate increases as your tier goes up.',
+              es: 'Ganas monedas automáticamente por cada reserva completada en Flynoom, y la tasa aumenta con tu nivel.',
+              tr: 'Flynoom üzerinden tamamlanan her rezervasyon için otomatik olarak puan kazanırsınız ve seviyeniz yükseldikçe kazanım oranı artar.',
+              id: 'Anda mendapatkan koin secara otomatis untuk setiap pemesanan yang selesai melalui Flynoom, dan tingkat perolehannya meningkat seiring naiknya tingkat Anda.',
+              hi: 'Flynoom के ज़रिए हर पूर्ण बुकिंग पर आप स्वतः कॉइन कमाते हैं, और आपका स्तर बढ़ने के साथ अर्जन दर भी बढ़ती है।',
+              ur: 'Flynoom کے ذریعے ہر مکمل بکنگ پر آپ خودکار طور پر کوائنز کماتے ہیں، اور آپ کا ٹیئر بڑھنے کے ساتھ کمانے کی شرح بھی بڑھتی ہے۔',
+              fr: 'Vous gagnez automatiquement des points pour chaque réservation terminée via Flynoom, et le taux de gain augmente avec votre niveau.',
+              bn: 'Flynoom-এর মাধ্যমে প্রতিটি সম্পন্ন বুকিংয়ের জন্য আপনি স্বয়ংক্রিয়ভাবে কয়েন অর্জন করেন, এবং আপনার স্তর বাড়ার সাথে সাথে অর্জনের হারও বাড়ে।'),
           ),
           (
           q: _t3(context, ar: 'إزاي أستخدم عملاتي؟', en: 'How do I redeem my coins?', es: '¿Cómo canjeo mis monedas?', tr: 'Puanlarımı nasıl kullanırım?',
@@ -602,15 +601,15 @@ class _FaqSectionState extends State<_FaqSection> {
           Text(
             _t3(
               context,
-              ar: 'يوجد حاليًا 4 مستويات في برنامج SkyNoom Rewards: فضي، ذهبي، بلاتيني، وماسي. كل ما تحجز أكتر، كل ما ترتقي لمستوى أعلى ومكافآت أكبر.',
-              en: 'There are currently 4 SkyNoom Rewards tiers: Silver, Gold, Platinum, and Diamond. More bookings, higher tiers, greater rewards.',
-              es: 'Actualmente hay 4 niveles en SkyNoom Rewards: Plata, Oro, Platino y Diamante. Más reservas, niveles más altos, mayores recompensas.',
-              tr: 'Şu anda 4 SkyNoom Rewards seviyesi bulunmaktadır: Gümüş, Altın, Platin ve Elmas. Daha fazla rezervasyon, daha yüksek seviye, daha büyük ödüller.',
-              id: 'Saat ini ada 4 tingkat SkyNoom Rewards: Perak, Emas, Platinum, dan Berlian. Semakin banyak pemesanan, semakin tinggi tingkat, semakin besar hadiah.',
-              hi: 'वर्तमान में SkyNoom Rewards के 4 स्तर हैं: सिल्वर, गोल्ड, प्लैटिनम और डायमंड। जितनी अधिक बुकिंग, उतना ऊँचा स्तर, उतना बड़ा रिवॉर्ड।',
-              ur: 'اس وقت SkyNoom Rewards کے 4 ٹیئرز ہیں: سلور، گولڈ، پلاٹینم، اور ڈائمنڈ۔ جتنی زیادہ بکنگز، اتنا بلند ٹیئر، اتنا بڑا انعام۔',
-              fr: 'Il existe actuellement 4 niveaux SkyNoom Rewards : Argent, Or, Platine et Diamant. Plus de réservations, niveaux plus élevés, récompenses plus importantes.',
-              bn: 'বর্তমানে ৪টি SkyNoom Rewards স্তর রয়েছে: সিলভার, গোল্ড, প্ল্যাটিনাম, এবং ডায়মন্ড। বেশি বুকিং, উঁচু স্তর, বড় পুরস্কার।',
+              ar: 'يوجد حاليًا 4 مستويات في برنامج Flynoom Rewards: فضي، ذهبي، بلاتيني، وماسي. كل ما تحجز أكتر، كل ما ترتقي لمستوى أعلى ومكافآت أكبر.',
+              en: 'There are currently 4 Flynoom Rewards tiers: Silver, Gold, Platinum, and Diamond. More bookings, higher tiers, greater rewards.',
+              es: 'Actualmente hay 4 niveles en Flynoom Rewards: Plata, Oro, Platino y Diamante. Más reservas, niveles más altos, mayores recompensas.',
+              tr: 'Şu anda 4 Flynoom Rewards seviyesi bulunmaktadır: Gümüş, Altın, Platin ve Elmas. Daha fazla rezervasyon, daha yüksek seviye, daha büyük ödüller.',
+              id: 'Saat ini ada 4 tingkat Flynoom Rewards: Perak, Emas, Platinum, dan Berlian. Semakin banyak pemesanan, semakin tinggi tingkat, semakin besar hadiah.',
+              hi: 'वर्तमान में Flynoom Rewards के 4 स्तर हैं: सिल्वर, गोल्ड, प्लैटिनम और डायमंड। जितनी अधिक बुकिंग, उतना ऊँचा स्तर, उतना बड़ा रिवॉर्ड।',
+              ur: 'اس وقت Flynoom Rewards کے 4 ٹیئرز ہیں: سلور، گولڈ، پلاٹینم، اور ڈائمنڈ۔ جتنی زیادہ بکنگز، اتنا بلند ٹیئر، اتنا بڑا انعام۔',
+              fr: 'Il existe actuellement 4 niveaux Flynoom Rewards : Argent, Or, Platine et Diamant. Plus de réservations, niveaux plus élevés, récompenses plus importantes.',
+              bn: 'বর্তমানে ৪টি Flynoom Rewards স্তর রয়েছে: সিলভার, গোল্ড, প্ল্যাটিনাম, এবং ডায়মন্ড। বেশি বুকিং, উঁচু স্তর, বড় পুরস্কার।',
             ),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),

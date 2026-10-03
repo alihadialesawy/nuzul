@@ -10,6 +10,7 @@ import '../../core/widgets/app_banner.dart';
 import '../../core/widgets/loading_view.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/models/community_post_model.dart';
+import '../../data/models/community_comment_model.dart';
 import 'controllers/community_controller.dart';
 
 /// نفس نمط الترجمة المستخدم في باقي صفحات المشروع (_t3، 9 لغات).
@@ -152,6 +153,17 @@ class _PostCard extends ConsumerWidget {
   final CommunityPostModel post;
   const _PostCard({required this.post});
 
+  void _openComments(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => _CommentsSheet(postId: post.id),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
@@ -251,9 +263,16 @@ class _PostCard extends ConsumerWidget {
                   children: [
                     _LikeButton(post: post),
                     const SizedBox(width: AppSizes.md),
-                    const Icon(Icons.mode_comment_outlined, size: 18, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text('${post.commentsCount}', style: const TextStyle(color: AppColors.textSecondary)),
+                    InkWell(
+                      onTap: () => _openComments(context),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.mode_comment_outlined, size: 18, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text('${post.commentsCount}', style: const TextStyle(color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -334,6 +353,200 @@ class _LikeButtonState extends ConsumerState<_LikeButton> {
           const SizedBox(width: 4),
           Text('$_count', style: const TextStyle(color: AppColors.textSecondary)),
         ],
+      ),
+    );
+  }
+}
+
+/// شاشة سفلية (bottom sheet) تعرض تعليقات منشور معيّن + حقل إضافة
+/// تعليق جديد. بتتفتح لما تدوس على أيقونة/عداد التعليقات تحت أي
+/// منشور (سواء فيه صور ولا لأ).
+class _CommentsSheet extends ConsumerStatefulWidget {
+  final String postId;
+  const _CommentsSheet({required this.postId});
+
+  @override
+  ConsumerState<_CommentsSheet> createState() => _CommentsSheetState();
+}
+
+class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
+  final _controller = TextEditingController();
+  List<CommunityCommentModel>? _comments;
+  bool _loading = true;
+  bool _sending = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadComments();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadComments() async {
+    final repo = ref.read(communityRepositoryProvider);
+    final result = await repo.fetchComments(widget.postId);
+    if (!mounted) return;
+    result.when(
+      success: (comments) => setState(() {
+        _comments = comments;
+        _loading = false;
+      }),
+      failure: (message) => setState(() {
+        _error = message;
+        _loading = false;
+      }),
+    );
+  }
+
+  Future<void> _submitComment() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _sending) return;
+
+    setState(() => _sending = true);
+    final repo = ref.read(communityRepositoryProvider);
+    final result = await repo.addComment(postId: widget.postId, content: text);
+    if (!mounted) return;
+
+    result.when(
+      success: (comment) {
+        setState(() {
+          _comments = [...?_comments, comment];
+          _controller.clear();
+          _sending = false;
+        });
+      },
+      failure: (message) {
+        setState(() => _sending = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AppSizes.md),
+                child: Text(
+                  _t3(context,
+                      ar: 'التعليقات', en: 'Comments', es: 'Comentarios', tr: 'Yorumlar',
+                      id: 'Komentar', hi: 'टिप्पणियाँ', ur: 'تبصرے', fr: 'Commentaires', bn: 'মন্তব্য'),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                    ? Center(child: Text(_error!))
+                    : (_comments == null || _comments!.isEmpty)
+                    ? Center(
+                  child: Text(
+                    _t3(context,
+                        ar: 'لا توجد تعليقات بعد. كن أول من يعلّق!', en: 'No comments yet. Be the first!',
+                        es: 'Aún no hay comentarios. ¡Sé el primero!', tr: 'Henüz yorum yok. İlk sen ol!',
+                        id: 'Belum ada komentar. Jadilah yang pertama!', hi: 'अभी तक कोई टिप्पणी नहीं। पहले आप बनें!',
+                        ur: 'ابھی تک کوئی تبصرہ نہیں۔ پہلے آپ بنیں!', fr: 'Aucun commentaire pour le moment. Soyez le premier !',
+                        bn: 'এখনও কোনো মন্তব্য নেই। প্রথম হন!'),
+                    style: const TextStyle(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+                    : ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
+                  itemCount: _comments!.length,
+                  itemBuilder: (context, index) {
+                    final c = _comments![index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundImage: c.authorAvatarUrl != null
+                                ? NetworkImage(c.authorAvatarUrl!)
+                                : null,
+                            child: c.authorAvatarUrl == null
+                                ? const Icon(Icons.person, size: 16)
+                                : null,
+                          ),
+                          const SizedBox(width: AppSizes.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  c.authorDisplayName ??
+                                      _t3(context,
+                                          ar: 'مسافر', en: 'Traveler', es: 'Viajero', tr: 'Gezgin',
+                                          id: 'Wisatawan', hi: 'यात्री', ur: 'مسافر', fr: 'Voyageur', bn: 'ভ্রমণকারী'),
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(c.content, style: const TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(AppSizes.sm),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        decoration: InputDecoration(
+                          hintText: _t3(context,
+                              ar: 'اكتب تعليقًا...', en: 'Write a comment...', es: 'Escribe un comentario...', tr: 'Bir yorum yaz...',
+                              id: 'Tulis komentar...', hi: 'एक टिप्पणी लिखें...', ur: 'تبصرہ لکھیں...', fr: 'Écrire un commentaire...', bn: 'একটি মন্তব্য লিখুন...'),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          isDense: true,
+                        ),
+                        onSubmitted: (_) => _submitComment(),
+                      ),
+                    ),
+                    const SizedBox(width: AppSizes.sm),
+                    _sending
+                        ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                        : IconButton(
+                      onPressed: _submitComment,
+                      icon: const Icon(Icons.send, color: AppColors.primary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

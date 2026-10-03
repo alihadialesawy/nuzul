@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/utils/result.dart';
@@ -7,9 +8,10 @@ import '../models/inbox_item_model.dart';
 class InboxRepository {
   final SupabaseClient _client = Supabase.instance.client;
 
-  /// يجيب فييد الإنبوكس: أحدث حجوزات الفنادق + الطيران + السيارات،
-  /// مع تنبيهات أسعار الطيران اللي اتفعّلت فعليًا (notified_at مش
-  /// فاضي)، مرتبين بالأحدث أولاً.
+  /// يجيب فييد الإنبوكس: أحدث حجوزات الفنادق + الطيران (عبر Duffel،
+  /// النظام الحقيقي المستخدم فعليًا -- ليس flight_bookings المحلي
+  /// القديم) + السيارات، مع تنبيهات أسعار الطيران اللي اتفعّلت فعليًا
+  /// (notified_at مش فاضي)، مرتبين بالأحدث أولاً.
   /// ملحوظة: price_watches مربوطة بالإيميل مش بـ user_id (ممكن تتحط
   /// من غير تسجيل دخول)، فبنطابقها بإيميل المستخدم الحالي.
   Future<Result<List<InboxItemModel>>> fetchInboxItems({int limit = 30}) async {
@@ -23,7 +25,7 @@ class InboxRepository {
       // حجوزات الفنادق
       final hotelRows = await _client
           .from('bookings')
-          .select('*, hotels(name, city, images)')
+          .select()
           .eq('user_id', myId)
           .order('created_at', ascending: false)
           .limit(limit);
@@ -39,9 +41,11 @@ class InboxRepository {
         ));
       }
 
-      // حجوزات الطيران
+      // حجوزات الطيران -- من duffel_bookings (الجدول الحقيقي المستخدم
+      // فعليًا عبر Duffel API)، بعد ما flight_bookings المحلي القديم
+      // اتأكد إنه dead code من نفس تشخيص جلسة توحيد نظام الرحلات.
       final flightRows = await _client
-          .from('flight_bookings')
+          .from('duffel_bookings')
           .select()
           .eq('user_id', myId)
           .order('created_at', ascending: false)
@@ -59,7 +63,7 @@ class InboxRepository {
           id: 'flight_${map['id']}',
           type: InboxItemType.flightBooking,
           timestamp: createdAt ?? departureTime ?? DateTime.now(),
-          status: map['status'] as String? ?? '',
+          status: map['status'] as String? ?? 'confirmed',
           airline: map['airline'] as String?,
           flightNumber: map['flight_number'] as String?,
           originCity: map['origin_city'] as String?,
@@ -125,6 +129,7 @@ class InboxRepository {
       items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       return Success(items);
     } catch (e) {
+      debugPrint('🔴 REAL INBOX ERROR: $e');
       return Failure(e.toString());
     }
   }

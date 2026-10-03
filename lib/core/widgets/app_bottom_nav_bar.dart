@@ -4,6 +4,16 @@ import 'package:go_router/go_router.dart';
 import '../../app.dart';
 import '../constants/app_colors.dart';
 
+/// ألوان مميزة لكل تبويب، بنفس الألوان المستخدمة في AppNavRail (نسخة
+/// الديسكتوب) عشان يبقى فيه اتساق بصري بين الموبايل والويب.
+const List<Color> _navTabColors = [
+  Color(0xFF2E86AB), // الرئيسية - أزرق
+  Color(0xFF27AE60), // المجتمع - أخضر
+  Color(0xFFE67E22), // رحلاتي - برتقالي
+  Color(0xFF8E44AD), // الرسائل - بنفسجي
+  Color(0xFFD6558E), // الحساب - وردي
+];
+
 /// يختار النص المناسب حسب اللغة الحالية من بين الـ 9 لغات المدعومة.
 String navText(
     BuildContext context, {
@@ -136,7 +146,9 @@ class AppBottomNavBar extends StatelessWidget {
                     children: [
                       Icon(
                         _selectedIndex == i ? items[i].activeIcon : items[i].icon,
-                        color: _selectedIndex == i ? AppColors.primary : AppColors.textSecondary,
+                        color: _selectedIndex == i
+                            ? _navTabColors[i]
+                            : _navTabColors[i].withOpacity(0.45),
                         size: 24,
                       ),
                       const SizedBox(height: 2),
@@ -146,7 +158,9 @@ class AppBottomNavBar extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 11,
-                          color: _selectedIndex == i ? AppColors.primary : AppColors.textSecondary,
+                          color: _selectedIndex == i
+                              ? _navTabColors[i]
+                              : _navTabColors[i].withOpacity(0.45),
                           fontWeight: _selectedIndex == i ? FontWeight.w600 : FontWeight.normal,
                         ),
                       ),

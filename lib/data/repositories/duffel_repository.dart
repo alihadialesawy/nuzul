@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/error_translator.dart';
@@ -221,16 +222,43 @@ class DuffelRepository {
     }
   }
 
-  /// ينشئ حجز فعلي (Order) عند Duffel من عرض سبق اختياره، ويدفع من
-  /// رصيد Duffel Balance التجريبي. يرجّع رقم الحجز (order id) ومرجع
-  /// الحجز لو نجح.
+  /// يطلب Component Client Key من Duffel (عبر Edge Function آمنة) --
+  /// ده الرمز الآمن المطلوب لعرض فورم Duffel لجمع بيانات البطاقة
+  /// (DuffelCardForm) داخل WebView.
+  Future<Result<String>> getComponentClientKey() async {
+    try {
+      final response = await _client.functions.invoke('duffel-create-component-client-key');
+
+      if (response.status != 200) {
+        final error = (response.data is Map) ? response.data['error'] : null;
+        return Failure(error?.toString() ?? 'تعذر تجهيز صفحة الدفع');
+      }
+
+      final data = response.data as Map<String, dynamic>;
+      return Success(data['clientKey'] as String);
+    } catch (e) {
+      return Failure(ErrorTranslator.translate(e));
+    }
+  }
+
+  /// ينشئ حجز فعلي (Order) عند Duffel من عرض سبق اختياره. لو
+  /// [cardId] و[threeDSecureSessionId] اتبعتوا (بعد ما العميل دفع
+  /// ببطاقته عبر DuffelPaymentWebViewPage)، الحجز بيتدفع مباشرة من
+  /// بطاقة العميل. لو اتسابوا فاضيين، بيتدفع من رصيد Duffel Balance
+  /// التجريبي (سلوك قديم، للاختبار بس).
   Future<Result<({String orderId, String? bookingReference})>> createOrder({
     required String offerId,
     required double totalAmount,
     required String totalCurrency,
     required List<DuffelPassengerInfo> passengers,
+    String? cardId,
+    String? threeDSecureSessionId,
   }) async {
     try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) {
+        return const Failure('يجب تسجيل الدخول أولاً لإتمام الحجز');
+      }
       final response = await _client.functions.invoke(
         'duffel-create-order',
         body: {
@@ -238,10 +266,14 @@ class DuffelRepository {
           'totalAmount': totalAmount.toStringAsFixed(2),
           'totalCurrency': totalCurrency,
           'passengers': passengers.map((p) => p.toJson()).toList(),
+          'userId': userId,
+          if (cardId != null) 'cardId': cardId,
+          if (threeDSecureSessionId != null) 'threeDSecureSessionId': threeDSecureSessionId,
         },
       );
 
       if (response.status != 200) {
+        debugPrint('DEBUG createOrder non-200 response: status=${response.status}, data=${response.data}');
         final error = (response.data is Map) ? response.data['error'] : null;
         return Failure(error?.toString() ?? 'تعذر إتمام الحجز');
       }
@@ -251,7 +283,9 @@ class DuffelRepository {
       orderId: data['orderId'] as String,
       bookingReference: data['bookingReference'] as String?,
       ));
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('DEBUG createOrder EXCEPTION: $e');
+      debugPrint('DEBUG createOrder stack: $st');
       return Failure(ErrorTranslator.translate(e));
     }
   }

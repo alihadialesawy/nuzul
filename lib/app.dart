@@ -1,4 +1,5 @@
 import 'core/widgets/app_nav_rail.dart';
+import 'core/fast_scroll_behavior.dart';
 import 'presentation/profile/my_coins_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -30,7 +31,17 @@ import 'presentation/admin/admin_bookings_page.dart';
 import 'presentation/admin/admin_hotels_page.dart';
 import 'presentation/community/community_page.dart';
 import 'presentation/inbox/inbox_page.dart';
-
+import 'presentation/legal/privacy_notice_page.dart';
+import 'presentation/legal/terms_of_service_page.dart';
+import 'presentation/legal/accessibility_statement_page.dart';
+import 'presentation/legal/dispute_resolution_page.dart';
+import 'presentation/about/how_we_work_page.dart';
+import 'presentation/about/careers_page.dart';
+import 'presentation/about/content_guidelines_page.dart';
+import 'presentation/home/seasonal_deals_page.dart';
+import 'presentation/home/flight_hotel_deal_details_page.dart';
+import 'presentation/home/widgets/flight_hotel_deals_section.dart';
+import 'presentation/home/travel_articles_page.dart';
 /// أسماء المسارات
 class AppRoutes {
   AppRoutes._();
@@ -55,6 +66,16 @@ class AppRoutes {
   static const String adminHotels = '/admin/hotels';
   static const String community = '/community';
   static const String inbox = '/inbox';
+  static const String privacyNotice = '/privacy-notice';
+  static const String termsOfService = '/terms-of-service';
+  static const String accessibilityStatement = '/accessibility-statement';
+  static const String disputeResolution = '/dispute-resolution';
+  static const String howWeWork = '/how-we-work';
+  static const String careers = '/careers';
+  static const String contentGuidelines = '/content-guidelines';
+  static const String seasonalDeals = '/seasonal-deals';
+  static const String flightHotelDealDetails = '/flight-hotel-deal-details';
+  static const String travelArticles = '/travel-articles';
 }
 
 // مفتاح الـ Navigator الجذري — لازم يتحدد صراحةً لما بنستخدم ShellRoute
@@ -97,11 +118,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
               if (isWide) {
                 return Scaffold(
-                  // بدون هذا، الـ Scaffold الخارجي (تبع الـ Shell) يتصاغر
-                  // لما تفتح لوحة المفاتيح، فيضغط المساحة المتاحة لأي
-                  // صفحة جوّاه (زي HomePage) قبل ما توصلها أصلاً — وده كان
-                  // سبب الـ Overflow الأصفر حتى بعد ما ضبطنا كل صفحة لوحدها.
-                  resizeToAvoidBottomInset: false,
                   body: Row(
                     children: [
                       AppNavRail(currentLocation: state.matchedLocation),
@@ -113,7 +129,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               }
 
               return Scaffold(
-                resizeToAvoidBottomInset: false,
                 body: child,
                 bottomNavigationBar: AppBottomNavBar(currentLocation: state.matchedLocation),
               );
@@ -255,6 +270,52 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.inbox,
             builder: (context, state) => const InboxPage(),
           ),
+          GoRoute(
+            path: AppRoutes.privacyNotice,
+            builder: (context, state) => const PrivacyNoticePage(),
+          ),
+          GoRoute(
+            path: AppRoutes.termsOfService,
+            builder: (context, state) => const TermsOfServicePage(),
+          ),
+          GoRoute(
+            path: AppRoutes.accessibilityStatement,
+            builder: (context, state) => const AccessibilityStatementPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.disputeResolution,
+            builder: (context, state) => const DisputeResolutionPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.howWeWork,
+            builder: (context, state) => const HowWeWorkPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.careers,
+            builder: (context, state) => const CareersPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.contentGuidelines,
+            builder: (context, state) => const ContentGuidelinesPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.seasonalDeals,
+            builder: (context, state) => const SeasonalDealsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.travelArticles,
+            builder: (context, state) => const TravelArticlesPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.flightHotelDealDetails,
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>;
+              return FlightHotelDealDetailsPage(
+                origin: extra['origin'] as String,
+                deal: extra['deal'] as FlightHotelDeal,
+              );
+            },
+          ),
         ],
       ),
     ],
@@ -270,9 +331,10 @@ class NuzulApp extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
-      title: 'SkyNoom',
+      title: 'Flynoom',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      scrollBehavior: FastScrollBehavior(),
 
       routerConfig: router,
 

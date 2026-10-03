@@ -9,6 +9,7 @@ import '../../core/widgets/app_banner.dart';
 import '../../data/repositories/duffel_repository.dart';
 import '../../data/repositories/duffel_booking_repository.dart';
 import '../home/controllers/duffel_flight_search_controller.dart' show duffelRepositoryProvider;
+import 'duffel_payment_webview_page.dart';
 
 final duffelBookingRepositoryProvider = Provider((ref) => DuffelBookingRepository());
 
@@ -29,9 +30,19 @@ String _t3(
   }
 }
 
+/// ألوان مميزة لكل مسافر حسب ترتيبه (بتتكرر تلقائيًا لو عدد
+/// المسافرين زاد عن 4).
+const List<Color> _passengerColors = [
+  Color(0xFF2E86AB), // أزرق - المسافر الأول
+  Color(0xFFE67E22), // برتقالي - المسافر الثاني
+  Color(0xFF27AE60), // أخضر - المسافر الثالث
+  Color(0xFF8E44AD), // بنفسجي - المسافر الرابع
+];
+
 /// صفحة حجز رحلة Duffel حقيقية: فورم بيانات المسافر (لكل مسافر مرتبط
-/// بالعرض عبر passengerIds)، تأكيد، وإتمام الحجز فعليًا عبر Duffel
-/// Order API (بالدفع من رصيد Duffel Balance التجريبي في بيئة الاختبار).
+/// بالعرض عبر passengerIds)، ثم دفع حقيقي ببطاقة العميل (عبر
+/// DuffelPaymentWebViewPage)، وأخيرًا إتمام الحجز فعليًا عبر Duffel
+/// Order API.
 class DuffelFlightBookingPage extends ConsumerStatefulWidget {
   final DuffelFlightOffer offer;
 
@@ -112,6 +123,57 @@ class _DuffelFlightBookingPageState extends ConsumerState<DuffelFlightBookingPag
     });
 
     final repo = ref.read(duffelRepositoryProvider);
+
+    // الخطوة 1: نطلب Component Client Key من Duffel (رمز آمن لفتح
+    // فورم البطاقة).
+    final clientKeyResult = await repo.getComponentClientKey();
+
+    if (!mounted) return;
+
+    String? clientKey;
+    clientKeyResult.when(
+      success: (key) => clientKey = key,
+      failure: (message) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = message;
+        });
+      },
+    );
+
+    if (clientKey == null) return;
+
+    // الخطوة 2: نفتح صفحة الدفع (WebView) ونستنى العميل يدخل بيانات
+    // بطاقته ويكمّل التحقق (3D Secure).
+    final paymentResult = await Navigator.of(context).push<DuffelCardCollectionResult>(
+      MaterialPageRoute(
+        builder: (_) => DuffelPaymentWebViewPage(
+          clientKey: clientKey!,
+          offerId: widget.offer.id,
+          offerCurrency: widget.offer.totalCurrency,
+          offerAmount: widget.offer.totalAmount,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (paymentResult == null) {
+      // العميل رجع من صفحة الدفع من غير ما يكمّل (مثلاً دوس زر
+      // الرجوع)، مش خطأ حقيقي.
+      setState(() => _isSubmitting = false);
+      return;
+    }
+
+    if (!paymentResult.isSuccess) {
+      setState(() {
+        _isSubmitting = false;
+        _errorMessage = paymentResult.errorMessage ?? 'تعذر إتمام الدفع، حاول مرة أخرى';
+      });
+      return;
+    }
+
+    // الخطوة 3: بيانات البطاقة اتأكدت -- نكمّل إنشاء الحجز الفعلي.
     final passengerIds = widget.offer.passengerIds;
 
     final passengerInfos = List.generate(_passengers.length, (i) {
@@ -133,6 +195,8 @@ class _DuffelFlightBookingPageState extends ConsumerState<DuffelFlightBookingPag
       totalAmount: widget.offer.totalAmount,
       totalCurrency: widget.offer.totalCurrency,
       passengers: passengerInfos,
+      cardId: paymentResult.cardId,
+      threeDSecureSessionId: paymentResult.threeDSecureSessionId,
     );
 
     if (!mounted) return;
@@ -234,7 +298,6 @@ class _DuffelFlightBookingPageState extends ConsumerState<DuffelFlightBookingPag
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSizes.md),
-              // كارت تفاصيل الرحلة نفسها (شركة الطيران، الأوقات، المدة)
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(AppSizes.md),
@@ -314,8 +377,6 @@ class _DuffelFlightBookingPageState extends ConsumerState<DuffelFlightBookingPag
                 ),
               ),
               const SizedBox(height: AppSizes.md),
-              // كارت التفاصيل الإضافية بعناوين واضحة (زي شاشة حجز الطيران
-              // القديمة): تاريخ السفر ودرجة السفر
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(AppSizes.md),
@@ -338,7 +399,6 @@ class _DuffelFlightBookingPageState extends ConsumerState<DuffelFlightBookingPag
                 ),
               ),
               const SizedBox(height: AppSizes.md),
-              // كارت تفصيل السعر بعنوان "الإجمالي" واضح
               Card(
                 color: AppColors.background,
                 child: Padding(
@@ -380,134 +440,162 @@ class _DuffelFlightBookingPageState extends ConsumerState<DuffelFlightBookingPag
               ),
               const SizedBox(height: AppSizes.lg),
               for (var i = 0; i < _passengers.length; i++) ...[
-                Text(
-                  _t3(
-                    context,
-                    ar: 'بيانات المسافر ${i + 1}',
-                    en: 'Passenger ${i + 1} details',
-                    es: 'Datos del pasajero ${i + 1}',
-                  ),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: AppSizes.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _passengers[i].title,
-                        decoration: InputDecoration(
-                          labelText: _t3(context, ar: 'اللقب', en: 'Title', es: 'Título'),
+                Builder(builder: (context) {
+                  final passengerColor = _passengerColors[i % _passengerColors.length];
+                  return Container(
+                    padding: const EdgeInsets.all(AppSizes.md),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: passengerColor, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: passengerColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _t3(
+                                context,
+                                ar: 'بيانات المسافر ${i + 1}',
+                                en: 'Passenger ${i + 1} details',
+                                es: 'Datos del pasajero ${i + 1}',
+                              ),
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: passengerColor),
+                            ),
+                          ],
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 'mr', child: Text('Mr')),
-                          DropdownMenuItem(value: 'mrs', child: Text('Mrs')),
-                          DropdownMenuItem(value: 'ms', child: Text('Ms')),
-                          DropdownMenuItem(value: 'miss', child: Text('Miss')),
-                        ],
-                        onChanged: (v) => setState(() => _passengers[i].title = v ?? 'mr'),
-                      ),
-                    ),
-                    const SizedBox(width: AppSizes.sm),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _passengers[i].gender,
-                        decoration: InputDecoration(
-                          labelText: _t3(context, ar: 'الجنس', en: 'Gender', es: 'Género'),
+                        const SizedBox(height: AppSizes.sm),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _passengers[i].title,
+                                decoration: InputDecoration(
+                                  labelText: _t3(context, ar: 'اللقب', en: 'Title', es: 'Título'),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(value: 'mr', child: Text('Mr')),
+                                  DropdownMenuItem(value: 'mrs', child: Text('Mrs')),
+                                  DropdownMenuItem(value: 'ms', child: Text('Ms')),
+                                  DropdownMenuItem(value: 'miss', child: Text('Miss')),
+                                ],
+                                onChanged: (v) => setState(() => _passengers[i].title = v ?? 'mr'),
+                              ),
+                            ),
+                            const SizedBox(width: AppSizes.sm),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _passengers[i].gender,
+                                decoration: InputDecoration(
+                                  labelText: _t3(context, ar: 'الجنس', en: 'Gender', es: 'Género'),
+                                ),
+                                items: [
+                                  DropdownMenuItem(value: 'm', child: Text(_t3(context, ar: 'ذكر', en: 'Male', es: 'Hombre'))),
+                                  DropdownMenuItem(value: 'f', child: Text(_t3(context, ar: 'أنثى', en: 'Female', es: 'Mujer'))),
+                                ],
+                                onChanged: (v) => setState(() => _passengers[i].gender = v ?? 'm'),
+                              ),
+                            ),
+                          ],
                         ),
-                        items: [
-                          DropdownMenuItem(value: 'm', child: Text(_t3(context, ar: 'ذكر', en: 'Male', es: 'Hombre'))),
-                          DropdownMenuItem(value: 'f', child: Text(_t3(context, ar: 'أنثى', en: 'Female', es: 'Mujer'))),
-                        ],
-                        onChanged: (v) => setState(() => _passengers[i].gender = v ?? 'm'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSizes.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _passengers[i].givenNameController,
-                        decoration: InputDecoration(
-                          labelText: _t3(context, ar: 'الاسم الأول', en: 'Given name', es: 'Nombre'),
+                        const SizedBox(height: AppSizes.sm),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _passengers[i].givenNameController,
+                                decoration: InputDecoration(
+                                  labelText: _t3(context, ar: 'الاسم الأول', en: 'Given name', es: 'Nombre'),
+                                ),
+                                validator: (v) => (v == null || v.trim().isEmpty)
+                                    ? _t3(context, ar: 'مطلوب', en: 'Required', es: 'Requerido')
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(width: AppSizes.sm),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _passengers[i].familyNameController,
+                                decoration: InputDecoration(
+                                  labelText: _t3(context, ar: 'اسم العائلة', en: 'Family name', es: 'Apellido'),
+                                ),
+                                validator: (v) => (v == null || v.trim().isEmpty)
+                                    ? _t3(context, ar: 'مطلوب', en: 'Required', es: 'Requerido')
+                                    : null,
+                              ),
+                            ),
+                          ],
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? _t3(context, ar: 'مطلوب', en: 'Required', es: 'Requerido')
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: AppSizes.sm),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _passengers[i].familyNameController,
-                        decoration: InputDecoration(
-                          labelText: _t3(context, ar: 'اسم العائلة', en: 'Family name', es: 'Apellido'),
+                        const SizedBox(height: AppSizes.sm),
+                        GestureDetector(
+                          onTap: () => _pickBirthDate(_passengers[i]),
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              labelText: _t3(context, ar: 'تاريخ الميلاد', en: 'Date of birth', es: 'Fecha de nacimiento'),
+                              prefixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
+                            ),
+                            child: Text(
+                              _passengers[i].bornOn == null
+                                  ? _t3(context, ar: 'اختار تاريخ', en: 'Select a date', es: 'Elige una fecha')
+                                  : '${_passengers[i].bornOn!.year}-${_passengers[i].bornOn!.month.toString().padLeft(2, '0')}-${_passengers[i].bornOn!.day.toString().padLeft(2, '0')}',
+                            ),
+                          ),
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? _t3(context, ar: 'مطلوب', en: 'Required', es: 'Requerido')
-                            : null,
-                      ),
+                        const SizedBox(height: AppSizes.sm),
+                        TextFormField(
+                          controller: _passengers[i].emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            labelText: _t3(context, ar: 'البريد الإلكتروني', en: 'Email', es: 'Correo electrónico'),
+                          ),
+                          validator: (v) => (v == null || !v.contains('@'))
+                              ? _t3(context, ar: 'بريد إلكتروني غير صحيح', en: 'Invalid email', es: 'Correo inválido')
+                              : null,
+                        ),
+                        const SizedBox(height: AppSizes.sm),
+                        TextFormField(
+                          controller: _passengers[i].phoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: _t3(context, ar: 'رقم الجوال', en: 'Phone number', es: 'Teléfono'),
+                            hintText: '+19784839704',
+                            helperText: _t3(
+                              context,
+                              ar: 'لازم يبدأ بـ + وكود الدولة (مثال: +19784839704)',
+                              en: 'Must start with + and the country code (e.g. +19784839704)',
+                              es: 'Debe empezar con + y el código de país (ej. +19784839704)',
+                            ),
+                            helperMaxLines: 2,
+                          ),
+                          validator: (v) {
+                            final value = v?.trim() ?? '';
+                            if (value.isEmpty) {
+                              return _t3(context, ar: 'مطلوب', en: 'Required', es: 'Requerido');
+                            }
+                            if (!RegExp(r'^\+[1-9]\d{7,14}$').hasMatch(value)) {
+                              return _t3(
+                                context,
+                                ar: 'لازم يبدأ بـ + وكود الدولة، من غير مسافات (مثال: +19784839704)',
+                                en: 'Must start with + and country code, no spaces (e.g. +19784839704)',
+                                es: 'Debe empezar con + y código de país, sin espacios (ej. +19784839704)',
+                              );
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: AppSizes.sm),
-                GestureDetector(
-                  onTap: () => _pickBirthDate(_passengers[i]),
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: _t3(context, ar: 'تاريخ الميلاد', en: 'Date of birth', es: 'Fecha de nacimiento'),
-                      prefixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
-                    ),
-                    child: Text(
-                      _passengers[i].bornOn == null
-                          ? _t3(context, ar: 'اختار تاريخ', en: 'Select a date', es: 'Elige una fecha')
-                          : '${_passengers[i].bornOn!.year}-${_passengers[i].bornOn!.month.toString().padLeft(2, '0')}-${_passengers[i].bornOn!.day.toString().padLeft(2, '0')}',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSizes.sm),
-                TextFormField(
-                  controller: _passengers[i].emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: _t3(context, ar: 'البريد الإلكتروني', en: 'Email', es: 'Correo electrónico'),
-                  ),
-                  validator: (v) => (v == null || !v.contains('@'))
-                      ? _t3(context, ar: 'بريد إلكتروني غير صحيح', en: 'Invalid email', es: 'Correo inválido')
-                      : null,
-                ),
-                const SizedBox(height: AppSizes.sm),
-                TextFormField(
-                  controller: _passengers[i].phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: _t3(context, ar: 'رقم الجوال', en: 'Phone number', es: 'Teléfono'),
-                    hintText: '+19784839704',
-                    helperText: _t3(
-                      context,
-                      ar: 'لازم يبدأ بـ + وكود الدولة (مثال: +19784839704)',
-                      en: 'Must start with + and the country code (e.g. +19784839704)',
-                      es: 'Debe empezar con + y el código de país (ej. +19784839704)',
-                    ),
-                    helperMaxLines: 2,
-                  ),
-                  validator: (v) {
-                    final value = v?.trim() ?? '';
-                    if (value.isEmpty) {
-                      return _t3(context, ar: 'مطلوب', en: 'Required', es: 'Requerido');
-                    }
-                    if (!RegExp(r'^\+[1-9]\d{7,14}$').hasMatch(value)) {
-                      return _t3(
-                        context,
-                        ar: 'لازم يبدأ بـ + وكود الدولة، من غير مسافات (مثال: +19784839704)',
-                        en: 'Must start with + and country code, no spaces (e.g. +19784839704)',
-                        es: 'Debe empezar con + y código de país, sin espacios (ej. +19784839704)',
-                      );
-                    }
-                    return null;
-                  },
-                ),
+                  );
+                }),
                 const SizedBox(height: AppSizes.lg),
               ],
               if (_errorMessage != null) ...[
@@ -532,9 +620,9 @@ class _DuffelFlightBookingPageState extends ConsumerState<DuffelFlightBookingPag
               Text(
                 _t3(
                   context,
-                  ar: 'هذا حجز حقيقي في بيئة اختبار Duffel — لن يتم خصم أي مبلغ فعلي',
-                  en: 'This is a real booking in the Duffel test environment — no real charge will occur',
-                  es: 'Esta es una reserva real en el entorno de prueba de Duffel — no se realizará ningún cargo',
+                  ar: 'سيتم توجيهك لصفحة دفع آمنة لإدخال بيانات بطاقتك',
+                  en: "You'll be redirected to a secure payment page to enter your card details",
+                  es: 'Serás redirigido a una página de pago segura para introducir tu tarjeta',
                 ),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.textHint, fontSize: 12),

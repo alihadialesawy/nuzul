@@ -4,9 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/currency_provider.dart';
 import 'currency_flag.dart';
 
-/// زر في شريط التطبيق يفتح قائمة لاختيار عملة العرض.
+/// زر يفتح قائمة لاختيار عملة العرض.
+///
+/// له شكلان:
+/// - الافتراضي (footerStyle = false): صغير بنص أبيض، مصمَّم للشريط العلوي
+///   فوق صورة البانر الداكنة.
+/// - footerStyle = true: شريحة (chip) أكبر بخلفية بيضاء وإطار ونص داكن،
+///   بنفس ارتفاع أيقونات التواصل الاجتماعي، لتُقرأ بوضوح على خلفية الفوتر
+///   الفاتحة.
 class CurrencySelectorButton extends ConsumerWidget {
-  const CurrencySelectorButton({super.key});
+  final bool footerStyle;
+
+  const CurrencySelectorButton({super.key, this.footerStyle = false});
 
   static String _label(AppCurrency currency, bool isArabic) {
     switch (currency) {
@@ -41,10 +50,75 @@ class CurrencySelectorButton extends ConsumerWidget {
     }
   }
 
+  List<PopupMenuEntry<AppCurrency>> _buildItems(
+      AppCurrency current,
+      bool isArabic,
+      ) {
+    return AppCurrency.values.map((currency) {
+      return PopupMenuItem(
+        value: currency,
+        child: Row(
+          children: [
+            if (currency == current)
+              const Icon(Icons.check, size: 18)
+            else
+              const SizedBox(width: 18),
+            const SizedBox(width: 8),
+            CurrencyFlag(currency: currency),
+            const SizedBox(width: 8),
+            Text(_label(currency, isArabic)),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final current = ref.watch(selectedCurrencyProvider);
+
+    void onSelected(AppCurrency currency) =>
+        ref.read(selectedCurrencyProvider.notifier).select(currency);
+
+    if (footerStyle) {
+      return PopupMenuButton<AppCurrency>(
+        tooltip: '',
+        position: PopupMenuPosition.over,
+        onSelected: onSelected,
+        itemBuilder: (context) => _buildItems(current, isArabic),
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.black12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CurrencyFlag(currency: current, width: 24, height: 16),
+              const SizedBox(width: 8),
+              Text(
+                current.code,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 20,
+                color: Colors.black54,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return PopupMenuButton<AppCurrency>(
       tooltip: '',
@@ -60,25 +134,8 @@ class CurrencySelectorButton extends ConsumerWidget {
           ),
         ],
       ),
-      onSelected: (currency) =>
-          ref.read(selectedCurrencyProvider.notifier).select(currency),
-      itemBuilder: (context) => AppCurrency.values.map((currency) {
-        return PopupMenuItem(
-          value: currency,
-          child: Row(
-            children: [
-              if (currency == current)
-                const Icon(Icons.check, size: 18)
-              else
-                const SizedBox(width: 18),
-              const SizedBox(width: 8),
-              CurrencyFlag(currency: currency),
-              const SizedBox(width: 8),
-              Text(_label(currency, isArabic)),
-            ],
-          ),
-        );
-      }).toList(),
+      onSelected: onSelected,
+      itemBuilder: (context) => _buildItems(current, isArabic),
     );
   }
 }

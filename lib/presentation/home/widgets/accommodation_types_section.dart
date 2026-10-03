@@ -7,20 +7,25 @@ class _AccommodationType {
   final IconData icon;
   final String labelEn;
   final String labelAr;
+  final Color color;
 
   const _AccommodationType({
     required this.icon,
     required this.labelEn,
     required this.labelAr,
+    required this.color,
   });
 }
 
+// كل نوع إقامة له لون مميز خاص به بدل اللون الموحّد (AppColors.primary)
+// -- نفس فلسفة الألوان المستخدمة في أماكن تانية بالتطبيق (بطاقات
+// المسافرين، شريط التنقل الجانبي).
 const List<_AccommodationType> _types = [
-  _AccommodationType(icon: Icons.hotel, labelEn: 'Hotels', labelAr: 'فنادق'),
-  _AccommodationType(icon: Icons.apartment, labelEn: 'Apartments', labelAr: 'شقق'),
-  _AccommodationType(icon: Icons.villa_outlined, labelEn: 'Villas', labelAr: 'فلل'),
-  _AccommodationType(icon: Icons.cabin_outlined, labelEn: 'Resorts', labelAr: 'منتجعات'),
-  _AccommodationType(icon: Icons.holiday_village_outlined, labelEn: 'Chalets', labelAr: 'شاليهات'),
+  _AccommodationType(icon: Icons.hotel, labelEn: 'Hotels', labelAr: 'فنادق', color: Color(0xFF2E86AB)),
+  _AccommodationType(icon: Icons.apartment, labelEn: 'Apartments', labelAr: 'شقق', color: Color(0xFF27AE60)),
+  _AccommodationType(icon: Icons.villa_outlined, labelEn: 'Villas', labelAr: 'فلل', color: Color(0xFFE67E22)),
+  _AccommodationType(icon: Icons.cabin_outlined, labelEn: 'Resorts', labelAr: 'منتجعات', color: Color(0xFF8E44AD)),
+  _AccommodationType(icon: Icons.holiday_village_outlined, labelEn: 'Chalets', labelAr: 'شاليهات', color: Color(0xFFD6558E)),
 ];
 
 /// قسم "أنواع الإقامة الشائعة". الدوس على نوع بيبلّغ المتصل (عبر
@@ -58,7 +63,7 @@ class AccommodationTypesSection extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.sm),
           SizedBox(
-            height: 90,
+            height: 130,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
@@ -69,26 +74,31 @@ class AccommodationTypesSection extends StatelessWidget {
                 final isSelected = selectedType == type.labelEn;
                 return InkWell(
                   onTap: () => onTypeSelected(type.labelEn),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                  borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    width: 90,
-                    padding: const EdgeInsets.all(AppSizes.sm),
+                    width: 130,
+                    padding: const EdgeInsets.all(AppSizes.md),
                     decoration: BoxDecoration(
+                      color: type.color.withOpacity(isSelected ? 0.16 : 0.08),
                       border: Border.all(
-                        color: isSelected ? AppColors.primary : AppColors.divider,
+                        color: type.color.withOpacity(isSelected ? 0.9 : 0.3),
                         width: isSelected ? 2 : 1,
                       ),
-                      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(type.icon, color: AppColors.primary, size: 26),
-                        const SizedBox(height: 6),
+                        Icon(type.icon, color: type.color, size: 38),
+                        const SizedBox(height: 10),
                         Text(
                           isArabic ? type.labelAr : type.labelEn,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            color: type.color,
+                          ),
                         ),
                       ],
                     ),

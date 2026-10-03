@@ -40,7 +40,7 @@ String _t3(
   }
 }
 
-/// صفحة تعريفية بسيطة عن Safr-AI (قصة المنصة، رسالتها، وأرقامها الأساسية).
+/// صفحة تعريفية بسيطة عن Flynoom (قصة المنصة، رسالتها، وأرقامها الأساسية).
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
@@ -80,34 +80,34 @@ class AboutPage extends StatelessWidget {
           padding: const EdgeInsets.all(AppSizes.lg),
           children: [
             Text(
-              _t3(context, ar: 'عن Safr-AI', en: 'About Safr-AI', es: 'Sobre Safr-AI', tr: 'Safr-AI Hakkında', id: 'Tentang Safr-AI',
-                  hi: 'Safr-AI के बारे में',
-                  ur: 'Safr-AI کے بارے میں',
-                  fr: 'À propos de Safr-AI',
-                  bn: 'Safr-AI সম্পর্কে'),
+              _t3(context, ar: 'عن Flynoom', en: 'About Flynoom', es: 'Sobre Flynoom', tr: 'Flynoom Hakkında', id: 'Tentang Flynoom',
+                  hi: 'Flynoom के बारे में',
+                  ur: 'Flynoom کے بارے میں',
+                  fr: 'À propos de Flynoom',
+                  bn: 'Flynoom সম্পর্কে'),
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: AppSizes.md),
             Text(
               _t3(
                 context,
-                ar: 'Safr-AI منصة سفر تساعدك على حجز الفنادق ورحلات الطيران والسيارات في مكان واحد، '
+                ar: 'Flynoom منصة سفر تساعدك على حجز الفنادق ورحلات الطيران والسيارات في مكان واحد، '
                     'بمساعدة مساعد ذكاء اصطناعي يرشّح لك أفضل الخيارات ويتابع أسعار رحلاتك نيابة عنك.',
-                en: 'Safr-AI is a travel platform that lets you book hotels, flights, and cars all in one '
+                en: 'Flynoom is a travel platform that lets you book hotels, flights, and cars all in one '
                     'place, with an AI assistant that recommends the best options and tracks your flight prices for you.',
-                es: 'Safr-AI es una plataforma de viajes que te permite reservar hoteles, vuelos y coches en '
+                es: 'Flynoom es una plataforma de viajes que te permite reservar hoteles, vuelos y coches en '
                     'un solo lugar, con un asistente de IA que recomienda las mejores opciones y sigue los precios de tus vuelos.',
-                tr: 'Safr-AI, otel, uçuş ve araç rezervasyonlarını tek bir yerden yapmanızı sağlayan bir '
+                tr: 'Flynoom, otel, uçuş ve araç rezervasyonlarını tek bir yerden yapmanızı sağlayan bir '
                     'seyahat platformudur; yapay zeka asistanı size en iyi seçenekleri önerir ve uçuş fiyatlarınızı sizin adınıza takip eder.',
-                id: 'Safr-AI adalah platform perjalanan yang memungkinkan Anda memesan hotel, penerbangan, '
+                id: 'Flynoom adalah platform perjalanan yang memungkinkan Anda memesan hotel, penerbangan, '
                     'dan mobil di satu tempat, dengan asisten AI yang merekomendasikan pilihan terbaik dan melacak harga penerbangan Anda.',
-                hi: 'Safr-AI एक यात्रा प्लेटफ़ॉर्म है जो आपको एक ही जगह पर होटल, उड़ानें और कारें बुक करने '
+                hi: 'Flynoom एक यात्रा प्लेटफ़ॉर्म है जो आपको एक ही जगह पर होटल, उड़ानें और कारें बुक करने '
                     'की सुविधा देता है, साथ ही एक AI सहायक जो सर्वोत्तम विकल्प सुझाता है और आपकी उड़ान की कीमतों पर नज़र रखता है।',
-                ur: 'Safr-AI ایک سفری پلیٹ فارم ہے جو آپ کو ایک ہی جگہ ہوٹل، پروازیں، اور کاریں بک کرنے '
+                ur: 'Flynoom ایک سفری پلیٹ فارم ہے جو آپ کو ایک ہی جگہ ہوٹل، پروازیں، اور کاریں بک کرنے '
                     'کی سہولت دیتا ہے، ساتھ ہی ایک AI معاون جو بہترین اختیارات تجویز کرتا ہے اور آپ کی جانب سے پرواز کی قیمتوں پر نظر رکھتا ہے۔',
-                fr: 'Safr-AI est une plateforme de voyage qui vous permet de réserver hôtels, vols et '
+                fr: 'Flynoom est une plateforme de voyage qui vous permet de réserver hôtels, vols et '
                     'voitures en un seul endroit, avec un assistant IA qui recommande les meilleures options et suit les prix de vos vols pour vous.',
-                bn: 'Safr-AI একটি ভ্রমণ প্ল্যাটফর্ম যা আপনাকে এক জায়গায় হোটেল, ফ্লাইট এবং গাড়ি বুক করতে '
+                bn: 'Flynoom একটি ভ্রমণ প্ল্যাটফর্ম যা আপনাকে এক জায়গায় হোটেল, ফ্লাইট এবং গাড়ি বুক করতে '
                     'সাহায্য করে, একটি AI সহায়কের সাথে যা সেরা বিকল্প সুপারিশ করে এবং আপনার পক্ষে ফ্লাইটের মূল্য ট্র্যাক করে।',
               ),
               style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.5),

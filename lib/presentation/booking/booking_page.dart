@@ -88,8 +88,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
 
     // 1. نفّذ الدفع الفعلي أولاً عبر Stripe قبل أي تسجيل بقاعدة البيانات
     final paymentService = ref.read(paymentServiceProvider);
-    final paymentResult = await paymentService.pay(amount: _totalPrice);
-
+    final paymentResult = await paymentService.pay(amount: _totalPrice, context: context);
     if (!mounted) return;
 
     final paymentSucceeded = paymentResult.when(
@@ -120,6 +119,9 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       guests: widget.guests,
       totalPrice: _totalPrice,
       status: status,
+      hotelName: widget.hotel.name,
+      hotelCity: widget.hotel.city,
+      hotelImages: widget.hotel.images,
     );
 
     if (!mounted) return;

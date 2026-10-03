@@ -4,6 +4,19 @@ import 'package:go_router/go_router.dart';
 import '../../app.dart';
 import '../constants/app_colors.dart';
 import 'app_bottom_nav_bar.dart' show navText;
+import 'sidebar_promo_flash.dart';
+
+/// ألوان مميزة لكل تبويب في شريط التنقل، بنفس فلسفة الألوان المستخدمة
+/// في أماكن تانية بالتطبيق (بروفايل، بيانات المسافرين) -- كل تبويب له
+/// لون ثابت يظهر عليه (كامل لو متفعّل، شفاف جزئيًا لو لأ) بدل اللون
+/// الرمادي/الأساسي الموحّد.
+const List<Color> _navTabColors = [
+  Color(0xFF2E86AB), // الرئيسية - أزرق
+  Color(0xFF27AE60), // المجتمع - أخضر
+  Color(0xFFE67E22), // رحلاتي - برتقالي
+  Color(0xFF8E44AD), // الرسائل - بنفسجي
+  Color(0xFFD6558E), // الحساب - وردي
+];
 
 /// نسخة شريط تنقل جانبي رفيع من AppBottomNavBar، بتظهر بدل الشريط
 /// السفلي على الشاشات العريضة (سطح المكتب/الويب/تابلت بالعرض الأفقي)
@@ -11,6 +24,10 @@ import 'app_bottom_nav_bar.dart' show navText;
 /// عرض المحتوى (نتائج البحث مثلاً) تكبر بدون سكرول زيادة. نفس منطق
 /// التبويبات، الأيقونات، والترجمة بالظبط زي AppBottomNavBar (نفس دالة
 /// navText مستوردة من هناك، من غير تكرار).
+///
+/// المساحة الفاضية أسفل آخر تبويب (Account) بقى فيها SidebarPromoFlash
+/// -- عنصر صغير متحرك (أيقونة نابضة + نص بيتغيّر) للفت الانتباه لعروض
+/// أو تحديثات، بدون ما ياخد مساحة كبيرة من الشريط الضيق.
 class AppNavRail extends StatelessWidget {
   final String currentLocation;
 
@@ -107,7 +124,9 @@ class AppNavRail extends StatelessWidget {
                     children: [
                       Icon(
                         selected == i ? destinations[i].activeIcon : destinations[i].icon,
-                        color: selected == i ? AppColors.primary : AppColors.textSecondary,
+                        color: selected == i
+                            ? _navTabColors[i]
+                            : _navTabColors[i].withOpacity(0.45),
                         size: 24,
                       ),
                       const SizedBox(height: 4),
@@ -118,7 +137,9 @@ class AppNavRail extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 11,
-                          color: selected == i ? AppColors.primary : AppColors.textSecondary,
+                          color: selected == i
+                              ? _navTabColors[i]
+                              : _navTabColors[i].withOpacity(0.45),
                           fontWeight: selected == i ? FontWeight.w600 : FontWeight.normal,
                         ),
                       ),
@@ -126,6 +147,8 @@ class AppNavRail extends StatelessWidget {
                   ),
                 ),
               ),
+            const Divider(height: 20, indent: 16, endIndent: 16),
+            const SidebarPromoFlash(),
           ],
         ),
       ),

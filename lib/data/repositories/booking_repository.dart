@@ -15,6 +15,9 @@ class BookingRepository {
     required int guests,
     required double totalPrice,
     String status = 'pending',
+    String? hotelName,
+    String? hotelCity,
+    List<String>? hotelImages,
   }) async {
     try {
       final userId = _client.auth.currentUser?.id;
@@ -33,6 +36,9 @@ class BookingRepository {
         'guests': guests,
         'total_price': totalPrice,
         'status': status,
+        'hotel_name': hotelName,
+        'hotel_city': hotelCity,
+        'hotel_images': hotelImages,
       })
           .select()
           .single();
@@ -43,8 +49,10 @@ class BookingRepository {
     }
   }
 
-  /// يجيب حجوزات المستخدم مع بيانات الفندق المرتبط (اسم، مدينة، صور)
-  /// عبر join تلقائي بصيغة Supabase: 'hotels(name, city, images)'
+  /// يجيب حجوزات المستخدم -- بيانات الفندق (اسم/مدينة/صور) مخزّنة
+  /// مباشرة على صف الحجز نفسه وقت الإنشاء، فمفيش حاجة لأي join هش
+  /// يعتمد على foreign key مع جدول hotels المحلي (اللي فنادق HotelBeds
+  /// مش موجودة فيه أصلاً).
   Future<Result<List<BookingModel>>> getMyBookings() async {
     try {
       final userId = _client.auth.currentUser?.id;
@@ -54,7 +62,7 @@ class BookingRepository {
 
       final response = await _client
           .from('bookings')
-          .select('*, hotels(name, city, images)')
+          .select()
           .eq('user_id', userId)
           .order('check_in', ascending: false);
 
@@ -83,13 +91,13 @@ class BookingRepository {
   // دوال إدارة الحجوزات (Admin)
   // ---------------------------------------------------------------------
 
-  /// يجيب حجوزات كل الزبائن (بدون فلترة بـ user_id) مع بيانات الفندق
-  /// وبيانات الزبون (الاسم/الهاتف من profiles)، لعرضها بلوحة إدارة الحجوزات.
+  /// يجيب حجوزات كل الزبائن مع بيانات الزبون (من profiles، لسه رابط
+  /// صحيح وموجود). بيانات الفندق بقت مخزّنة مباشرة على صف الحجز.
   Future<Result<List<BookingModel>>> getAllBookingsForAdmin() async {
     try {
       final response = await _client
           .from('bookings')
-          .select('*, hotels(name, city, images), profiles(display_name, full_name, phone)')
+          .select('*, profiles(display_name, full_name, phone)')
           .order('created_at', ascending: false);
 
       final bookings = (response as List)

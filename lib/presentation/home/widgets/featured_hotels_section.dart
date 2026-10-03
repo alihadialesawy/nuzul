@@ -82,7 +82,7 @@ class _FeaturedHotelsList extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.sm),
           SizedBox(
-            height: 220,
+            height: 260,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
@@ -94,7 +94,8 @@ class _FeaturedHotelsList extends StatelessWidget {
                   onTap: () => _openHotelDetails(context, hotel),
                   borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                   child: Container(
-                    width: 190,
+                    width: 180,
+                    height: 260,
                     decoration: BoxDecoration(
                       border: Border.all(color: AppColors.divider),
                       borderRadius: BorderRadius.circular(AppSizes.radiusSm),
@@ -112,6 +113,7 @@ class _FeaturedHotelsList extends StatelessWidget {
                                 ? Image.network(
                               hotel.images.first,
                               fit: BoxFit.cover,
+                              filterQuality: FilterQuality.high,
                               errorBuilder: (_, __, ___) =>
                               const Icon(Icons.hotel, color: AppColors.textHint),
                             )

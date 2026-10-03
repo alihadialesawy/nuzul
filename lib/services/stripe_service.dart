@@ -13,5 +13,5 @@ class StripeService {
   // TODO: استبدل هذا بمفتاحك الفعلي من Stripe Dashboard
   // (Developers > API keys > Publishable key)
   // ابدأ بمفتاح test mode (يبدأ بـ pk_test_...) قبل الإطلاق الفعلي
-  static const String publishableKey = 'PASTE_YOUR_STRIPE_PUBLISHABLE_KEY_HERE';
+  static const String publishableKey = 'pk_test_51TsWrYGT7MA24DVhLX25x8HWAIKEg4OZC8COknNa9keSVKUzEk2sNylg6KkvK0tHFIZN4sgGhstHZp2WyLdTzmLE00Rk6io15a';
 }

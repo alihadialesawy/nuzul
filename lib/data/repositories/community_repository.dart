@@ -6,12 +6,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/utils/result.dart'; // عدّل المسار لو الـ Result type عندك في مكان مختلف
 import '../models/community_post_model.dart';
+import '../models/community_comment_model.dart';
 
 class CommunityRepository {
   final SupabaseClient _client = Supabase.instance.client;
 
   static const _postsTable = 'community_posts';
   static const _likesTable = 'community_post_likes';
+  static const _commentsTable = 'community_post_comments';
   static const _storageBucket = 'community-images';
 
   /// يجيب فييد المنشورات، الأحدث أولاً. لو [destinationCity] مبعوت،
@@ -151,6 +153,75 @@ class CommunityRepository {
         });
       }
       return const Success(null);
+    } catch (e) {
+      return Failure(e.toString());
+    }
+  }
+
+  /// يجيب كل تعليقات منشور معيّن، الأقدم أولاً (ترتيب محادثة طبيعي).
+  /// ملحوظة: بنجيب التعليقات والبروفايلات في استعلامين منفصلين (بدل
+  /// join تلقائي عبر !user_id أو اسم constraint)، لأن
+  /// community_post_comments.user_id مربوط بـ auth.users مش profiles
+  /// مباشرة -- فمفيش أي foreign key يقدر PostgREST يستخدمه لعمل embed
+  /// تلقائي لجدول profiles. نفس أسلوب الإعجابات في fetchFeed بالضبط.
+  Future<Result<List<CommunityCommentModel>>> fetchComments(String postId) async {
+    try {
+      final rows = await _client
+          .from(_commentsTable)
+          .select()
+          .eq('post_id', postId)
+          .order('created_at', ascending: true);
+
+      final commentRows = rows as List;
+
+      Map<String, Map<String, dynamic>> profilesById = {};
+      if (commentRows.isNotEmpty) {
+        final userIds = commentRows.map((r) => r['user_id'] as String).toSet().toList();
+        final profileRows = await _client
+            .from('profiles')
+            .select('id, display_name, avatar_url')
+            .filter('id', 'in', '(${userIds.join(',')})');
+        for (final p in (profileRows as List)) {
+          profilesById[p['id'] as String] = p as Map<String, dynamic>;
+        }
+      }
+
+      final comments = commentRows.map((row) {
+        final profile = profilesById[row['user_id']];
+        return CommunityCommentModel.fromJson({
+          ...row as Map<String, dynamic>,
+          'author_display_name': profile?['display_name'],
+          'author_avatar_url': profile?['avatar_url'],
+        });
+      }).toList();
+
+      return Success(comments);
+    } catch (e) {
+      return Failure(e.toString());
+    }
+  }
+
+  /// يضيف تعليق جديد على منشور. comments_count بيتحدّث تلقائيًا عبر
+  /// trigger في قاعدة البيانات (نفس أسلوب likes_count).
+  Future<Result<CommunityCommentModel>> addComment({
+    required String postId,
+    required String content,
+  }) async {
+    try {
+      final myId = _client.auth.currentUser?.id;
+      if (myId == null) return const Failure('User not authenticated');
+
+      final inserted = await _client
+          .from(_commentsTable)
+          .insert({
+        'post_id': postId,
+        'user_id': myId,
+        'content': content,
+      })
+          .select()
+          .single();
+
+      return Success(CommunityCommentModel.fromJson(inserted));
     } catch (e) {
       return Failure(e.toString());
     }

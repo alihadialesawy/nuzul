@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,8 @@ import '../../core/widgets/loading_view.dart';
 import '../../core/widgets/error_view.dart';
 import '../../data/models/profile_model.dart';
 import '../../data/models/traveler_model.dart';
+import '../../data/models/inbox_item_model.dart';
+import '../../data/repositories/inbox_repository.dart';
 import '../auth/controllers/auth_controller.dart';
 import 'controllers/profile_controller.dart';
 import 'controllers/traveler_controller.dart';
@@ -71,27 +74,28 @@ String _maskEmail(String? email) {
   return '${name.substring(0, 3)}****@${parts[1]}';
 }
 
-/// يحوّل قيمة الجنس المخزّنة ('m'/'f') إلى نص مترجم للعرض — بدل عرض
-/// الحرف الخام أو أي نص حر كان مكتوبًا يدويًا بالحقل القديم.
-String _genderLabel(BuildContext context, String? code) {
-  if (code == 'f') {
-    return _t3(context, ar: 'أنثى', en: 'Female', es: 'Mujer', tr: 'Kadın',
-        id: 'Perempuan',
-        hi: 'महिला',
-        ur: 'عورت',
-        fr: 'Femme',
-        bn: 'নারী');
-  }
-  if (code == 'm') {
-    return _t3(context, ar: 'ذكر', en: 'Male', es: 'Hombre', tr: 'Erkek',
-        id: 'Laki-laki',
-        hi: 'पुरुष',
-        ur: 'مرد',
-        fr: 'Homme',
-        bn: 'পুরুষ');
-  }
-  return '-';
-}
+/// Repository provider مخصص لهذه الصفحة فقط (مسمّى بادئة _profile
+/// عشان يتفادى أي تعارض اسم مع نفس النوع من provider في ملفات تانية
+/// زي my_bookings_page.dart).
+final _profileInboxRepositoryProvider = Provider((ref) => InboxRepository());
+
+/// فييد "الفواتير": نفس مصدر الحجوزات الموحّد المستخدم في Trips/Inbox،
+/// مفلتر على الحجوزات غير الملغاة فقط (فندق/طيران/سيارة).
+final _receiptItemsProvider = FutureProvider<List<InboxItemModel>>((ref) async {
+  final repo = ref.watch(_profileInboxRepositoryProvider);
+  final result = await repo.fetchInboxItems();
+
+  return result.when(
+    success: (items) => items
+        .where((item) =>
+    (item.type == InboxItemType.hotelBooking ||
+        item.type == InboxItemType.flightBooking ||
+        item.type == InboxItemType.carBooking) &&
+        item.status != 'cancelled')
+        .toList(),
+    failure: (message) => throw Exception(message),
+  );
+});
 
 /// ألوان مميزة لكل حقل/قسم في شاشة الحساب، عشان الحقول تتفرّق عن بعضها
 /// بصريًا بسرعة بدل ما تكون كلها بنفس اللون الرمادي الموحّد.
@@ -114,6 +118,414 @@ class _FieldColors {
 
   static const travelerName = Color(0xFF1CA7C4);
   static const travelerDob = Color(0xFFC0392B);
+}
+
+/// ألوان مميزة لكل عنصر في القائمة الجانبية — كل عنصر بيتلوّن كـ"حقل"
+/// مستقل (خلفية شفافة خفيفة + حدود بلون العنصر) بدل نص عادي، عشان
+/// كل قسم يكون له هوية بصرية واضحة وسريعة التمييز.
+const List<Color> _sidebarItemColors = [
+  Color(0xFF2E86AB), // الكل
+  Color(0xFF27AE60), // الطيران
+  Color(0xFFE67E22), // الفنادق
+  Color(0xFF1CA7C4), // طيران + فندق
+  Color(0xFFD6558E), // المحفوظات
+  Color(0xFF1C9C82), // منشوراتي
+  Color(0xFFB8860B), // تنبيهات الأسعار
+  Color(0xFFC0392B), // عملاتي
+  Color(0xFF3B8FD6), // الملف الشخصي
+  Color(0xFF8B5E3C), // بيانات المسافر المتكرر
+  Color(0xFF2FA36B), // إضافة مسافرين
+  Color(0xFFD6773A), // بيانات الاتصال
+  Color(0xFF4C5FD5), // خيارات الفواتير
+];
+
+/// تحديث الإيميل -- دالة مستقلة (مش مرتبطة بأي كلاس) عشان تُستخدم من
+/// أكتر من مكان (القسم الرئيسي وشاشة "بيانات الاتصال" الجديدة) من غير
+/// تكرار الكود.
+Future<void> _updateEmailDialog(BuildContext context, WidgetRef ref, User? user) async {
+  final controller = TextEditingController(text: user?.email ?? '');
+  await showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: Text(_t3(dialogContext, ar: 'تحديث البريد الإلكتروني', en: 'Update email', es: 'Actualizar correo', tr: 'E-postayı güncelle',
+            id: 'Perbarui email',
+            hi: 'ईमेल अपडेट करें',
+            ur: 'ای میل اپ ڈیٹ کریں',
+            fr: 'Mettre à jour l\'e-mail',
+            bn: 'ইমেইল আপডেট করুন')),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.emailAddress,
+          decoration: InputDecoration(
+            labelText: 'Email',
+            prefixIcon: const Icon(Icons.email_outlined, color: _FieldColors.email),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: _FieldColors.email, width: 2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(_t3(dialogContext, ar: 'إلغاء', en: 'Cancel', es: 'Cancelar', tr: 'İptal',
+                id: 'Batal',
+                hi: 'रद्द करें',
+                ur: 'منسوخ کریں',
+                fr: 'Annuler',
+                bn: 'বাতিল করুন')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: _FieldColors.email),
+            onPressed: () async {
+              try {
+                await Supabase.instance.client.auth.updateUser(
+                  UserAttributes(email: controller.text.trim()),
+                );
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      _t3(
+                        context,
+                        ar: 'تم إرسال رسالة تأكيد إلى بريدك الإلكتروني الجديد',
+                        en: 'A confirmation email has been sent to the new address',
+                        es: 'Se envió un correo de confirmación a la nueva dirección',
+                        tr: 'Yeni adrese bir onay e-postası gönderildi',
+                        id: 'Email konfirmasi telah dikirim ke alamat baru',
+                        hi: 'नए पते पर एक पुष्टिकरण ईमेल भेजा गया है',
+                        ur: 'نئے پتے پر ایک تصدیقی ای میل بھیج دی گئی ہے',
+                        fr: 'Un e-mail de confirmation a été envoyé à la nouvelle adresse',
+                        bn: 'নতুন ঠিকানায় একটি নিশ্চিতকরণ ইমেইল পাঠানো হয়েছে',
+                      ),
+                    ),
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(e.toString())),
+                );
+              }
+            },
+            child: Text(_t3(dialogContext, ar: 'حفظ', en: 'Save', es: 'Guardar', tr: 'Kaydet',
+                id: 'Simpan',
+                hi: 'सहेजें',
+                ur: 'محفوظ کریں',
+                fr: 'Enregistrer',
+                bn: 'সংরক্ষণ করুন')),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+/// تعديل رقم الهاتف -- دالة مستقلة، بنفس منطق التوقيع القديم (مش
+/// محتاجة أي تعديل لأنها أصلًا مكنتش بتعتمد على "this").
+Future<void> _editPhone(BuildContext context, WidgetRef ref, ProfileModel? profile, String? userId) async {
+  final controller = TextEditingController(text: profile?.phone ?? '');
+  await showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: Text(_t3(dialogContext, ar: 'ربط رقم الهاتف', en: 'Link phone number', es: 'Vincular teléfono', tr: 'Telefon numarasını bağla',
+            id: 'Tautkan nomor telepon',
+            hi: 'फ़ोन नंबर लिंक करें',
+            ur: 'فون نمبر لنک کریں',
+            fr: 'Lier un numéro de téléphone',
+            bn: 'ফোন নম্বর লিঙ্ক করুন')),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.phone,
+          decoration: InputDecoration(
+            labelText: '+9665xxxxxxxx',
+            prefixIcon: const Icon(Icons.phone_outlined, color: _FieldColors.phone),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: _FieldColors.phone, width: 2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(_t3(dialogContext, ar: 'إلغاء', en: 'Cancel', es: 'Cancelar', tr: 'İptal',
+                id: 'Batal',
+                hi: 'रद्द करें',
+                ur: 'منسوخ کریں',
+                fr: 'Annuler',
+                bn: 'বাতিল করুন')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: _FieldColors.phone),
+            onPressed: () async {
+              final updated = (profile ?? ProfileModel(id: userId!)).copyWith(phone: controller.text);
+              final repo = ref.read(profileRepositoryProvider);
+              final result = await repo.upsertMyProfile(updated);
+              if (!dialogContext.mounted) return;
+              result.when(
+                success: (_) {
+                  ref.invalidate(myProfileProvider);
+                  Navigator.of(dialogContext).pop();
+                },
+                failure: (message) => ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(message)),
+                ),
+              );
+            },
+            child: Text(_t3(dialogContext, ar: 'حفظ', en: 'Save', es: 'Guardar', tr: 'Kaydet',
+                id: 'Simpan',
+                hi: 'सहेजें',
+                ur: 'محفوظ کریں',
+                fr: 'Enregistrer',
+                bn: 'সংরক্ষণ করুন')),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+/// شاشة "بيانات الاتصال" الجديدة (Contact info): bottom sheet بسيط
+/// بيعرض الإيميل والهاتف الحاليين، وبيعيد استخدام نفس منطق التعديل
+/// الموجود بالفعل (_updateEmailDialog و _editPhone) من غير تكرار كود.
+Future<void> _openContactInfoSheet(BuildContext context, WidgetRef ref) async {
+  final user = ref.read(currentUserProvider);
+  final profile = ref.read(myProfileProvider).valueOrNull;
+
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (sheetContext) {
+      return Padding(
+        padding: EdgeInsets.only(
+          left: AppSizes.lg,
+          right: AppSizes.lg,
+          top: AppSizes.lg,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AppSizes.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              _t3(sheetContext, ar: 'بيانات الاتصال', en: 'Contact info', es: 'Información de contacto', tr: 'İletişim bilgileri',
+                  id: 'Info kontak',
+                  hi: 'संपर्क जानकारी',
+                  ur: 'رابطہ کی معلومات',
+                  fr: 'Coordonnées',
+                  bn: 'যোগাযোগের তথ্য'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: AppSizes.md),
+            _SecurityTile(
+              icon: Icons.email_outlined,
+              color: _FieldColors.email,
+              label: _t3(sheetContext, ar: 'البريد الإلكتروني', en: 'Email', es: 'Correo electrónico', tr: 'E-posta',
+                  id: 'Email',
+                  hi: 'ईमेल',
+                  ur: 'ای میل',
+                  fr: 'E-mail',
+                  bn: 'ইমেইল'),
+              value: _maskEmail(user?.email),
+              actionLabel: _t3(sheetContext, ar: 'تحديث', en: 'Update', es: 'Actualizar', tr: 'Güncelle',
+                  id: 'Perbarui',
+                  hi: 'अपडेट करें',
+                  ur: 'اپ ڈیٹ کریں',
+                  fr: 'Mettre à jour',
+                  bn: 'আপডেট করুন'),
+              onAction: () async {
+                Navigator.of(sheetContext).pop();
+                await _updateEmailDialog(context, ref, user);
+              },
+            ),
+            const SizedBox(height: AppSizes.sm),
+            _SecurityTile(
+              icon: Icons.phone_outlined,
+              color: _FieldColors.phone,
+              label: _t3(sheetContext, ar: 'رقم الهاتف', en: 'Phone number', es: 'Número de teléfono', tr: 'Telefon numarası',
+                  id: 'Nomor telepon',
+                  hi: 'फ़ोन नंबर',
+                  ur: 'فون نمبر',
+                  fr: 'Numéro de téléphone',
+                  bn: 'ফোন নম্বর'),
+              value: (profile?.phone?.isNotEmpty ?? false) ? profile!.phone! : '-',
+              actionLabel: _t3(sheetContext, ar: 'تعديل', en: 'Edit', es: 'Editar', tr: 'Düzenle',
+                  id: 'Edit',
+                  hi: 'संपादित करें',
+                  ur: 'ترمیم کریں',
+                  fr: 'Modifier',
+                  bn: 'সম্পাদনা করুন'),
+              filled: true,
+              onAction: () async {
+                Navigator.of(sheetContext).pop();
+                await _editPhone(context, ref, profile, user?.id);
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+/// شاشة "خيارات الفواتير" (Receipt & invoice options): تعرض كل
+/// الحجوزات المؤكدة (فندق/طيران/سيارة) بشكل إيصال، مع رقم مرجعي قابل
+/// للنسخ. ملحوظة: دي مش بتولّد PDF فعلي حاليًا -- دي عرض منظّم لبيانات
+/// الحجز فقط، لحد ما يُبنى نظام فواتير كامل لاحقًا.
+class _ReceiptsPage extends ConsumerWidget {
+  const _ReceiptsPage();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final itemsAsync = ref.watch(_receiptItemsProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_t3(context, ar: 'خيارات الفواتير', en: 'Receipt & invoice options', es: 'Opciones de factura', tr: 'Fatura seçenekleri',
+            id: 'Opsi struk & faktur',
+            hi: 'रसीद और चालान विकल्प',
+            ur: 'رسید اور انوائس کے اختیارات',
+            fr: 'Options de reçu et facture',
+            bn: 'রসিদ ও চালান বিকল্প')),
+      ),
+      body: itemsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Text(
+            _t3(context, ar: 'تعذر تحميل الفواتير', en: 'Could not load receipts', es: 'No se pudieron cargar los recibos', tr: 'Faturalar yüklenemedi',
+                id: 'Gagal memuat struk',
+                hi: 'रसीदें लोड नहीं हो सकीं',
+                ur: 'رسیدیں لوڈ نہیں ہو سکیں',
+                fr: 'Impossible de charger les reçus',
+                bn: 'রসিদ লোড করা যায়নি'),
+          ),
+        ),
+        data: (items) {
+          if (items.isEmpty) {
+            return Center(
+              child: Text(
+                _t3(context, ar: 'لا توجد فواتير بعد', en: 'No receipts yet', es: 'Aún no hay recibos', tr: 'Henüz fatura yok',
+                    id: 'Belum ada struk',
+                    hi: 'अभी तक कोई रसीद नहीं',
+                    ur: 'ابھی تک کوئی رسید نہیں',
+                    fr: 'Aucun reçu pour le moment',
+                    bn: 'এখনও কোনো রসিদ নেই'),
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            );
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(AppSizes.md),
+            itemCount: items.length,
+            itemBuilder: (context, index) => _ReceiptCard(item: items[index]),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ReceiptCard extends StatelessWidget {
+  final InboxItemModel item;
+  const _ReceiptCard({required this.item});
+
+  IconData get _icon {
+    switch (item.type) {
+      case InboxItemType.hotelBooking:
+        return Icons.hotel;
+      case InboxItemType.flightBooking:
+        return Icons.flight_takeoff;
+      case InboxItemType.carBooking:
+        return Icons.directions_car;
+      default:
+        return Icons.receipt_long_outlined;
+    }
+  }
+
+  String _title() {
+    switch (item.type) {
+      case InboxItemType.hotelBooking:
+        return item.hotelBooking?.hotelName ?? '';
+      case InboxItemType.flightBooking:
+        return [item.airline, item.flightNumber]
+            .where((s) => s != null && s.isNotEmpty)
+            .join(' · ');
+      case InboxItemType.carBooking:
+        return item.carName ?? '';
+      default:
+        return '';
+    }
+  }
+
+  String get _reference => item.id;
+
+  String? get _amount {
+    if (item.type == InboxItemType.hotelBooking) {
+      final price = item.hotelBooking?.totalPrice;
+      return price != null ? price.toStringAsFixed(2) : null;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSizes.md),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(_icon, color: AppColors.primary),
+            const SizedBox(width: AppSizes.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_title(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${item.timestamp.year}-${item.timestamp.month.toString().padLeft(2, '0')}-${item.timestamp.day.toString().padLeft(2, '0')}',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                  if (_amount != null) ...[
+                    const SizedBox(height: 2),
+                    Text(_amount!, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                  ],
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.copy_outlined, size: 18),
+              tooltip: _t3(context, ar: 'نسخ رقم المرجع', en: 'Copy reference', es: 'Copiar referencia', tr: 'Referansı kopyala',
+                  id: 'Salin referensi',
+                  hi: 'संदर्भ कॉपी करें',
+                  ur: 'حوالہ کاپی کریں',
+                  fr: 'Copier la référence',
+                  bn: 'রেফারেন্স কপি করুন'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: _reference));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(_t3(context, ar: 'تم النسخ', en: 'Copied', es: 'Copiado', tr: 'Kopyalandı',
+                        id: 'Disalin',
+                        hi: 'कॉपी हो गया',
+                        ur: 'کاپی ہو گیا',
+                        fr: 'Copié',
+                        bn: 'কপি হয়েছে')),
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class ProfilePage extends ConsumerWidget {
@@ -441,6 +853,10 @@ class ProfilePage extends ConsumerWidget {
       displayName: user?.email?.split('@').first ?? '',
       onLogout: () => _logout(context, ref),
       onAddTraveler: () => _addTraveler(context, ref),
+      onContactInfo: () => _openContactInfoSheet(context, ref),
+      onReceipts: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const _ReceiptsPage()),
+      ),
     );
 
     final mainContent = profileAsync.when(
@@ -503,14 +919,21 @@ class _ProfileSidebar extends StatelessWidget {
   final String displayName;
   final VoidCallback onLogout;
   final VoidCallback onAddTraveler;
+  final VoidCallback onContactInfo;
+  final VoidCallback onReceipts;
   const _ProfileSidebar({
     required this.displayName,
     required this.onLogout,
     required this.onAddTraveler,
+    required this.onContactInfo,
+    required this.onReceipts,
   });
 
   @override
   Widget build(BuildContext context) {
+    var colorIndex = 0;
+    Color nextColor() => _sidebarItemColors[colorIndex++ % _sidebarItemColors.length];
+
     return SizedBox(
       width: 260,
       child: SingleChildScrollView(
@@ -550,38 +973,38 @@ class _ProfileSidebar extends StatelessWidget {
                 hi: 'सभी',
                 ur: 'تمام',
                 fr: 'Tout',
-                bn: 'সব'), onTap: () => context.push(AppRoutes.myBookings)),
+                bn: 'সব'), color: nextColor(), onTap: () => context.push(AppRoutes.myBookings)),
             _SidebarItem(label: _t3(context, ar: 'الطيران', en: 'Flights', es: 'Vuelos', tr: 'Uçuşlar',
                 id: 'Penerbangan',
                 hi: 'उड़ानें',
                 ur: 'پروازیں',
                 fr: 'Vols',
-                bn: 'ফ্লাইট'), onTap: () => context.push(AppRoutes.myBookings)),
+                bn: 'ফ্লাইট'), color: nextColor(), onTap: () => context.push(AppRoutes.myBookings)),
             _SidebarItem(label: _t3(context, ar: 'الفنادق', en: 'Hotels', es: 'Hoteles', tr: 'Oteller',
                 id: 'Hotel',
                 hi: 'होटल',
                 ur: 'ہوٹلز',
                 fr: 'Hôtels',
-                bn: 'হোটেল'), onTap: () => context.push(AppRoutes.myBookings)),
+                bn: 'হোটেল'), color: nextColor(), onTap: () => context.push(AppRoutes.myBookings)),
             _SidebarItem(label: _t3(context, ar: 'طيران + فندق', en: 'Flight + Hotel', es: 'Vuelo + Hotel', tr: 'Uçuş + Otel',
                 id: 'Penerbangan + Hotel',
                 hi: 'उड़ान + होटल',
                 ur: 'پرواز + ہوٹل',
                 fr: 'Vol + Hôtel',
-                bn: 'ফ্লাইট + হোটেল'), onTap: () => context.push(AppRoutes.home)),
+                bn: 'ফ্লাইট + হোটেল'), color: nextColor(), onTap: () => context.push(AppRoutes.home)),
             const SizedBox(height: AppSizes.sm),
             _SidebarItem(label: _t3(context, ar: 'المحفوظات', en: 'Saved', es: 'Guardado', tr: 'Kaydedilenler',
                 id: 'Tersimpan',
                 hi: 'सहेजा गया',
                 ur: 'محفوظ شدہ',
                 fr: 'Enregistré',
-                bn: 'সংরক্ষিত'), bold: true, onTap: () => _comingSoon(context)),
+                bn: 'সংরক্ষিত'), color: nextColor(), bold: true, onTap: () => _comingSoon(context)),
             _SidebarItem(label: _t3(context, ar: 'منشوراتي', en: 'My posts', es: 'Mis publicaciones', tr: 'Gönderilerim',
                 id: 'Postingan saya',
                 hi: 'मेरी पोस्ट',
                 ur: 'میری پوسٹس',
                 fr: 'Mes publications',
-                bn: 'আমার পোস্ট'), bold: true, onTap: () => _comingSoon(context)),
+                bn: 'আমার পোস্ট'), color: nextColor(), bold: true, onTap: () => _comingSoon(context)),
             _SidebarItem(
               label: _t3(context, ar: 'تنبيهات الأسعار', en: 'Price alerts', es: 'Alertas de precio', tr: 'Fiyat uyarıları',
                   id: 'Peringatan harga',
@@ -589,6 +1012,7 @@ class _ProfileSidebar extends StatelessWidget {
                   ur: 'قیمت الرٹس',
                   fr: 'Alertes de prix',
                   bn: 'মূল্য সতর্কতা'),
+              color: nextColor(),
               bold: true,
               onTap: () => context.push(AppRoutes.aiTravel),
             ),
@@ -599,6 +1023,7 @@ class _ProfileSidebar extends StatelessWidget {
                   ur: 'میرے کوائنز',
                   fr: 'Mes points',
                   bn: 'আমার কয়েন'),
+              color: nextColor(),
               bold: true,
               onTap: () => context.push(AppRoutes.myCoins),
             ),
@@ -616,6 +1041,7 @@ class _ProfileSidebar extends StatelessWidget {
                   ur: 'پروفائل',
                   fr: 'Profil',
                   bn: 'প্রোফাইল'),
+              color: nextColor(),
               selected: true,
               onTap: () {},
             ),
@@ -624,7 +1050,7 @@ class _ProfileSidebar extends StatelessWidget {
                 hi: 'बार-बार यात्रा करने वाले की जानकारी',
                 ur: 'بار بار سفر کرنے والے کی معلومات',
                 fr: 'Informations voyageur fréquent',
-                bn: 'ঘন ঘন ভ্রমণকারীর তথ্য'), onTap: () => _comingSoon(context)),
+                bn: 'ঘন ঘন ভ্রমণকারীর তথ্য'), color: nextColor(), onTap: () => _comingSoon(context)),
             _SidebarItem(
               label: _t3(context, ar: 'إضافة مسافرين', en: 'Add Travelers', es: 'Añadir viajeros', tr: 'Yolcu ekle',
                   id: 'Tambah wisatawan',
@@ -632,26 +1058,29 @@ class _ProfileSidebar extends StatelessWidget {
                   ur: 'مسافر شامل کریں',
                   fr: 'Ajouter des voyageurs',
                   bn: 'ভ্রমণকারী যোগ করুন'),
+              color: nextColor(),
               onTap: onAddTraveler,
             ),
-            _SidebarItem(label: _t3(context, ar: 'بيانات الاتصال', en: 'Contact info', es: 'Información de contacto', tr: 'İletişim bilgileri',
-                id: 'Info kontak',
-                hi: 'संपर्क जानकारी',
-                ur: 'رابطہ کی معلومات',
-                fr: 'Coordonnées',
-                bn: 'যোগাযোগের তথ্য'), onTap: () => _comingSoon(context)),
-            _SidebarItem(label: _t3(context, ar: 'خيارات الفواتير', en: 'Receipt & invoice options', es: 'Opciones de factura', tr: 'Fatura seçenekleri',
-                id: 'Opsi struk & faktur',
-                hi: 'रसीद और चालान विकल्प',
-                ur: 'رسید اور انوائس کے اختیارات',
-                fr: 'Options de reçu et facture',
-                bn: 'রসিদ ও চালান বিকল্প'), onTap: () => _comingSoon(context)),
-            _SidebarItem(label: _t3(context, ar: 'الاشتراكات', en: 'Subscriptions', es: 'Suscripciones', tr: 'Abonelikler',
-                id: 'Langganan',
-                hi: 'सदस्यताएं',
-                ur: 'سبسکرپشنز',
-                fr: 'Abonnements',
-                bn: 'সাবস্ক্রিপশন'), onTap: () => _comingSoon(context)),
+            _SidebarItem(
+              label: _t3(context, ar: 'بيانات الاتصال', en: 'Contact info', es: 'Información de contacto', tr: 'İletişim bilgileri',
+                  id: 'Info kontak',
+                  hi: 'संपर्क जानकारी',
+                  ur: 'رابطہ کی معلومات',
+                  fr: 'Coordonnées',
+                  bn: 'যোগাযোগের তথ্য'),
+              color: nextColor(),
+              onTap: onContactInfo,
+            ),
+            _SidebarItem(
+              label: _t3(context, ar: 'خيارات الفواتير', en: 'Receipt & invoice options', es: 'Opciones de factura', tr: 'Fatura seçenekleri',
+                  id: 'Opsi struk & faktur',
+                  hi: 'रसीद और चालान विकल्प',
+                  ur: 'رسید اور انوائس کے اختیارات',
+                  fr: 'Options de reçu et facture',
+                  bn: 'রসিদ ও চালান বিকল্প'),
+              color: nextColor(),
+              onTap: onReceipts,
+            ),
             const Divider(height: AppSizes.lg),
             _SidebarItem(
               label: _t3(context, ar: 'تسجيل الخروج', en: 'Sign out', es: 'Cerrar sesión', tr: 'Çıkış yap',
@@ -689,6 +1118,7 @@ class _SidebarItem extends StatelessWidget {
   final bool bold;
   final bool selected;
   final bool danger;
+  final Color? color;
   final VoidCallback onTap;
 
   const _SidebarItem({
@@ -697,10 +1127,15 @@ class _SidebarItem extends StatelessWidget {
     this.bold = false,
     this.selected = false,
     this.danger = false,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    // زرار "تسجيل الخروج" (danger) بيفضل بلونه الأحمر التحذيري
+    // المعتاد، من غير أي تلوين إضافي.
+    final itemColor = danger ? Colors.red : (color ?? AppColors.textSecondary);
+
     return InkWell(
       onTap: () {
         final scaffold = Scaffold.maybeOf(context);
@@ -709,18 +1144,24 @@ class _SidebarItem extends StatelessWidget {
         }
         onTap();
       },
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         width: double.infinity,
-        color: selected ? AppColors.primary.withOpacity(0.08) : null,
-        padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: danger ? null : itemColor.withOpacity(selected ? 0.14 : 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: danger
+              ? null
+              : Border.all(color: itemColor.withOpacity(selected ? 0.4 : 0.22)),
+        ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: bold || selected ? FontWeight.w600 : FontWeight.normal,
-            color: danger
-                ? Colors.red
-                : (selected ? AppColors.primary : AppColors.textSecondary),
+            color: itemColor,
           ),
         ),
       ),
@@ -778,7 +1219,7 @@ class _ProfileMainContent extends ConsumerWidget {
                               ur: 'اپ ڈیٹ کریں',
                               fr: 'Mettre à jour',
                               bn: 'আপডেট করুন'),
-                          onAction: () => _updateEmail(context, ref),
+                          onAction: () => _updateEmailDialog(context, ref, user),
                         ),
                         second: _SecurityTile(
                           icon: Icons.phone_outlined,
@@ -860,7 +1301,7 @@ class _ProfileMainContent extends ConsumerWidget {
                               ur: 'دیکھیں',
                               fr: 'Voir',
                               bn: 'দেখুন'),
-                          onAction: () => _signOutOtherDevices(context, ref),
+                          onAction: () => _comingSoon(context),
                         ),
                       ),
                       const SizedBox(height: AppSizes.md),
@@ -1037,7 +1478,7 @@ class _ProfileMainContent extends ConsumerWidget {
                               ur: 'جنس',
                               fr: 'Genre',
                               bn: 'লিঙ্গ'),
-                          value: _genderLabel(context, profile?.gender),
+                          value: (profile?.gender?.isNotEmpty ?? false) ? profile!.gender! : '-',
                         ),
                         second: _InfoTile(
                           icon: Icons.badge_outlined,
@@ -1190,159 +1631,6 @@ class _ProfileMainContent extends ConsumerWidget {
     );
   }
 
-  Future<void> _updateEmail(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController(text: user?.email ?? '');
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(_t3(dialogContext, ar: 'تحديث البريد الإلكتروني', en: 'Update email', es: 'Actualizar correo', tr: 'E-postayı güncelle',
-              id: 'Perbarui email',
-              hi: 'ईमेल अपडेट करें',
-              ur: 'ای میل اپ ڈیٹ کریں',
-              fr: 'Mettre à jour l\'e-mail',
-              bn: 'ইমেইল আপডেট করুন')),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: 'Email',
-              prefixIcon: const Icon(Icons.email_outlined, color: _FieldColors.email),
-              focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: _FieldColors.email, width: 2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(_t3(dialogContext, ar: 'إلغاء', en: 'Cancel', es: 'Cancelar', tr: 'İptal',
-                  id: 'Batal',
-                  hi: 'रद्द करें',
-                  ur: 'منسوخ کریں',
-                  fr: 'Annuler',
-                  bn: 'বাতিল করুন')),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: _FieldColors.email),
-              onPressed: () async {
-                try {
-                  await Supabase.instance.client.auth.updateUser(
-                    UserAttributes(email: controller.text.trim()),
-                  );
-                  if (!dialogContext.mounted) return;
-                  Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        _t3(
-                          context,
-                          ar: 'تم إرسال رسالة تأكيد إلى بريدك الإلكتروني الجديد',
-                          en: 'A confirmation email has been sent to the new address',
-                          es: 'Se envió un correo de confirmación a la nueva dirección',
-                          tr: 'Yeni adrese bir onay e-postası gönderildi',
-                          id: 'Email konfirmasi telah dikirim ke alamat baru',
-                          hi: 'नए पते पर एक पुष्टिकरण ईमेल भेजा गया है',
-                          ur: 'نئے پتے پر ایک تصدیقی ای میل بھیج دی گئی ہے',
-                          fr: 'Un e-mail de confirmation a été envoyé à la nouvelle adresse',
-                          bn: 'নতুন ঠিকানায় একটি নিশ্চিতকরণ ইমেইল পাঠানো হয়েছে',
-                        ),
-                      ),
-                    ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    SnackBar(content: Text(e.toString())),
-                  );
-                }
-              },
-              child: Text(_t3(dialogContext, ar: 'حفظ', en: 'Save', es: 'Guardar', tr: 'Kaydet',
-                  id: 'Simpan',
-                  hi: 'सहेजें',
-                  ur: 'محفوظ کریں',
-                  fr: 'Enregistrer',
-                  bn: 'সংরক্ষণ করুন')),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// يسجّل خروج المستخدم من كل الأجهزة الأخرى المسجّل دخولها بنفس
-  /// الحساب (ما عدا هذا الجهاز الحالي) -- خيار أمان سريع وجاهز فعليًا
-  /// بمكتبة Supabase (SignOutScope.others) بدون أي بنية خلفية إضافية،
-  /// بعكس قائمة أجهزة مفصّلة لكل جهاز لحاله (يحتاج Edge Function جديدة
-  /// بصلاحيات Admin لاحقًا لو احتجنا تفاصيل كل جهاز أو إلغاء واحد
-  /// بالتحديد).
-  Future<void> _signOutOtherDevices(BuildContext context, WidgetRef ref) async {
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(_t3(dialogContext, ar: 'تسجيل خروج من باقي الأجهزة', en: 'Sign out other devices', es: 'Cerrar sesión en otros dispositivos', tr: 'Diğer cihazlardan çıkış yap',
-              id: 'Keluar dari perangkat lain',
-              hi: 'अन्य डिवाइसों से साइन आउट करें',
-              ur: 'دیگر ڈیوائسز سے سائن آؤٹ کریں',
-              fr: 'Se déconnecter des autres appareils',
-              bn: 'অন্যান্য ডিভাইস থেকে সাইন আউট করুন')),
-          content: Text(_t3(dialogContext,
-              ar: 'رح يتم تسجيل خروجك من كل الأجهزة الأخرى المسجّل دخولها بحسابك، ما عدا هذا الجهاز. تأكيد؟',
-              en: "You'll be signed out on every other device currently signed in to your account, except this one. Continue?",
-              es: 'Se cerrará tu sesión en todos los demás dispositivos donde hayas iniciado sesión, excepto en este. ¿Continuar?',
-              tr: 'Bu cihaz hariç, hesabınızda oturum açık olan tüm diğer cihazlardan çıkış yapılacak. Devam edilsin mi?',
-              id: 'Anda akan keluar dari semua perangkat lain yang sedang masuk ke akun Anda, kecuali perangkat ini. Lanjutkan?',
-              hi: 'इस डिवाइस को छोड़कर, आपके खाते में साइन इन बाकी सभी डिवाइसों से आपको साइन आउट कर दिया जाएगा। जारी रखें?',
-              ur: 'اس ڈیوائس کے سوا آپ کے اکاؤنٹ میں سائن ان باقی تمام ڈیوائسز سے آپ کو سائن آؤٹ کر دیا جائے گا۔ جاری رکھیں؟',
-              fr: 'Vous serez déconnecté de tous les autres appareils actuellement connectés à votre compte, sauf celui-ci. Continuer ?',
-              bn: 'এই ডিভাইসটি ছাড়া আপনার অ্যাকাউন্টে সাইন ইন থাকা বাকি সব ডিভাইস থেকে আপনাকে সাইন আউট করে দেওয়া হবে। চালিয়ে যাবেন?')),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(_t3(dialogContext, ar: 'إلغاء', en: 'Cancel', es: 'Cancelar', tr: 'İptal',
-                  id: 'Batal',
-                  hi: 'रद्द करें',
-                  ur: 'منسوخ کریں',
-                  fr: 'Annuler',
-                  bn: 'বাতিল করুন')),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: _FieldColors.devices),
-              onPressed: () async {
-                try {
-                  await Supabase.instance.client.auth.signOut(scope: SignOutScope.others);
-                  if (!dialogContext.mounted) return;
-                  Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(_t3(context, ar: 'تم تسجيل الخروج من باقي الأجهزة', en: 'Signed out on other devices', es: 'Sesión cerrada en los demás dispositivos', tr: 'Diğer cihazlardan çıkış yapıldı',
-                          id: 'Berhasil keluar dari perangkat lain',
-                          hi: 'अन्य डिवाइसों से साइन आउट हो गया',
-                          ur: 'دیگر ڈیوائسز سے سائن آؤٹ ہو گیا',
-                          fr: 'Déconnecté des autres appareils',
-                          bn: 'অন্যান্য ডিভাইস থেকে সাইন আউট হয়েছে')),
-                    ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    SnackBar(content: Text(e.toString())),
-                  );
-                }
-              },
-              child: Text(_t3(dialogContext, ar: 'تأكيد', en: 'Confirm', es: 'Confirmar', tr: 'Onayla',
-                  id: 'Konfirmasi',
-                  hi: 'पुष्टि करें',
-                  ur: 'تصدیق کریں',
-                  fr: 'Confirmer',
-                  bn: 'নিশ্চিত করুন')),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _setPassword(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController();
     await showDialog(
@@ -1401,70 +1689,6 @@ class _ProfileMainContent extends ConsumerWidget {
                     SnackBar(content: Text(e.toString())),
                   );
                 }
-              },
-              child: Text(_t3(dialogContext, ar: 'حفظ', en: 'Save', es: 'Guardar', tr: 'Kaydet',
-                  id: 'Simpan',
-                  hi: 'सहेजें',
-                  ur: 'محفوظ کریں',
-                  fr: 'Enregistrer',
-                  bn: 'সংরক্ষণ করুন')),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _editPhone(BuildContext context, WidgetRef ref, ProfileModel? profile, String? userId) async {
-    final controller = TextEditingController(text: profile?.phone ?? '');
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(_t3(dialogContext, ar: 'ربط رقم الهاتف', en: 'Link phone number', es: 'Vincular teléfono', tr: 'Telefon numarasını bağla',
-              id: 'Tautkan nomor telepon',
-              hi: 'फ़ोन नंबर लिंक करें',
-              ur: 'فون نمبر لنک کریں',
-              fr: 'Lier un numéro de téléphone',
-              bn: 'ফোন নম্বর লিঙ্ক করুন')),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-              labelText: '+9665xxxxxxxx',
-              prefixIcon: const Icon(Icons.phone_outlined, color: _FieldColors.phone),
-              focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: _FieldColors.phone, width: 2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(_t3(dialogContext, ar: 'إلغاء', en: 'Cancel', es: 'Cancelar', tr: 'İptal',
-                  id: 'Batal',
-                  hi: 'रद्द करें',
-                  ur: 'منسوخ کریں',
-                  fr: 'Annuler',
-                  bn: 'বাতিল করুন')),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: _FieldColors.phone),
-              onPressed: () async {
-                final updated = (profile ?? ProfileModel(id: userId!)).copyWith(phone: controller.text);
-                final repo = ref.read(profileRepositoryProvider);
-                final result = await repo.upsertMyProfile(updated);
-                if (!dialogContext.mounted) return;
-                result.when(
-                  success: (_) {
-                    ref.invalidate(myProfileProvider);
-                    Navigator.of(dialogContext).pop();
-                  },
-                  failure: (message) => ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    SnackBar(content: Text(message)),
-                  ),
-                );
               },
               child: Text(_t3(dialogContext, ar: 'حفظ', en: 'Save', es: 'Guardar', tr: 'Kaydet',
                   id: 'Simpan',
@@ -1599,7 +1823,7 @@ class _ProfileMainContent extends ConsumerWidget {
   }
 
   Future<void> _editPersonalInfo(BuildContext context, WidgetRef ref, ProfileModel? profile, String? userId) async {
-    String? selectedGender = (profile?.gender == 'm' || profile?.gender == 'f') ? profile!.gender : null;
+    final genderController = TextEditingController(text: profile?.gender ?? '');
     final displayNameController = TextEditingController(text: profile?.displayName ?? '');
     final nationalityController = TextEditingController(text: profile?.nationality ?? '');
     final cityController = TextEditingController(text: profile?.cityOfResidence ?? '');
@@ -1609,9 +1833,7 @@ class _ProfileMainContent extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (sheetContext, setSheetState) {
-            return Padding(
+        return Padding(
           padding: EdgeInsets.only(
             left: AppSizes.lg,
             right: AppSizes.lg,
@@ -1633,8 +1855,8 @@ class _ProfileMainContent extends ConsumerWidget {
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 ),
                 const SizedBox(height: AppSizes.md),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedGender,
+                TextField(
+                  controller: genderController,
                   decoration: InputDecoration(
                     labelText: _t3(sheetContext, ar: 'الجنس', en: 'Gender', es: 'Género', tr: 'Cinsiyet',
                         id: 'Jenis kelamin',
@@ -1648,11 +1870,6 @@ class _ProfileMainContent extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  items: [
-                    DropdownMenuItem(value: 'm', child: Text(_genderLabel(sheetContext, 'm'))),
-                    DropdownMenuItem(value: 'f', child: Text(_genderLabel(sheetContext, 'f'))),
-                  ],
-                  onChanged: (v) => setSheetState(() => selectedGender = v),
                 ),
                 const SizedBox(height: AppSizes.sm),
                 TextField(
@@ -1728,7 +1945,7 @@ class _ProfileMainContent extends ConsumerWidget {
                   child: ElevatedButton(
                     onPressed: () async {
                       final updated = (profile ?? ProfileModel(id: userId!)).copyWith(
-                        gender: selectedGender ?? '',
+                        gender: genderController.text,
                         displayName: displayNameController.text,
                         nationality: nationalityController.text,
                         cityOfResidence: cityController.text,
@@ -1758,8 +1975,6 @@ class _ProfileMainContent extends ConsumerWidget {
               ],
             ),
           ),
-        );
-            },
         );
       },
     );
@@ -1990,38 +2205,44 @@ class _SecurityTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.25)),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 16, color: color),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(value, style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 8),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
+          const SizedBox(width: 8),
+          Flexible(
             child: filled
                 ? ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: color),
               onPressed: onAction,
-              child: Text(actionLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(actionLabel),
             )
                 : TextButton(
               style: TextButton.styleFrom(foregroundColor: color),
               onPressed: onAction,
-              child: Text(actionLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(actionLabel),
             ),
           ),
         ],

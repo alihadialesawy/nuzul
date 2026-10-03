@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
@@ -47,7 +48,7 @@ class _FaqItem {
 }
 
 /// شاشة دعم العملاء: هيدر + تبويبات فئات + أسئلة شائعة قابلة للطي + كلمات
-/// دلالية سريعة + شريط وصول سريع (شات/اتصال/طوارئ) تحت.
+/// دلالية سريعة + شريط وصول سريع (شات/اتصال/FAQ/طوارئ) تحت.
 class SupportPage extends StatefulWidget {
   const SupportPage({super.key});
 
@@ -57,23 +58,137 @@ class SupportPage extends StatefulWidget {
 
 class _SupportPageState extends State<SupportPage> {
   String _activeCategory = 'flights';
+  final _scrollController = ScrollController();
+  final _faqSectionKey = GlobalKey();
 
-  void _comingSoon(BuildContext context) {
+  // TODO: استبدل ده بالإيميل ورقم الدعم الرسمي بمجرد ما يتوفروا.
+  // لحد ما ده يحصل، الأزرار شغالة فعليًا وبتفتح تطبيق البريد/الاتصال
+  // بالجهاز، لكن بقيم مؤقتة placeholder.
+  static const String _supportEmail = 'support@flynoom.com';
+  static const String _supportPhone = '+10000000000';
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openEmail(BuildContext context) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: _supportEmail,
+      query: 'subject=${Uri.encodeComponent('Flynoom support')}',
+    );
+    final launched = await launchUrl(uri);
+    if (!launched && context.mounted) {
+      _showLaunchError(context);
+    }
+  }
+
+  Future<void> _openPhone(BuildContext context) async {
+    final uri = Uri(scheme: 'tel', path: _supportPhone);
+    final launched = await launchUrl(uri);
+    if (!launched && context.mounted) {
+      _showLaunchError(context);
+    }
+  }
+
+  void _showLaunchError(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(_t3(
           context,
-          ar: 'قريبًا',
-          en: 'Coming soon',
-          es: 'Próximamente',
-          tr: 'Yakında',
-          id: 'Segera hadir',
-          hi: 'जल्द आ रहा है',
-          ur: 'جلد آ رہا ہے',
-          fr: 'Bientôt disponible',
-          bn: 'শীঘ্রই আসছে',
+          ar: 'تعذر فتح التطبيق المطلوب على هذا الجهاز',
+          en: 'Could not open the required app on this device',
+          es: 'No se pudo abrir la aplicación en este dispositivo',
+          tr: 'Bu cihazda gerekli uygulama açılamadı',
+          id: 'Tidak dapat membuka aplikasi yang diperlukan di perangkat ini',
+          hi: 'इस डिवाइस पर आवश्यक ऐप नहीं खोला जा सका',
+          ur: 'اس ڈیوائس پر مطلوبہ ایپ نہیں کھولی جا سکی',
+          fr: 'Impossible d\'ouvrir l\'application requise sur cet appareil',
+          bn: 'এই ডিভাইসে প্রয়োজনীয় অ্যাপ খোলা যায়নি',
         )),
-        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _scrollToFaq() {
+    final context = _faqSectionKey.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _showEmergencyDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_t3(
+          dialogContext,
+          ar: 'مساعدة طارئة',
+          en: 'Emergency assistance',
+          es: 'Asistencia de emergencia',
+          tr: 'Acil yardım',
+          id: 'Bantuan darurat',
+          hi: 'आपातकालीन सहायता',
+          ur: 'ہنگامی امداد',
+          fr: 'Assistance d\'urgence',
+          bn: 'জরুরি সহায়তা',
+        )),
+        content: Text(
+          _t3(
+            dialogContext,
+            ar: 'لو إنت في خطر فوري، تواصل أولًا مع خدمات الطوارئ المحلية في مكانك. لو المشكلة عاجلة وتخص حجزًا قائمًا (رحلة فايتتك، طيران اتلغى، أو محتاج تغيّر إقامتك)، تواصل مع فريق الدعم عبر البريد الإلكتروني وهنرد عليك بأسرع ما يمكن.',
+            en: 'If you are in immediate danger, contact local emergency services where you are first. For an urgent issue with an existing booking — a missed connection, a cancelled flight, or needing to change your stay — reach our support team by email and we\'ll respond as quickly as we can.',
+            es: 'Si estás en peligro inmediato, contacta primero con los servicios de emergencia locales. Para un problema urgente con una reserva existente, contacta a nuestro equipo de soporte por correo y responderemos lo antes posible.',
+            tr: 'Acil bir tehlike içindeyseniz önce bulunduğunuz yerdeki yerel acil servislerle iletişime geçin. Mevcut bir rezervasyonla ilgili acil bir durum için (kaçırılan aktarma, iptal edilen uçuş, konaklama değişikliği) destek ekibimize e-posta ile ulaşın, en kısa sürede yanıt vereceğiz.',
+            id: 'Jika Anda dalam bahaya langsung, hubungi dulu layanan darurat setempat. Untuk masalah mendesak terkait pemesanan yang sudah ada, hubungi tim dukungan kami melalui email dan kami akan merespons secepat mungkin.',
+            hi: 'अगर आप तत्काल खतरे में हैं, तो पहले अपने स्थान की स्थानीय आपातकालीन सेवाओं से संपर्क करें। किसी मौजूदा बुकिंग से जुड़ी तत्काल समस्या के लिए हमारी सहायता टीम को ईमेल करें, हम जल्द से जल्द जवाब देंगे।',
+            ur: 'اگر آپ فوری خطرے میں ہیں تو پہلے اپنے مقام کی مقامی ہنگامی خدمات سے رابطہ کریں۔ کسی موجودہ بکنگ سے متعلق فوری مسئلے کے لیے ای میل کے ذریعے ہماری سپورٹ ٹیم سے رابطہ کریں، ہم جلد از جلد جواب دیں گے۔',
+            fr: 'Si vous êtes en danger immédiat, contactez d\'abord les services d\'urgence locaux. Pour un problème urgent lié à une réservation existante, contactez notre équipe d\'assistance par e-mail et nous répondrons dès que possible.',
+            bn: 'আপনি যদি তাৎক্ষণিক বিপদে থাকেন, প্রথমে আপনার এলাকার স্থানীয় জরুরি সেবার সাথে যোগাযোগ করুন। বিদ্যমান বুকিং সংক্রান্ত জরুরি সমস্যার জন্য ইমেইলের মাধ্যমে আমাদের সহায়তা দলের সাথে যোগাযোগ করুন, আমরা যত দ্রুত সম্ভব সাড়া দেব।',
+          ),
+          style: const TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(_t3(
+              dialogContext,
+              ar: 'إغلاق',
+              en: 'Close',
+              es: 'Cerrar',
+              tr: 'Kapat',
+              id: 'Tutup',
+              hi: 'बंद करें',
+              ur: 'بند کریں',
+              fr: 'Fermer',
+              bn: 'বন্ধ করুন',
+            )),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _openEmail(context);
+            },
+            child: Text(_t3(
+              dialogContext,
+              ar: 'إرسال بريد إلكتروني',
+              en: 'Send email',
+              es: 'Enviar correo',
+              tr: 'E-posta gönder',
+              id: 'Kirim email',
+              hi: 'ईमेल भेजें',
+              ur: 'ای میل بھیجیں',
+              fr: 'Envoyer un e-mail',
+              bn: 'ইমেইল পাঠান',
+            )),
+          ),
+        ],
       ),
     );
   }
@@ -456,7 +571,7 @@ class _SupportPageState extends State<SupportPage> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = ['hotels', 'flights', 'flightHotel', 'carRentals'];
+    final categories = ['hotels', 'flights', 'flightHotel'];
     final faqs = _faqsFor(context, _activeCategory);
     final tags = _tagsFor(_activeCategory);
 
@@ -464,6 +579,7 @@ class _SupportPageState extends State<SupportPage> {
       appBar: const AppBanner(),
       body: SafeArea(
         child: ListView(
+          controller: _scrollController,
           padding: EdgeInsets.zero,
           children: [
             // هيدر بعنوان "Customer support"
@@ -504,6 +620,7 @@ class _SupportPageState extends State<SupportPage> {
             Padding(
               padding: const EdgeInsets.all(AppSizes.lg),
               child: Column(
+                key: _faqSectionKey,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -659,7 +776,7 @@ class _SupportPageState extends State<SupportPage> {
                         fr: 'Chat',
                         bn: 'চ্যাট',
                       ),
-                      onTap: () => _comingSoon(context),
+                      onTap: () => _openEmail(context),
                     ),
                   ),
                   const VerticalDivider(width: 1),
@@ -678,7 +795,7 @@ class _SupportPageState extends State<SupportPage> {
                         fr: 'Appelez-nous',
                         bn: 'আমাদের কল করুন',
                       ),
-                      onTap: () => _comingSoon(context),
+                      onTap: () => _openPhone(context),
                     ),
                   ),
                   const VerticalDivider(width: 1),
@@ -686,7 +803,7 @@ class _SupportPageState extends State<SupportPage> {
                     child: _QuickAccessButton(
                       icon: Icons.info_outline,
                       label: 'FAQ',
-                      onTap: () => _comingSoon(context),
+                      onTap: _scrollToFaq,
                     ),
                   ),
                   const VerticalDivider(width: 1),
@@ -705,7 +822,7 @@ class _SupportPageState extends State<SupportPage> {
                         fr: 'Assistance d\'urgence',
                         bn: 'জরুরি সহায়তা',
                       ),
-                      onTap: () => _comingSoon(context),
+                      onTap: () => _showEmergencyDialog(context),
                     ),
                   ),
                 ],

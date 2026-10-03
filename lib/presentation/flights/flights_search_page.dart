@@ -344,19 +344,12 @@ class _FlightOfferCard extends StatelessWidget {
             const SizedBox(height: AppSizes.sm),
             Row(
               children: [
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_formatTime(offer.departureTime), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text(
-                        offer.originCity,
-                        style: const TextStyle(color: AppColors.textSecondary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_formatTime(offer.departureTime), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(offer.originCity, style: const TextStyle(color: AppColors.textSecondary)),
+                  ],
                 ),
                 Expanded(
                   child: Column(
@@ -372,20 +365,12 @@ class _FlightOfferCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(_formatTime(offer.arrivalTime), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text(
-                        offer.destinationCity,
-                        style: const TextStyle(color: AppColors.textSecondary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                      ),
-                    ],
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(_formatTime(offer.arrivalTime), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(offer.destinationCity, style: const TextStyle(color: AppColors.textSecondary)),
+                  ],
                 ),
               ],
             ),

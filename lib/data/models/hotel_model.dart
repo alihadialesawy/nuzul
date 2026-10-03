@@ -67,6 +67,8 @@
     final estimatedRating = ratingMatch != null
         ? double.tryParse(ratingMatch.group(1)!) ?? 3.0
         : 3.0;
+    // صورة الفندق الحقيقية من hotelbeds-search أولاً، وإلا البديل الممرَّر.
+    final mainImage = (json['imageUrl'] as String?) ?? imageUrl;
 
     return HotelModel(
       id: 'hb_${json['code']}',
@@ -77,7 +79,7 @@
       pricePerNight: double.tryParse('${json['minRate']}') ?? 0.0,
       rating: estimatedRating.clamp(1.0, 5.0),
       reviewCount: 0,
-      images: imageUrl != null ? [imageUrl] : const [],
+      images: (mainImage != null && mainImage.isNotEmpty) ? [mainImage] : const [],
       amenities: const [],
       propertyType: categoryName.isNotEmpty ? categoryName : 'Hotels',
       neighborhood: json['zoneName'] as String?,
