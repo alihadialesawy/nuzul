@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/repositories/duffel_repository.dart';
@@ -24,12 +25,24 @@ FutureProvider.family<List<DuffelFlightOffer>, Map<String, dynamic>>(
     final destinationResult = await repo.searchPlaces(destinationQuery);
 
     final originCode = originResult.when(
-      success: (places) => places.isNotEmpty ? places.first.iataCode : null,
-      failure: (_) => null,
+      success: (places) {
+        debugPrint('DEBUG searchPlaces("$originQuery") -> ${places.length} places: ${places.map((p) => p.iataCode).toList()}');
+        return places.isNotEmpty ? places.first.iataCode : null;
+      },
+      failure: (message) {
+        debugPrint('DEBUG searchPlaces("$originQuery") FAILED: $message');
+        return null;
+      },
     );
     final destinationCode = destinationResult.when(
-      success: (places) => places.isNotEmpty ? places.first.iataCode : null,
-      failure: (_) => null,
+      success: (places) {
+        debugPrint('DEBUG searchPlaces("$destinationQuery") -> ${places.length} places: ${places.map((p) => p.iataCode).toList()}');
+        return places.isNotEmpty ? places.first.iataCode : null;
+      },
+      failure: (message) {
+        debugPrint('DEBUG searchPlaces("$destinationQuery") FAILED: $message');
+        return null;
+      },
     );
 
     if (originCode == null) {

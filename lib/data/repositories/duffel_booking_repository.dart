@@ -1,15 +1,21 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../core/utils/result.dart';
 import '../../core/utils/error_translator.dart';
 
-/// يتعامل مع جدول duffel_bookings بـ Supabase — تسجيل حجز رحلة Duffel
-/// حقيقية بعد ما Duffel يأكد الـ Order فعليًا.
+/// يخزّن الحجز بجدول duffel_bookings بعد نجاحه فعليًا عند Duffel.
+/// مستخدمة من DuffelFlightBookingPage بعد نجاح DuffelRepository.createOrder().
+///
+/// ملاحظة: نسخة سابقة بهذي الجلسة أضافت دالة createOrder() هنا بشكل
+/// مكرر (تعتمد على PassengerModel من ملف تم حذفه لاحقًا) — أُزيلت
+/// لأن المستدعي الوحيد لها (flight_booking_page.dart) انحذف كمان.
+/// الدالة الوحيدة المتبقية هنا (saveBooking) هي المستخدمة فعليًا.
 class DuffelBookingRepository {
   final SupabaseClient _client = Supabase.instance.client;
 
   Future<Result<void>> saveBooking({
     required String duffelOrderId,
-    String? bookingReference,
+    required String? bookingReference,
     required String offerId,
     required String airline,
     required String flightNumber,
@@ -24,7 +30,7 @@ class DuffelBookingRepository {
     try {
       final userId = _client.auth.currentUser?.id;
       if (userId == null) {
-        return const Failure('يجب تسجيل الدخول أولاً لإتمام الحجز');
+        return const Failure('يجب تسجيل الدخول لحفظ الحجز.');
       }
 
       await _client.from('duffel_bookings').insert({

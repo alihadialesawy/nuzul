@@ -1,0 +1,73 @@
+{
+  "@@locale": "id",
+  "appName": "Nuzul",
+  "login": "Masuk",
+  "register": "Buat Akun",
+  "email": "Email",
+  "password": "Kata Sandi",
+  "confirmPassword": "Konfirmasi Kata Sandi",
+  "fullName": "Nama Lengkap",
+  "noAccountRegister": "Belum punya akun? Buat akun baru",
+  "haveAccountLogin": "Sudah punya akun? Masuk",
+  "whereTo": "Mau ke mana? (Kota)",
+  "guests": "tamu",
+  "search": "Cari",
+  "bookNow": "Pesan Sekarang",
+  "myBookings": "Pesanan Saya",
+  "searchPrompt": "Cari kota untuk melihat hotel yang tersedia",
+  "noResults": "Tidak ada hotel yang tersedia untuk kota dan tanggal ini",
+  "searching": "Mencari hotel...",
+  "errorLoadResults": "Gagal memuat hasil, periksa koneksi Anda",
+  "retry": "Coba Lagi",
+  "perNight": "malam",
+  "confirmBookingTitle": "Konfirmasi Pemesanan",
+  "checkInLabel": "Check-in",
+  "checkOutLabel": "Check-out",
+  "nightsLabel": "Jumlah Malam",
+  "guestsLabel": "Jumlah Tamu",
+  "totalLabel": "Total",
+  "confirmBookingButton": "Konfirmasi Pemesanan",
+  "paymentNote": "Catatan: Pembayaran sebenarnya melalui Stripe akan ditambahkan pada langkah berikutnya — pemesanan ini saat ini tercatat dengan status \"menunggu\".",
+  "bookingSuccessTitle": "Permintaan Pemesanan Terkirim",
+  "ok": "OK",
+  "statusPending": "Menunggu",
+  "statusConfirmed": "Dikonfirmasi",
+  "statusCancelled": "Dibatalkan",
+  "cancelBooking": "Batalkan Pemesanan",
+  "cancelBookingConfirmTitle": "Batalkan Pemesanan",
+  "cancelBookingUndo": "Batalkan Tindakan",
+  "cancelBookingYes": "Ya, Batalkan",
+  "noBookingsYet": "Anda belum memiliki pesanan",
+  "loadingBookings": "Memuat pesanan Anda...",
+  "errorLoadBookings": "Gagal memuat pesanan, periksa koneksi Anda",
+  "loginRequired": "Anda harus masuk terlebih dahulu",
+  "roomTypeSectionTitle": "Tipe Kamar",
+  "roomQueen": "Kamar Queen (2 tempat tidur)",
+  "roomKing": "Kamar King",
+  "roomStudioSuite": "Suite Studio",
+  "aboutAreaTitle": "Tentang Area Sekitar",
+  "aboutAreaDescription": "Hotel ini memiliki lokasi yang sangat baik di {city}, dekat dengan landmark utama dan fasilitas penting, menjadikannya pilihan yang praktis untuk berkeliling selama menginap Anda.",
+  "@aboutAreaDescription": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentSucceededBookingError": "Pembayaran berhasil, tetapi terjadi kesalahan saat mencatat pesanan: {message}",
+  "@paymentSucceededBookingError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingCreateError": "Terjadi kesalahan saat mencatat pesanan: {message}",
+  "@bookingCreateError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
+}

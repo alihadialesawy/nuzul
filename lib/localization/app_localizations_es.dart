@@ -155,4 +155,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String aboutAreaDescription(String city) {
     return 'Este hotel está ubicado en una zona privilegiada de $city, cerca de los principales lugares de interés y servicios esenciales, lo que lo convierte en una opción práctica para moverte fácilmente durante tu estancia.';
   }
+
+  @override
+  String paymentSucceededBookingError(String message) {
+    return 'El pago se realizó con éxito, pero ocurrió un error al registrar la reserva: $message';
+  }
+
+  @override
+  String bookingCreateError(String message) {
+    return 'Ocurrió un error al registrar la reserva: $message';
+  }
 }

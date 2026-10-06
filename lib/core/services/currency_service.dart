@@ -28,6 +28,7 @@ class CurrencyService {
     'PKR',
     'INR',
     'COP',
+    'BDT',
   ];
 
   static final String _endpoint =
@@ -47,6 +48,7 @@ class CurrencyService {
     'PKR': 278,
     'INR': 86,
     'COP': 4100,
+    'BDT': 122,
   };
 
   /// يرجع خريطة أسعار الصرف مقابل الدولار، مثال: {'EUR': 0.92, 'CAD': 1.38, ...}
@@ -77,14 +79,3 @@ class CurrencyService {
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
-

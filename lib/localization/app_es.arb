@@ -1,7 +1,6 @@
 {
   "@@locale": "es",
   "appName": "Safr-AI",
-
   "login": "Iniciar sesión",
   "register": "Crear cuenta",
   "email": "Correo electrónico",
@@ -10,7 +9,6 @@
   "fullName": "Nombre completo",
   "noAccountRegister": "¿No tienes una cuenta? Crear cuenta nueva",
   "haveAccountLogin": "¿Ya tienes una cuenta? Iniciar sesión",
-
   "whereTo": "¿A dónde vas? (Ciudad)",
   "guests": "Huéspedes",
   "search": "Buscar",
@@ -22,7 +20,6 @@
   "errorLoadResults": "No se pudieron cargar los resultados, revisa tu conexión",
   "retry": "Reintentar",
   "perNight": "por noche",
-
   "confirmBookingTitle": "Confirmar reserva",
   "checkInLabel": "Fecha de entrada",
   "checkOutLabel": "Fecha de salida",
@@ -33,7 +30,6 @@
   "paymentNote": "Nota: el pago real a través de Stripe se añadirá en el siguiente paso — esta reserva se registra actualmente con estado \"pendiente\".",
   "bookingSuccessTitle": "Solicitud de reserva enviada",
   "ok": "Aceptar",
-
   "statusPending": "Pendiente",
   "statusConfirmed": "Confirmada",
   "statusCancelled": "Cancelada",
@@ -44,7 +40,6 @@
   "noBookingsYet": "Aún no tienes ninguna reserva",
   "loadingBookings": "Cargando tus reservas...",
   "errorLoadBookings": "No se pudieron cargar las reservas, revisa tu conexión",
-
   "loginRequired": "Debes iniciar sesión primero",
   "roomTypeSectionTitle": "Tipo de habitación",
   "roomQueen": "Habitación con dos camas queen",
@@ -55,6 +50,22 @@
   "@aboutAreaDescription": {
     "placeholders": {
       "city": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentSucceededBookingError": "El pago se realizó con éxito, pero ocurrió un error al registrar la reserva: {message}",
+  "@paymentSucceededBookingError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingCreateError": "Ocurrió un error al registrar la reserva: {message}",
+  "@bookingCreateError": {
+    "placeholders": {
+      "message": {
         "type": "String"
       }
     }

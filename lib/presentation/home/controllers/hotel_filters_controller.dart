@@ -94,6 +94,15 @@ class HotelFiltersNotifier extends StateNotifier<HotelFilterState> {
     }
   }
 
+  /// يحدد نوع عقار واحد بالظبط (استبدال كامل، مش إضافة/إزالة زي
+  /// [toggle]) -- يُستخدم لما المستخدم يدوس على زرار نوع عقار جاهز
+  /// (زي "Hotels"/"Apartments" في قسم "أنواع الإقامة الشائعة")
+  /// ومحتاجين الفلتر يتطبّق فورًا بنوع واحد بس، بغض النظر عن أي أنواع
+  /// كانت متعلّمة قبل كده.
+  void setPropertyTypeOnly(String label) {
+    state = state.copyWith(propertyTypes: {label});
+  }
+
   bool isSelected(HotelFilterGroup group, String label) {
     switch (group) {
       case HotelFilterGroup.popular:

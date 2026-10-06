@@ -5,24 +5,42 @@ import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/app_banner.dart';
 import '../../core/widgets/app_footer.dart';
 
-/// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني).
+/// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني/تركي/إندونيسي/هندي/أوردو/فرنسي/بنغالي).
 String _t3(
     BuildContext context, {
       required String ar,
       required String en,
       required String es,
+      required String tr,
+      required String id,
+      required String hi,
+      required String ur,
+      required String fr,
+      required String bn,
     }) {
   switch (Localizations.localeOf(context).languageCode) {
     case 'ar':
       return ar;
     case 'es':
       return es;
+    case 'tr':
+      return tr;
+    case 'id':
+      return id;
+    case 'hi':
+      return hi;
+    case 'ur':
+      return ur;
+    case 'fr':
+      return fr;
+    case 'bn':
+      return bn;
     default:
       return en;
   }
 }
 
-/// صفحة تعريفية بسيطة عن Safr-AI (قصة المنصة، رسالتها، وأرقامها الأساسية).
+/// صفحة تعريفية بسيطة عن Flynoom (قصة المنصة، رسالتها، وأرقامها الأساسية).
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
@@ -31,15 +49,27 @@ class AboutPage extends StatelessWidget {
     final stats = [
       (
       value: '76+',
-      label: _t3(context, ar: 'فندق شريك', en: 'Partner hotels', es: 'Hoteles asociados'),
+      label: _t3(context, ar: 'فندق شريك', en: 'Partner hotels', es: 'Hoteles asociados', tr: 'Ortak otel', id: 'Hotel mitra',
+          hi: 'साझेदार होटल',
+          ur: 'پارٹنر ہوٹلز',
+          fr: 'Hôtels partenaires',
+          bn: 'অংশীদার হোটেল'),
       ),
       (
-      value: '3',
-      label: _t3(context, ar: 'لغات مدعومة', en: 'Languages supported', es: 'Idiomas admitidos'),
+      value: '9',
+      label: _t3(context, ar: 'لغات مدعومة', en: 'Languages supported', es: 'Idiomas admitidos', tr: 'Desteklenen dil', id: 'Bahasa yang didukung',
+          hi: 'समर्थित भाषाएं',
+          ur: 'معاون زبانیں',
+          fr: 'Langues prises en charge',
+          bn: 'সমর্থিত ভাষা'),
       ),
       (
       value: '24/7',
-      label: _t3(context, ar: 'دعم متواصل', en: 'Ongoing support', es: 'Soporte continuo'),
+      label: _t3(context, ar: 'دعم متواصل', en: 'Ongoing support', es: 'Soporte continuo', tr: 'Kesintisiz destek', id: 'Dukungan berkelanjutan',
+          hi: 'निरंतर सहायता',
+          ur: 'مسلسل معاونت',
+          fr: 'Assistance continue',
+          bn: 'অবিরাম সহায়তা'),
       ),
     ];
 
@@ -50,19 +80,35 @@ class AboutPage extends StatelessWidget {
           padding: const EdgeInsets.all(AppSizes.lg),
           children: [
             Text(
-              _t3(context, ar: 'عن Safr-AI', en: 'About Safr-AI', es: 'Sobre Safr-AI'),
+              _t3(context, ar: 'عن Flynoom', en: 'About Flynoom', es: 'Sobre Flynoom', tr: 'Flynoom Hakkında', id: 'Tentang Flynoom',
+                  hi: 'Flynoom के बारे में',
+                  ur: 'Flynoom کے بارے میں',
+                  fr: 'À propos de Flynoom',
+                  bn: 'Flynoom সম্পর্কে'),
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: AppSizes.md),
             Text(
               _t3(
                 context,
-                ar: 'Safr-AI منصة سفر عربية بتساعدك تحجز فنادق ورحلات طيران وسيارات في مكان واحد، '
-                    'بمساعدة مساعد ذكاء اصطناعي بيرشّحلك أفضل الخيارات ويتابع أسعار رحلاتك نيابة عنك.',
-                en: 'Safr-AI is a travel platform that lets you book hotels, flights, and cars all in one '
+                ar: 'Flynoom منصة سفر تساعدك على حجز الفنادق ورحلات الطيران والسيارات في مكان واحد، '
+                    'بمساعدة مساعد ذكاء اصطناعي يرشّح لك أفضل الخيارات ويتابع أسعار رحلاتك نيابة عنك.',
+                en: 'Flynoom is a travel platform that lets you book hotels, flights, and cars all in one '
                     'place, with an AI assistant that recommends the best options and tracks your flight prices for you.',
-                es: 'Safr-AI es una plataforma de viajes que te permite reservar hoteles, vuelos y coches en '
+                es: 'Flynoom es una plataforma de viajes que te permite reservar hoteles, vuelos y coches en '
                     'un solo lugar, con un asistente de IA que recomienda las mejores opciones y sigue los precios de tus vuelos.',
+                tr: 'Flynoom, otel, uçuş ve araç rezervasyonlarını tek bir yerden yapmanızı sağlayan bir '
+                    'seyahat platformudur; yapay zeka asistanı size en iyi seçenekleri önerir ve uçuş fiyatlarınızı sizin adınıza takip eder.',
+                id: 'Flynoom adalah platform perjalanan yang memungkinkan Anda memesan hotel, penerbangan, '
+                    'dan mobil di satu tempat, dengan asisten AI yang merekomendasikan pilihan terbaik dan melacak harga penerbangan Anda.',
+                hi: 'Flynoom एक यात्रा प्लेटफ़ॉर्म है जो आपको एक ही जगह पर होटल, उड़ानें और कारें बुक करने '
+                    'की सुविधा देता है, साथ ही एक AI सहायक जो सर्वोत्तम विकल्प सुझाता है और आपकी उड़ान की कीमतों पर नज़र रखता है।',
+                ur: 'Flynoom ایک سفری پلیٹ فارم ہے جو آپ کو ایک ہی جگہ ہوٹل، پروازیں، اور کاریں بک کرنے '
+                    'کی سہولت دیتا ہے، ساتھ ہی ایک AI معاون جو بہترین اختیارات تجویز کرتا ہے اور آپ کی جانب سے پرواز کی قیمتوں پر نظر رکھتا ہے۔',
+                fr: 'Flynoom est une plateforme de voyage qui vous permet de réserver hôtels, vols et '
+                    'voitures en un seul endroit, avec un assistant IA qui recommande les meilleures options et suit les prix de vos vols pour vous.',
+                bn: 'Flynoom একটি ভ্রমণ প্ল্যাটফর্ম যা আপনাকে এক জায়গায় হোটেল, ফ্লাইট এবং গাড়ি বুক করতে '
+                    'সাহায্য করে, একটি AI সহায়কের সাথে যা সেরা বিকল্প সুপারিশ করে এবং আপনার পক্ষে ফ্লাইটের মূল্য ট্র্যাক করে।',
               ),
               style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.5),
             ),
@@ -107,19 +153,35 @@ class AboutPage extends StatelessWidget {
             ),
             const SizedBox(height: AppSizes.xl),
             Text(
-              _t3(context, ar: 'رسالتنا', en: 'Our mission', es: 'Nuestra misión'),
+              _t3(context, ar: 'رسالتنا', en: 'Our mission', es: 'Nuestra misión', tr: 'Misyonumuz', id: 'Misi Kami',
+                  hi: 'हमारा उद्देश्य',
+                  ur: 'ہمارا مشن',
+                  fr: 'Notre mission',
+                  bn: 'আমাদের লক্ষ্য'),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: AppSizes.sm),
             Text(
               _t3(
                 context,
-                ar: 'بنسهّل رحلة التخطيط للسفر من أولها لآخرها للمسافر العربي، بأسعار شفافة وبدون رسوم '
-                    'مخفية، ودعم متاح على مدار الساعة.',
+                ar: 'نسهّل رحلة التخطيط للسفر من بدايتها إلى نهايتها، بأسعار شفافة دون رسوم خفية، '
+                    'ودعم متاح على مدار الساعة.',
                 en: "We're simplifying the entire trip-planning journey with transparent pricing, no hidden "
                     'fees, and round-the-clock support.',
                 es: 'Simplificamos todo el proceso de planificación de viajes con precios transparentes, sin '
                     'cargos ocultos y soporte las 24 horas.',
+                tr: 'Şeffaf fiyatlandırma, gizli ücret olmadan ve kesintisiz destekle tüm seyahat planlama '
+                    'sürecini basitleştiriyoruz.',
+                id: 'Kami menyederhanakan seluruh perjalanan perencanaan perjalanan dengan harga transparan, '
+                    'tanpa biaya tersembunyi, dan dukungan sepanjang waktu.',
+                hi: 'हम पारदर्शी मूल्य निर्धारण, बिना किसी छुपे शुल्क के, और चौबीसों घंटे सहायता के साथ '
+                    'यात्रा योजना की पूरी प्रक्रिया को आसान बना रहे हैं।',
+                ur: 'ہم شفاف قیمتوں، بغیر کسی چھپی ہوئی فیس کے، اور چوبیس گھنٹے معاونت کے ساتھ سفری '
+                    'منصوبہ بندی کے پورے سفر کو آسان بنا رہے ہیں۔',
+                fr: 'Nous simplifions tout le parcours de planification de voyage avec des prix transparents, '
+                    'sans frais cachés, et une assistance disponible 24h/24 et 7j/7.',
+                bn: 'আমরা স্বচ্ছ মূল্য, কোনো লুকানো ফি ছাড়াই, এবং সার্বক্ষণিক সহায়তার মাধ্যমে সম্পূর্ণ '
+                    'ভ্রমণ পরিকল্পনার যাত্রাকে সহজ করে তুলছি।',
               ),
               style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.5),
             ),

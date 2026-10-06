@@ -86,6 +86,9 @@ class _FlagPainter extends CustomPainter {
       case AppCurrency.cop:
         _paintColombia(canvas, size);
         break;
+      case AppCurrency.bdt:
+        _paintBangladesh(canvas, size);
+        break;
     }
   }
 
@@ -351,6 +354,20 @@ class _FlagPainter extends CustomPainter {
     );
     canvas.drawRect(
       Rect.fromLTWH(0, size.height * 0.75, size.width, size.height / 4),
+      red,
+    );
+  }
+
+  void _paintBangladesh(Canvas canvas, Size size) {
+    final green = Paint()..color = const Color(0xFF006A4E);
+    canvas.drawRect(Offset.zero & size, green);
+
+    // الدائرة الحمراء تتزحزح شوية لجهة الصاري (يسار) عن مركز العلم
+    // بالضبط زي العلم الأصلي، مش في نص العلم تمامًا.
+    final red = Paint()..color = const Color(0xFFF42A41);
+    canvas.drawCircle(
+      Offset(size.width * 0.45, size.height / 2),
+      size.height * 0.32,
       red,
     );
   }

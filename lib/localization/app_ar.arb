@@ -1,7 +1,6 @@
 {
   "@@locale": "ar",
   "appName": "نزل",
-
   "login": "تسجيل الدخول",
   "register": "إنشاء حساب",
   "email": "البريد الإلكتروني",
@@ -10,7 +9,6 @@
   "fullName": "الاسم الكامل",
   "noAccountRegister": "ليس لديك حساب؟ إنشاء حساب جديد",
   "haveAccountLogin": "لديك حساب بالفعل؟ تسجيل الدخول",
-
   "whereTo": "وين رايح؟ (المدينة)",
   "guests": "ضيوف",
   "search": "بحث",
@@ -22,7 +20,6 @@
   "errorLoadResults": "تعذر تحميل النتائج، تحقق من الاتصال",
   "retry": "إعادة المحاولة",
   "perNight": "الليلة",
-
   "confirmBookingTitle": "تأكيد الحجز",
   "checkInLabel": "تاريخ الوصول",
   "checkOutLabel": "تاريخ المغادرة",
@@ -33,7 +30,6 @@
   "paymentNote": "ملاحظة: الدفع الفعلي عبر Stripe سيُضاف بالخطوة القادمة — هذا الحجز حاليًا يُسجَّل بحالة \"قيد الانتظار\".",
   "bookingSuccessTitle": "تم إرسال طلب الحجز",
   "ok": "حسنًا",
-
   "statusPending": "قيد الانتظار",
   "statusConfirmed": "مؤكد",
   "statusCancelled": "ملغى",
@@ -44,19 +40,34 @@
   "noBookingsYet": "ماعندك أي حجوزات لحد الآن",
   "loadingBookings": "يحمّل حجوزاتك...",
   "errorLoadBookings": "تعذر تحميل الحجوزات، تحقق من الاتصال",
-
- "loginRequired": "يجب تسجيل الدخول أولاً",
-   "roomTypeSectionTitle": "نوع الغرفة",
-   "roomQueen": "غرفة كوين سريرين",
-   "roomKing": "غرفة كينج",
-   "roomStudioSuite": "جناح استوديو",
-   "aboutAreaTitle": "عن المنطقة المحيطة",
-   "aboutAreaDescription": "يقع هذا الفندق في موقع مميز داخل {city}، بالقرب من أبرز المعالم والمرافق الحيوية، مما يجعله خيارًا مناسبًا للتنقل بسهولة خلال إقامتك.",
-   "@aboutAreaDescription": {
-     "placeholders": {
-       "city": {
-         "type": "String"
-       }
-     }
-   }
- }
+  "loginRequired": "يجب تسجيل الدخول أولاً",
+  "roomTypeSectionTitle": "نوع الغرفة",
+  "roomQueen": "غرفة كوين سريرين",
+  "roomKing": "غرفة كينج",
+  "roomStudioSuite": "جناح استوديو",
+  "aboutAreaTitle": "عن المنطقة المحيطة",
+  "aboutAreaDescription": "يقع هذا الفندق في موقع مميز داخل {city}، بالقرب من أبرز المعالم والمرافق الحيوية، مما يجعله خيارًا مناسبًا للتنقل بسهولة خلال إقامتك.",
+  "@aboutAreaDescription": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentSucceededBookingError": "تمت عملية الدفع بنجاح، لكن حدث خطأ أثناء تسجيل الحجز: {message}",
+  "@paymentSucceededBookingError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingCreateError": "حدث خطأ أثناء تسجيل الحجز: {message}",
+  "@bookingCreateError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
+}

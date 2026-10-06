@@ -9,14 +9,22 @@ import '../../../data/repositories/price_watch_repository.dart';
 
 final hotelRepositoryProvider = Provider((ref) => HotelRepository());
 
-/// يبحث عن الفنادق ويرجع القائمة، أو يرمي استثناء برسالة عربية واضحة
-/// (AsyncValue.error بيلتقطه تلقائيًا ويعرضه عبر ErrorView بالشاشة)
+/// يبحث عن الفنادق (بحث حي حقيقي عبر HotelBeds) ويرجع القائمة، أو يرمي
+/// استثناء برسالة عربية واضحة (AsyncValue.error بيلتقطه تلقائيًا
+/// ويعرضه عبر ErrorView بالشاشة).
+///
+/// ملاحظة: `params['destinationCode']` لازم يكون كود وجهة رسمي بتاع
+/// HotelBeds (زي BCN، RUH)، مش اسم مدينة حر — لازم ييجي من شاشة
+/// اختيار/autocomplete وجهة مبنية على جدول hotelbeds_destinations،
+/// مش من حقل نص حر. `params['cityLabel']` هو الاسم المعروض فقط
+/// (للعرض في النتائج لو destinationName رجع فاضي من HotelBeds).
 final searchResultsProvider =
 FutureProvider.family<List<HotelModel>, Map<String, dynamic>>((ref, params) async {
   final repo = ref.watch(hotelRepositoryProvider);
 
   final result = await repo.searchHotels(
-    city: params['city'],
+    destinationCode: params['destinationCode'],
+    cityLabel: params['cityLabel'] ?? params['destinationCode'],
     checkIn: params['checkIn'],
     checkOut: params['checkOut'],
     guests: params['guests'],

@@ -2,9 +2,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/error_translator.dart';
 
-/// نتيجة مبسّطة لفندق واحد من HotelBeds (Booking API الأساسي بيرجّع بس
-/// الاسم والسعر والتصنيف — مفيش صور ولا مرافق في الرد ده؛ دي بتيجي من
-/// Content API منفصلة لسه محتاجة نبنيها كخطوة تالية).
+/// نتيجة مبسّطة لفندق واحد من HotelBeds.
+///
+/// Booking API الأساسي بيرجّع الاسم والسعر والتصنيف بس. الـ Edge Function
+/// (hotelbeds-search) بتضيف عليها [imageUrl]: الصورة الرئيسية للفندق،
+/// متجابة من Content API في طلب واحد لكل النتائج، ومعدّية على
+/// hotelbeds-image-proxy عشان تشتغل على الويب.
+///
+/// [imageUrl] ممكن تكون null (لو طلب الصور فشل/اتأخر، أو الفندق مالوش
+/// صور) — لازم الواجهة تعرض صورة بديلة في الحالة دي.
+///
+/// معرض الصور الكامل في صفحة تفاصيل الفندق لسه بيتجاب لحظيًا عبر
+/// getHotelImages (عدد صور أكبر).
 class HotelBedsResult {
   final String code;
   final String name;
@@ -14,6 +23,7 @@ class HotelBedsResult {
   final String currency;
   final double minRate;
   final double maxRate;
+  final String? imageUrl;
 
   HotelBedsResult({
     required this.code,
@@ -24,9 +34,11 @@ class HotelBedsResult {
     required this.currency,
     required this.minRate,
     required this.maxRate,
+    this.imageUrl,
   });
 
   factory HotelBedsResult.fromJson(Map<String, dynamic> json) {
+    final rawImage = json['imageUrl'] as String?;
     return HotelBedsResult(
       code: '${json['code']}',
       name: json['name'] as String? ?? '',
@@ -36,6 +48,7 @@ class HotelBedsResult {
       currency: json['currency'] as String? ?? 'EUR',
       minRate: (json['minRate'] as num?)?.toDouble() ?? 0,
       maxRate: (json['maxRate'] as num?)?.toDouble() ?? 0,
+      imageUrl: (rawImage != null && rawImage.isNotEmpty) ? rawImage : null,
     );
   }
 }
@@ -140,6 +153,30 @@ class HotelBedsRepository {
       },
       failure: (message) => Future.value(Failure(message)),
     );
+  }
+
+  /// يجيب روابط الصور الفعلية لفندق معيّن عبر HotelBeds Content API.
+  /// الكود المطلوب هنا هو الكود الخام بتاع HotelBeds (بدون بادئة hb_)،
+  /// يعني لازم تشيل البادئة من HotelModel.id قبل ما تنادي الدالة دي
+  /// (مثال: 'hb_135812' → '135812').
+  Future<Result<List<String>>> getHotelImages(String code) async {
+    try {
+      final response = await _client.functions.invoke(
+        'hotelbeds-hotel-images',
+        body: {'code': code},
+      );
+
+      if (response.status != 200) {
+        final error = (response.data is Map) ? response.data['error'] : null;
+        return Failure(error?.toString() ?? 'تعذر جلب صور الفندق');
+      }
+
+      final data = response.data as Map<String, dynamic>;
+      final images = List<String>.from(data['images'] ?? []);
+      return Success(images);
+    } catch (e) {
+      return Failure(ErrorTranslator.translate(e));
+    }
   }
 
   String _formatDate(DateTime d) =>

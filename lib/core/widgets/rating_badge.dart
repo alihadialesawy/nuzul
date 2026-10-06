@@ -55,19 +55,33 @@ class RatingBadge extends StatelessWidget {
     return Row(
       mainAxisAlignment: alignment,
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              _label(context, rating),
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-            ),
-            Text(
-              _reviewsText(context, reviewCount),
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-            ),
-          ],
+        // Flexible هنا هو أساس الحل: بيسمح للعمود (الكلمة الوصفية + عدد
+        // المراجعات) إنه يتقلّص ويعمل ellipsis بدل ما يفرض عرضه الطبيعي
+        // الكامل على الصف الأب. من غيرها، الصف يفضل يطلب مساحة أكبر من
+        // المتاحة على الموبايل ويعمل RenderFlex overflow.
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _label(context, rating),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                textAlign: TextAlign.end,
+              ),
+              Text(
+                _reviewsText(context, reviewCount),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                textAlign: TextAlign.end,
+              ),
+            ],
+          ),
         ),
         const SizedBox(width: AppSizes.sm),
         Container(

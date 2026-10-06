@@ -1,14 +1,14 @@
 name: nuzul
 description: "نزل - منصة الحجوزات الفندقية"
 publish_to: 'none'
-version: 0.1.0+7
-
+version: 0.1.0+9
 environment:
   sdk: '>=3.3.0 <4.0.0'
 
 dependencies:
   # Payments
   flutter_stripe: ^11.1.0
+  flutter_stripe_web: ^6.5.1
   flutter:
     sdk: flutter
   flutter_localizations:
@@ -17,6 +17,7 @@ dependencies:
   # State management
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
+  geolocator: ^13.0.1
 
   # Routing
   go_router: ^14.2.0
@@ -38,12 +39,17 @@ dependencies:
   flutter_svg: ^2.0.10+1
   shared_preferences: ^2.2.3
   flutter_secure_storage: ^9.2.2
+  image_picker: ^1.1.2
+  webview_flutter: ^4.10.0
+  image: ^4.1.7
 
   cupertino_icons: ^1.0.8
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
   flutter_lints: ^4.0.0
 
   # Code generation
@@ -59,10 +65,17 @@ flutter:
   assets:
     - assets/images/
     - assets/images/destinations/
+    - assets/images/countries/
+    - assets/payment/
+    - assets/images/payment/
+    - assets/images/styles/
+    - assets/images/promos/
+    - assets/images/deals/
 
-  # fonts:
-  #   - family: Cairo
-  #     fonts:
-  #       - asset: assets/fonts/Cairo-Regular.ttf
-  #       - asset: assets/fonts/Cairo-Bold.ttf
-  #         weight: 700
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "assets/icon/icon_background.png"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  min_sdk_android: 21

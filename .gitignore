@@ -43,3 +43,22 @@ macos/Flutter/GeneratedPluginRegistrant.swift
 # ملفات النظام
 .DS_Store
 Thumbs.db
+# --- Secrets: never commit ---
+*.jks
+*.keystore
+key.properties
+key.properties.txt
+android/key.properties
+ملفات مهمة جدا/
+
+# --- Local archives / junk ---
+nuzul_source.zip
+nuzul-sync.zip
+package-lock.json
+
+*.jks
+*.keystore
+*key.properties*
+
+*.zip
+package-lock.json

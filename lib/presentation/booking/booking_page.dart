@@ -88,8 +88,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
 
     // 1. نفّذ الدفع الفعلي أولاً عبر Stripe قبل أي تسجيل بقاعدة البيانات
     final paymentService = ref.read(paymentServiceProvider);
-    final paymentResult = await paymentService.pay(amount: _totalPrice);
-
+    final paymentResult = await paymentService.pay(amount: _totalPrice, context: context);
     if (!mounted) return;
 
     final paymentSucceeded = paymentResult.when(
@@ -110,6 +109,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   }
 
   Future<void> _createBooking({required String status}) async {
+    final l10n = AppLocalizations.of(context)!;
     final repo = ref.read(bookingRepositoryProvider);
     final result = await repo.createBooking(
       hotelId: widget.hotel.id,
@@ -119,6 +119,9 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       guests: widget.guests,
       totalPrice: _totalPrice,
       status: status,
+      hotelName: widget.hotel.name,
+      hotelCity: widget.hotel.city,
+      hotelImages: widget.hotel.images,
     );
 
     if (!mounted) return;
@@ -131,10 +134,10 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       failure: (message) {
         setState(() {
           _isSubmitting = false;
+          // الدفع نجح فعليًا بس فشل تسجيل الحجز -- رسالة مترجمة توضح الوضع
           _errorMessage = status == 'confirmed'
-          // الدفع نجح فعليًا بس فشل تسجيل الحجز -- رسالة توضح الوضع
-              ? 'تم الدفع بنجاح، لكن حدث خطأ أثناء تسجيل الحجز: $message'
-              : 'حدث خطأ أثناء تسجيل الحجز: $message';
+              ? l10n.paymentSucceededBookingError(message)
+              : l10n.bookingCreateError(message);
         });
       },
     );

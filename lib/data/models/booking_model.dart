@@ -10,13 +10,12 @@
   final String status;
   final DateTime? createdAt;
 
-  // معلومات الفندق (تُملأ لما نجيب الحجز مع بيانات الفندق المرتبط)
+  // معلومات الفندق (مخزّنة مباشرة على صف الحجز وقت الإنشاء)
   final String? hotelName;
   final String? hotelCity;
   final List<String>? hotelImages;
 
-  // معلومات الزبون (تُملأ فقط بالاستعلامات اللي تجيب بيانات profiles المرتبطة،
-  // مثل getAllBookingsForAdmin — مش موجودة في getMyBookings العادية)
+  // معلومات الزبون (تُملأ فقط باستعلام getAllBookingsForAdmin عبر join مع profiles)
   final String? customerName;
   final String? customerPhone;
 
@@ -39,9 +38,6 @@
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
-    // Supabase يرجع بيانات الفندق والزبون المرتبطين جوه مفاتيح 'hotels'/'profiles'
-    // لو طلبناها بالـ select (join)
-    final hotelData = json['hotels'] as Map<String, dynamic>?;
     final profileData = json['profiles'] as Map<String, dynamic>?;
 
     return BookingModel(
@@ -55,10 +51,10 @@
       totalPrice: (json['total_price'] as num).toDouble(),
       status: json['status'] as String,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) : null,
-      hotelName: hotelData?['name'] as String?,
-      hotelCity: hotelData?['city'] as String?,
-      hotelImages: hotelData?['images'] != null
-          ? List<String>.from(hotelData!['images'])
+      hotelName: json['hotel_name'] as String?,
+      hotelCity: json['hotel_city'] as String?,
+      hotelImages: json['hotel_images'] != null
+          ? List<String>.from(json['hotel_images'])
           : null,
       customerName: (profileData?['display_name'] as String?)?.isNotEmpty == true
           ? profileData!['display_name'] as String

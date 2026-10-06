@@ -13,6 +13,9 @@ class ProfileModel {
   final String? nationality;
   final String? cityOfResidence;
   final String? frequentlyVisitedCity;
+  final String? passportNumber;
+  final String? passportIssuingCountry;
+  final DateTime? passportExpiry;
   final String role; // 'user' أو 'admin' — يحدد صلاحية الوصول للوحة الأدمن
 
   const ProfileModel({
@@ -28,6 +31,9 @@ class ProfileModel {
     this.nationality,
     this.cityOfResidence,
     this.frequentlyVisitedCity,
+    this.passportNumber,
+    this.passportIssuingCountry,
+    this.passportExpiry,
     this.role = 'user',
   });
 
@@ -49,6 +55,11 @@ class ProfileModel {
       nationality: json['nationality'] as String?,
       cityOfResidence: json['city_of_residence'] as String?,
       frequentlyVisitedCity: json['frequently_visited_city'] as String?,
+      passportNumber: json['passport_number'] as String?,
+      passportIssuingCountry: json['passport_issuing_country'] as String?,
+      passportExpiry: json['passport_expiry'] == null
+          ? null
+          : DateTime.parse(json['passport_expiry'] as String),
       role: json['role'] as String? ?? 'user',
     );
   }
@@ -69,6 +80,11 @@ class ProfileModel {
       'nationality': nationality,
       'city_of_residence': cityOfResidence,
       'frequently_visited_city': frequentlyVisitedCity,
+      'passport_number': passportNumber,
+      'passport_issuing_country': passportIssuingCountry,
+      'passport_expiry': passportExpiry == null
+          ? null
+          : '${passportExpiry!.year.toString().padLeft(4, '0')}-${passportExpiry!.month.toString().padLeft(2, '0')}-${passportExpiry!.day.toString().padLeft(2, '0')}',
       // ملاحظة: role عمدًا مش متضمّن هنا — تحديث الصلاحية لازم يصير من
       // لوحة الأدمن أو قاعدة البيانات مباشرة، مش من upsertMyProfile
       // العادي اللي بيستخدمه أي مستخدم لتحديث بياناته الشخصية.
@@ -87,6 +103,9 @@ class ProfileModel {
     String? nationality,
     String? cityOfResidence,
     String? frequentlyVisitedCity,
+    String? passportNumber,
+    String? passportIssuingCountry,
+    DateTime? passportExpiry,
     String? role,
   }) {
     return ProfileModel(
@@ -102,6 +121,9 @@ class ProfileModel {
       nationality: nationality ?? this.nationality,
       cityOfResidence: cityOfResidence ?? this.cityOfResidence,
       frequentlyVisitedCity: frequentlyVisitedCity ?? this.frequentlyVisitedCity,
+      passportNumber: passportNumber ?? this.passportNumber,
+      passportIssuingCountry: passportIssuingCountry ?? this.passportIssuingCountry,
+      passportExpiry: passportExpiry ?? this.passportExpiry,
       role: role ?? this.role,
     );
   }

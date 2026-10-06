@@ -9,17 +9,36 @@ import '../../core/widgets/error_view.dart';
 import '../../data/models/booking_model.dart';
 import 'controllers/admin_bookings_controller.dart';
 
+/// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني/تركي/إندونيسي/هندي/أوردو/فرنسي/بنغالي).
 String _t3(
     BuildContext context, {
       required String ar,
       required String en,
       required String es,
+      required String tr,
+      required String id,
+      required String hi,
+      required String ur,
+      required String fr,
+      required String bn,
     }) {
   switch (Localizations.localeOf(context).languageCode) {
     case 'ar':
       return ar;
     case 'es':
       return es;
+    case 'tr':
+      return tr;
+    case 'id':
+      return id;
+    case 'hi':
+      return hi;
+    case 'ur':
+      return ur;
+    case 'fr':
+      return fr;
+    case 'bn':
+      return bn;
     default:
       return en;
   }
@@ -44,12 +63,30 @@ Color _statusColor(String status) {
 String _statusLabel(BuildContext context, String status) {
   switch (status) {
     case 'confirmed':
-      return _t3(context, ar: 'مؤكد', en: 'Confirmed', es: 'Confirmada');
+      return _t3(context, ar: 'مؤكد', en: 'Confirmed', es: 'Confirmada',
+          tr: 'Onaylandı',
+          id: 'Dikonfirmasi',
+          hi: 'पुष्टि हो गई',
+          ur: 'تصدیق شدہ',
+          fr: 'Confirmée',
+          bn: 'নিশ্চিত হয়েছে');
     case 'cancelled':
-      return _t3(context, ar: 'ملغي', en: 'Cancelled', es: 'Cancelada');
+      return _t3(context, ar: 'ملغي', en: 'Cancelled', es: 'Cancelada',
+          tr: 'İptal edildi',
+          id: 'Dibatalkan',
+          hi: 'रद्द',
+          ur: 'منسوخ',
+          fr: 'Annulée',
+          bn: 'বাতিল হয়েছে');
     case 'pending':
     default:
-      return _t3(context, ar: 'قيد الانتظار', en: 'Pending', es: 'Pendiente');
+      return _t3(context, ar: 'قيد الانتظار', en: 'Pending', es: 'Pendiente',
+          tr: 'Beklemede',
+          id: 'Menunggu',
+          hi: 'लंबित',
+          ur: 'زیر التوا',
+          fr: 'En attente',
+          bn: 'অপেক্ষমাণ');
   }
 }
 
@@ -94,6 +131,7 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
       final query = _searchQuery.trim().toLowerCase();
       final matchesSearch = query.isEmpty ||
           (b.customerName?.toLowerCase().contains(query) ?? false) ||
+          (b.customerPhone?.toLowerCase().contains(query) ?? false) ||
           b.id.toLowerCase().contains(query) ||
           (b.hotelName?.toLowerCase().contains(query) ?? false);
       return matchesStatus && matchesSearch;
@@ -110,13 +148,25 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
           children: [
             Expanded(
               child: Text(
-                _t3(context, ar: 'إدارة الحجوزات', en: 'Manage Bookings', es: 'Gestionar Reservas'),
+                _t3(context, ar: 'إدارة الحجوزات', en: 'Manage Bookings', es: 'Gestionar Reservas',
+                    tr: 'Rezervasyonları Yönet',
+                    id: 'Kelola Pesanan',
+                    hi: 'बुकिंग प्रबंधित करें',
+                    ur: 'بکنگز کا انتظام کریں',
+                    fr: 'Gérer les réservations',
+                    bn: 'বুকিং পরিচালনা করুন'),
                 style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
             IconButton(
               icon: const Icon(Icons.refresh, color: Colors.white),
-              tooltip: _t3(context, ar: 'تحديث', en: 'Refresh', es: 'Actualizar'),
+              tooltip: _t3(context, ar: 'تحديث', en: 'Refresh', es: 'Actualizar',
+                  tr: 'Yenile',
+                  id: 'Segarkan',
+                  hi: 'रीफ़्रेश करें',
+                  ur: 'ریفریش کریں',
+                  fr: 'Actualiser',
+                  bn: 'রিফ্রেশ করুন'),
               onPressed: () => ref.invalidate(adminBookingsListProvider),
             ),
           ],
@@ -130,10 +180,34 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
             labelColor: AppColors.primaryDark,
             indicatorColor: AppColors.primaryDark,
             tabs: [
-              Tab(text: _t3(context, ar: 'الكل', en: 'All', es: 'Todo')),
-              Tab(text: _t3(context, ar: 'الفنادق', en: 'Hotels', es: 'Hoteles')),
-              Tab(text: _t3(context, ar: 'الطيران', en: 'Flights', es: 'Vuelos')),
-              Tab(text: _t3(context, ar: 'تأجير السيارات', en: 'Car Rentals', es: 'Alquiler de coches')),
+              Tab(text: _t3(context, ar: 'الكل', en: 'All', es: 'Todo',
+                  tr: 'Tümü',
+                  id: 'Semua',
+                  hi: 'सभी',
+                  ur: 'تمام',
+                  fr: 'Tout',
+                  bn: 'সব')),
+              Tab(text: _t3(context, ar: 'الفنادق', en: 'Hotels', es: 'Hoteles',
+                  tr: 'Oteller',
+                  id: 'Hotel',
+                  hi: 'होटल',
+                  ur: 'ہوٹلز',
+                  fr: 'Hôtels',
+                  bn: 'হোটেল')),
+              Tab(text: _t3(context, ar: 'الطيران', en: 'Flights', es: 'Vuelos',
+                  tr: 'Uçuşlar',
+                  id: 'Penerbangan',
+                  hi: 'उड़ानें',
+                  ur: 'پروازیں',
+                  fr: 'Vols',
+                  bn: 'ফ্লাইট')),
+              Tab(text: _t3(context, ar: 'تأجير السيارات', en: 'Car Rentals', es: 'Alquiler de coches',
+                  tr: 'Araç Kiralama',
+                  id: 'Sewa Mobil',
+                  hi: 'कार किराए पर लें',
+                  ur: 'کار کرایہ پر لیں',
+                  fr: 'Location de voitures',
+                  bn: 'গাড়ি ভাড়া')),
             ],
           ),
           const Divider(height: 1),
@@ -156,7 +230,13 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
   Widget _buildComingSoonTab(BuildContext context) {
     return Center(
       child: Text(
-        _t3(context, ar: 'قريبًا', en: 'Coming soon', es: 'Próximamente'),
+        _t3(context, ar: 'قريبًا', en: 'Coming soon', es: 'Próximamente',
+            tr: 'Yakında',
+            id: 'Segera hadir',
+            hi: 'जल्द आ रहा है',
+            ur: 'جلد آ رہا ہے',
+            fr: 'Bientôt disponible',
+            bn: 'শীঘ্রই আসছে'),
         style: const TextStyle(color: AppColors.textSecondary, fontSize: 16),
       ),
     );
@@ -181,9 +261,15 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
                   ),
                   hintText: _t3(
                     context,
-                    ar: 'بحث باسم الزبون أو رقم الحجز أو اسم الفندق',
-                    en: 'Search by customer name, booking ID, or hotel name',
-                    es: 'Buscar por cliente, ID de reserva u hotel',
+                    ar: 'البحث باسم العميل أو رقم الهاتف أو رقم الحجز أو اسم الفندق',
+                    en: 'Search by customer name, phone, booking ID, or hotel name',
+                    es: 'Buscar por cliente, teléfono, ID de reserva u hotel',
+                    tr: 'Müşteri adı, telefon, rezervasyon numarası veya otel adına göre ara',
+                    id: 'Cari berdasarkan nama pelanggan, telepon, ID pesanan, atau nama hotel',
+                    hi: 'ग्राहक का नाम, फ़ोन, बुकिंग आईडी, या होटल के नाम से खोजें',
+                    ur: 'کسٹمر کا نام، فون، بکنگ آئی ڈی، یا ہوٹل کے نام سے تلاش کریں',
+                    fr: 'Rechercher par nom du client, téléphone, numéro de réservation ou nom de l\'hôtel',
+                    bn: 'গ্রাহকের নাম, ফোন, বুকিং আইডি, বা হোটেলের নাম দিয়ে অনুসন্ধান করুন',
                   ),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   isDense: true,
@@ -193,7 +279,13 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
               const SizedBox(height: AppSizes.sm),
               Row(
                 children: [
-                  Text(_t3(context, ar: 'الحالة:', en: 'Status:', es: 'Estado:')),
+                  Text(_t3(context, ar: 'الحالة:', en: 'Status:', es: 'Estado:',
+                      tr: 'Durum:',
+                      id: 'Status:',
+                      hi: 'स्थिति:',
+                      ur: 'حیثیت:',
+                      fr: 'Statut :',
+                      bn: 'অবস্থা:')),
                   const SizedBox(width: AppSizes.sm),
                   Expanded(
                     child: SingleChildScrollView(
@@ -201,7 +293,13 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
                       child: Row(
                         children: [
                           _StatusFilterChip(
-                            label: _t3(context, ar: 'الكل', en: 'All', es: 'Todo'),
+                            label: _t3(context, ar: 'الكل', en: 'All', es: 'Todo',
+                                tr: 'Tümü',
+                                id: 'Semua',
+                                hi: 'सभी',
+                                ur: 'تمام',
+                                fr: 'Tout',
+                                bn: 'সব'),
                             value: 'all',
                             groupValue: _statusFilter,
                             onSelected: (v) => setState(() => _statusFilter = v),
@@ -237,7 +335,13 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
         Expanded(
           child: bookingsAsync.when(
             loading: () => LoadingView(
-              message: _t3(context, ar: 'يحمّل الحجوزات...', en: 'Loading bookings...', es: 'Cargando reservas...'),
+              message: _t3(context, ar: 'يحمّل الحجوزات...', en: 'Loading bookings...', es: 'Cargando reservas...',
+                  tr: 'Rezervasyonlar yükleniyor...',
+                  id: 'Memuat pesanan...',
+                  hi: 'बुकिंग लोड हो रही हैं...',
+                  ur: 'بکنگز لوڈ ہو رہی ہیں...',
+                  fr: 'Chargement des réservations...',
+                  bn: 'বুকিং লোড হচ্ছে...'),
             ),
             error: (error, _) => ErrorView(
               message: _t3(
@@ -245,6 +349,12 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
                 ar: 'تعذر تحميل الحجوزات',
                 en: 'Could not load bookings',
                 es: 'No se pudieron cargar las reservas',
+                tr: 'Rezervasyonlar yüklenemedi',
+                id: 'Gagal memuat pesanan',
+                hi: 'बुकिंग लोड नहीं हो सकीं',
+                ur: 'بکنگز لوڈ نہیں ہو سکیں',
+                fr: 'Impossible de charger les réservations',
+                bn: 'বুকিং লোড করা যায়নি',
               ),
               onRetry: () => ref.invalidate(adminBookingsListProvider),
             ),
@@ -253,7 +363,13 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
               if (filtered.isEmpty) {
                 return Center(
                   child: Text(
-                    _t3(context, ar: 'ما فيه حجوزات مطابقة', en: 'No matching bookings', es: 'No hay reservas coincidentes'),
+                    _t3(context, ar: 'لا توجد حجوزات مطابقة', en: 'No matching bookings', es: 'No hay reservas coincidentes',
+                        tr: 'Eşleşen rezervasyon yok',
+                        id: 'Tidak ada pesanan yang cocok',
+                        hi: 'कोई मिलती-जुलती बुकिंग नहीं',
+                        ur: 'کوئی مماثل بکنگ نہیں',
+                        fr: 'Aucune réservation correspondante',
+                        bn: 'কোনো মিলযুক্ত বুকিং নেই'),
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),
                 );
@@ -369,7 +485,7 @@ class _BookingTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          booking.customerName ?? _t3(context, ar: 'زبون غير معروف', en: 'Unknown customer', es: 'Cliente desconocido'),
+                          '${booking.hotelName ?? '-'} · ${booking.hotelCity ?? '-'}',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                       ),
@@ -388,7 +504,13 @@ class _BookingTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${booking.hotelName ?? '-'} · ${booking.hotelCity ?? '-'}',
+                    booking.customerName ?? _t3(context, ar: 'عميل غير معروف', en: 'Unknown customer', es: 'Cliente desconocido',
+                        tr: 'Bilinmeyen müşteri',
+                        id: 'Pelanggan tidak dikenal',
+                        hi: 'अज्ञात ग्राहक',
+                        ur: 'نامعلوم گاہک',
+                        fr: 'Client inconnu',
+                        bn: 'অজানা গ্রাহক'),
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 4),
@@ -398,6 +520,12 @@ class _BookingTile extends StatelessWidget {
                       ar: 'الإقامة: ${_formatDate(booking.checkIn)} → ${_formatDate(booking.checkOut)}',
                       en: 'Stay: ${_formatDate(booking.checkIn)} → ${_formatDate(booking.checkOut)}',
                       es: 'Estancia: ${_formatDate(booking.checkIn)} → ${_formatDate(booking.checkOut)}',
+                      tr: 'Konaklama: ${_formatDate(booking.checkIn)} → ${_formatDate(booking.checkOut)}',
+                      id: 'Menginap: ${_formatDate(booking.checkIn)} → ${_formatDate(booking.checkOut)}',
+                      hi: 'ठहरना: ${_formatDate(booking.checkIn)} → ${_formatDate(booking.checkOut)}',
+                      ur: 'قیام: ${_formatDate(booking.checkIn)} → ${_formatDate(booking.checkOut)}',
+                      fr: 'Séjour : ${_formatDate(booking.checkIn)} → ${_formatDate(booking.checkOut)}',
+                      bn: 'অবস্থান: ${_formatDate(booking.checkIn)} → ${_formatDate(booking.checkOut)}',
                     ),
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                   ),
@@ -408,6 +536,12 @@ class _BookingTile extends StatelessWidget {
                         ar: 'تاريخ الحجز: ${_formatDate(booking.createdAt!)}',
                         en: 'Booked on: ${_formatDate(booking.createdAt!)}',
                         es: 'Reservado el: ${_formatDate(booking.createdAt!)}',
+                        tr: 'Rezervasyon tarihi: ${_formatDate(booking.createdAt!)}',
+                        id: 'Dipesan pada: ${_formatDate(booking.createdAt!)}',
+                        hi: 'बुक किया गया: ${_formatDate(booking.createdAt!)}',
+                        ur: 'بک کیا گیا: ${_formatDate(booking.createdAt!)}',
+                        fr: 'Réservé le : ${_formatDate(booking.createdAt!)}',
+                        bn: 'বুক করা হয়েছে: ${_formatDate(booking.createdAt!)}',
                       ),
                       style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     ),
@@ -456,40 +590,106 @@ class _BookingDetailsDialogState extends ConsumerState<_BookingDetailsDialog> {
   Widget build(BuildContext context) {
     final booking = widget.booking;
     return AlertDialog(
-      title: Text(_t3(context, ar: 'تفاصيل الحجز', en: 'Booking details', es: 'Detalles de la reserva')),
+      title: Text(_t3(context, ar: 'تفاصيل الحجز', en: 'Booking details', es: 'Detalles de la reserva',
+          tr: 'Rezervasyon detayları',
+          id: 'Detail pesanan',
+          hi: 'बुकिंग विवरण',
+          ur: 'بکنگ کی تفصیلات',
+          fr: 'Détails de la réservation',
+          bn: 'বুকিং বিবরণ')),
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _DetailRow(label: _t3(context, ar: 'رقم الحجز', en: 'Booking ID', es: 'ID de reserva'), value: booking.id),
+            _DetailRow(label: _t3(context, ar: 'رقم الحجز', en: 'Booking ID', es: 'ID de reserva',
+                tr: 'Rezervasyon Numarası',
+                id: 'ID Pesanan',
+                hi: 'बुकिंग आईडी',
+                ur: 'بکنگ آئی ڈی',
+                fr: 'Numéro de réservation',
+                bn: 'বুকিং আইডি'), value: booking.id),
             _DetailRow(
-              label: _t3(context, ar: 'الزبون', en: 'Customer', es: 'Cliente'),
+              label: _t3(context, ar: 'العميل', en: 'Customer', es: 'Cliente',
+                  tr: 'Müşteri',
+                  id: 'Pelanggan',
+                  hi: 'ग्राहक',
+                  ur: 'گاہک',
+                  fr: 'Client',
+                  bn: 'গ্রাহক'),
               value: booking.customerName ?? '-',
             ),
             if (booking.customerPhone != null)
-              _DetailRow(label: _t3(context, ar: 'الهاتف', en: 'Phone', es: 'Teléfono'), value: booking.customerPhone!),
-            _DetailRow(label: _t3(context, ar: 'الفندق', en: 'Hotel', es: 'Hotel'), value: '${booking.hotelName ?? '-'} (${booking.hotelCity ?? '-'})'),
+              _DetailRow(label: _t3(context, ar: 'الهاتف', en: 'Phone', es: 'Teléfono',
+                  tr: 'Telefon',
+                  id: 'Telepon',
+                  hi: 'फ़ोन',
+                  ur: 'فون',
+                  fr: 'Téléphone',
+                  bn: 'ফোন'), value: booking.customerPhone!),
+            _DetailRow(label: _t3(context, ar: 'الفندق', en: 'Hotel', es: 'Hotel',
+                tr: 'Otel',
+                id: 'Hotel',
+                hi: 'होटल',
+                ur: 'ہوٹل',
+                fr: 'Hôtel',
+                bn: 'হোটেল'), value: '${booking.hotelName ?? '-'} (${booking.hotelCity ?? '-'})'),
             _DetailRow(
-              label: _t3(context, ar: 'تاريخ الوصول', en: 'Check-in', es: 'Entrada'),
+              label: _t3(context, ar: 'تاريخ الوصول', en: 'Check-in', es: 'Entrada',
+                  tr: 'Giriş',
+                  id: 'Check-in',
+                  hi: 'चेक-इन',
+                  ur: 'چیک ان',
+                  fr: 'Arrivée',
+                  bn: 'চেক-ইন'),
               value: _formatDate(booking.checkIn),
             ),
             _DetailRow(
-              label: _t3(context, ar: 'تاريخ المغادرة', en: 'Check-out', es: 'Salida'),
+              label: _t3(context, ar: 'تاريخ المغادرة', en: 'Check-out', es: 'Salida',
+                  tr: 'Çıkış',
+                  id: 'Check-out',
+                  hi: 'चेक-आउट',
+                  ur: 'چیک آؤٹ',
+                  fr: 'Départ',
+                  bn: 'চেক-আউট'),
               value: _formatDate(booking.checkOut),
             ),
-            _DetailRow(label: _t3(context, ar: 'عدد الضيوف', en: 'Guests', es: 'Huéspedes'), value: '${booking.guests}'),
+            _DetailRow(label: _t3(context, ar: 'عدد الضيوف', en: 'Guests', es: 'Huéspedes',
+                tr: 'Misafirler',
+                id: 'Tamu',
+                hi: 'मेहमान',
+                ur: 'مہمان',
+                fr: 'Voyageurs',
+                bn: 'অতিথি'), value: '${booking.guests}'),
             _DetailRow(
-              label: _t3(context, ar: 'السعر الإجمالي', en: 'Total price', es: 'Precio total'),
+              label: _t3(context, ar: 'السعر الإجمالي', en: 'Total price', es: 'Precio total',
+                  tr: 'Toplam fiyat',
+                  id: 'Total harga',
+                  hi: 'कुल कीमत',
+                  ur: 'کل قیمت',
+                  fr: 'Prix total',
+                  bn: 'মোট মূল্য'),
               value: '\$${booking.totalPrice.toStringAsFixed(2)}',
             ),
             if (booking.createdAt != null)
               _DetailRow(
-                label: _t3(context, ar: 'تاريخ إنشاء الحجز', en: 'Booking created', es: 'Reserva creada'),
+                label: _t3(context, ar: 'تاريخ إنشاء الحجز', en: 'Booking created', es: 'Reserva creada',
+                    tr: 'Rezervasyon oluşturuldu',
+                    id: 'Pesanan dibuat',
+                    hi: 'बुकिंग बनाई गई',
+                    ur: 'بکنگ بنائی گئی',
+                    fr: 'Réservation créée',
+                    bn: 'বুকিং তৈরি হয়েছে'),
                 value: _formatDate(booking.createdAt!),
               ),
             _DetailRow(
-              label: _t3(context, ar: 'الحالة الحالية', en: 'Current status', es: 'Estado actual'),
+              label: _t3(context, ar: 'الحالة الحالية', en: 'Current status', es: 'Estado actual',
+                  tr: 'Mevcut durum',
+                  id: 'Status saat ini',
+                  hi: 'वर्तमान स्थिति',
+                  ur: 'موجودہ حیثیت',
+                  fr: 'Statut actuel',
+                  bn: 'বর্তমান অবস্থা'),
               value: _statusLabel(context, booking.status),
             ),
           ],
@@ -498,17 +698,35 @@ class _BookingDetailsDialogState extends ConsumerState<_BookingDetailsDialog> {
       actions: [
         TextButton(
           onPressed: _updating ? null : () => Navigator.of(context).pop(false),
-          child: Text(_t3(context, ar: 'إغلاق', en: 'Close', es: 'Cerrar')),
+          child: Text(_t3(context, ar: 'إغلاق', en: 'Close', es: 'Cerrar',
+              tr: 'Kapat',
+              id: 'Tutup',
+              hi: 'बंद करें',
+              ur: 'بند کریں',
+              fr: 'Fermer',
+              bn: 'বন্ধ করুন')),
         ),
         if (booking.status != 'confirmed')
           TextButton(
             onPressed: _updating ? null : () => _changeStatus('confirmed'),
-            child: Text(_t3(context, ar: 'تأكيد', en: 'Confirm', es: 'Confirmar'), style: const TextStyle(color: Colors.green)),
+            child: Text(_t3(context, ar: 'تأكيد', en: 'Confirm', es: 'Confirmar',
+                tr: 'Onayla',
+                id: 'Konfirmasi',
+                hi: 'पुष्टि करें',
+                ur: 'تصدیق کریں',
+                fr: 'Confirmer',
+                bn: 'নিশ্চিত করুন'), style: const TextStyle(color: Colors.green)),
           ),
         if (booking.status != 'cancelled')
           TextButton(
             onPressed: _updating ? null : () => _changeStatus('cancelled'),
-            child: Text(_t3(context, ar: 'إلغاء', en: 'Cancel', es: 'Cancelar'), style: const TextStyle(color: Colors.red)),
+            child: Text(_t3(context, ar: 'إلغاء', en: 'Cancel', es: 'Cancelar',
+                tr: 'İptal et',
+                id: 'Batalkan',
+                hi: 'रद्द करें',
+                ur: 'منسوخ کریں',
+                fr: 'Annuler',
+                bn: 'বাতিল করুন'), style: const TextStyle(color: Colors.red)),
           ),
       ],
     );

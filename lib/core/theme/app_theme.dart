@@ -70,6 +70,20 @@ class AppTheme {
       color: AppColors.divider,
       thickness: 1,
     ),
+    // شريط سكرول واضح دايمًا (thumbVisibility) بدل الشكل الافتراضي
+    // الشفاف/الباهت اللي بيصعب ملاحظته، خصوصًا على شاشات سطح المكتب
+    // العريضة اللي بيبقى فيها سكرول عمودي طويل لمحتوى زي نتائج البحث.
+    scrollbarTheme: ScrollbarThemeData(
+      thumbVisibility: MaterialStateProperty.all(true),
+      trackVisibility: MaterialStateProperty.all(true),
+      thickness: MaterialStateProperty.all(9),
+      radius: const Radius.circular(8),
+      thumbColor: MaterialStateProperty.all(AppColors.primary.withOpacity(0.55)),
+      trackColor: MaterialStateProperty.all(AppColors.divider.withOpacity(0.4)),
+      trackBorderColor: MaterialStateProperty.all(Colors.transparent),
+      crossAxisMargin: 2,
+      mainAxisMargin: 2,
+    ),
   );
 
 // مكان جاهز لإضافة ThemeData.dark لاحقًا لو احتجتوا وضع داكن

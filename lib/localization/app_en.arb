@@ -1,7 +1,6 @@
 {
   "@@locale": "en",
   "appName": "Nuzul",
-
   "login": "Login",
   "register": "Create Account",
   "email": "Email",
@@ -10,7 +9,6 @@
   "fullName": "Full Name",
   "noAccountRegister": "Don't have an account? Create one",
   "haveAccountLogin": "Already have an account? Login",
-
   "whereTo": "Where to? (City)",
   "guests": "guests",
   "search": "Search",
@@ -22,7 +20,6 @@
   "errorLoadResults": "Failed to load results, check your connection",
   "retry": "Retry",
   "perNight": "night",
-
   "confirmBookingTitle": "Confirm Booking",
   "checkInLabel": "Check-in",
   "checkOutLabel": "Check-out",
@@ -33,7 +30,6 @@
   "paymentNote": "Note: Actual payment via Stripe will be added in the next step — this booking is currently recorded as \"pending\".",
   "bookingSuccessTitle": "Booking Request Sent",
   "ok": "OK",
-
   "statusPending": "Pending",
   "statusConfirmed": "Confirmed",
   "statusCancelled": "Cancelled",
@@ -44,9 +40,7 @@
   "noBookingsYet": "You have no bookings yet",
   "loadingBookings": "Loading your bookings...",
   "errorLoadBookings": "Failed to load bookings, check your connection",
-
   "loginRequired": "You must sign in first",
-
   "roomTypeSectionTitle": "Room Type",
   "roomQueen": "Queen Room (2 beds)",
   "roomKing": "King Room",
@@ -56,6 +50,22 @@
   "@aboutAreaDescription": {
     "placeholders": {
       "city": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentSucceededBookingError": "Payment succeeded, but an error occurred while recording the booking: {message}",
+  "@paymentSucceededBookingError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingCreateError": "An error occurred while recording the booking: {message}",
+  "@bookingCreateError": {
+    "placeholders": {
+      "message": {
         "type": "String"
       }
     }

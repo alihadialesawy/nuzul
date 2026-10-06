@@ -1,129 +1,106 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 
-class _Destination {
-  final String cityEn;
-  final String cityAr;
-  final String countryCode;
-  final Color badgeColor;
-  final Color badgeTextColor;
-  final String imageAsset;
-
-  const _Destination({
-    required this.cityEn,
-    required this.cityAr,
-    required this.countryCode,
-    required this.badgeColor,
-    required this.badgeTextColor,
-    required this.imageAsset,
-  });
+/// يختار النص المناسب حسب اللغة الحالية.
+String _t3(
+    BuildContext context, {
+      required String ar,
+      required String en,
+      required String es,
+      required String tr,
+      required String id,
+      required String hi,
+      required String ur,
+      required String fr,
+      required String bn,
+    }) {
+  switch (Localizations.localeOf(context).languageCode) {
+    case 'ar':
+      return ar;
+    case 'es':
+      return es;
+    case 'tr':
+      return tr;
+    case 'id':
+      return id;
+    case 'hi':
+      return hi;
+    case 'ur':
+      return ur;
+    case 'fr':
+      return fr;
+    case 'bn':
+      return bn;
+    default:
+      return en;
+  }
 }
 
-/// وجهات تجريبية للعرض، بصور محلية من assets/images/destinations/.
-const List<_Destination> _destinations = [
-  _Destination(
-    cityEn: 'Prague',
-    cityAr: 'براغ',
-    countryCode: 'CZ',
-    badgeColor: Color(0xFFD7141A),
-    badgeTextColor: Colors.white,
-    imageAsset: 'assets/images/destinations/prague_cz.jpg',
-  ),
-  _Destination(
-    cityEn: 'London',
-    cityAr: 'لندن',
-    countryCode: 'GB',
-    badgeColor: Color(0xFF012169),
-    badgeTextColor: Colors.white,
-    imageAsset: 'assets/images/destinations/london.jpg',
-  ),
-  _Destination(
-    cityEn: 'Tokyo',
-    cityAr: 'طوكيو',
-    countryCode: 'JP',
-    badgeColor: Colors.white,
-    badgeTextColor: Color(0xFFBC002D),
-    imageAsset: 'assets/images/destinations/tokyo.jpg',
-  ),
-  _Destination(
-    cityEn: 'Paris',
-    cityAr: 'باريس',
-    countryCode: 'FR',
-    badgeColor: Color(0xFF0055A4),
-    badgeTextColor: Colors.white,
-    imageAsset: 'assets/images/destinations/paris.jpg',
-  ),
-  _Destination(
-    cityEn: 'Madrid',
-    cityAr: 'مدريد',
-    countryCode: 'ES',
-    badgeColor: Color(0xFFAA151B),
-    badgeTextColor: Colors.white,
-    imageAsset: 'assets/images/destinations/madrid.jpg',
-  ),
+/// أهم 6 مدن أمريكية لقسم "وجهات رائجة" -- كل مدينة ليها صورة مخصصة
+/// (asset محلي، بدون علم/رمز دولة، بناءً على طلب المستخدم). الدوس على
+/// أي كارت بيستدعي onSelected بنفس اسم المدينة، اللي بيشغّل بحث حقيقي
+/// (نفس آلية اختيار وجهة من القايمة المقترحة) ويعرض نتايج الفنادق.
+class _TrendingCity {
+  final String name;
+  final String searchQuery;
+  final String imageAsset;
+  const _TrendingCity({required this.name, required this.searchQuery, required this.imageAsset});
+}
+
+const List<_TrendingCity> _trendingCities = [
+  _TrendingCity(name: 'New York', searchQuery: 'New York', imageAsset: 'assets/images/destinations/new_york.jpg'),
+  _TrendingCity(name: 'Las Vegas', searchQuery: 'Las Vegas', imageAsset: 'assets/images/destinations/las_vegas.jpg'),
+  _TrendingCity(name: 'Miami', searchQuery: 'Miami', imageAsset: 'assets/images/destinations/miami.jpg'),
+  _TrendingCity(name: 'Chicago', searchQuery: 'Chicago', imageAsset: 'assets/images/destinations/chicago.jpg'),
+  _TrendingCity(name: 'Los Angeles', searchQuery: 'Los Angeles', imageAsset: 'assets/images/destinations/los_angeles.jpg'),
+  // اسم العرض على الكارت "Washington, D.C." (بالفاصلة والنقطة) --
+  // لكن استعلام البحث الفعلي "Washington" بس، لأن الاسم بعلامات الترقيم
+  // مش بيتطابق مع تسمية المدينة عند HotelBeds ويرجّع نتيجة فاضية.
+  _TrendingCity(name: 'Washington, D.C.', searchQuery: 'Washington', imageAsset: 'assets/images/destinations/washington_dc.jpg'),
 ];
 
-/// قسم "وجهات رائجة" يظهر في الصفحة الرئيسية قبل تنفيذ أي بحث، بشكل
-/// شبكة (وجهتين كبار فوق، وثلاث أصغر تحت). الضغط على أي وجهة ينفّذ
-/// [onSelected] بتمرير اسم المدينة عشان الصفحة الرئيسية تبحث عنها.
+/// قسم "وجهات رائجة" في تبويب Stays -- 6 كارتات لأهم مدن أمريكية في
+/// صف أفقي واحد قابل للسكرول. الدوس على أي كارت بيشغّل onSelected
+/// بنفس اسم المدينة، اللي بيدوّر عن كود الوجهة المطابق عند HotelBeds
+/// وينفّذ بحث حقيقي (نفس المنطق الموجود بالفعل في _selectDestination
+/// بصفحة الـ Home، من غير أي تكرار كود هنا).
 class TrendingDestinations extends StatelessWidget {
-  final void Function(String cityQuery) onSelected;
+  final void Function(String city) onSelected;
 
   const TrendingDestinations({super.key, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-
     return Padding(
-      padding: const EdgeInsets.all(AppSizes.md),
+      padding: const EdgeInsets.only(top: AppSizes.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isArabic ? 'وجهات رائجة' : 'Trending destinations',
+            _t3(context, ar: 'وجهات رائجة', en: 'Trending destinations', es: 'Destinos populares', tr: 'Popüler destinasyonlar', id: 'Destinasi populer',
+                hi: 'लोकप्रिय गंतव्य',
+                ur: 'مقبول منزلیں',
+                fr: 'Destinations populaires',
+                bn: 'জনপ্রিয় গন্তব্য'),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
-          const SizedBox(height: AppSizes.sm),
-          // الصف الأول: وجهتان كبيرتان
-          Row(
-            children: [
-              Expanded(
-                child: _DestinationCard(
-                  destination: _destinations[0],
-                  isArabic: isArabic,
-                  height: 280,
-                  onTap: onSelected,
-                ),
-              ),
-              const SizedBox(width: AppSizes.sm),
-              Expanded(
-                child: _DestinationCard(
-                  destination: _destinations[1],
-                  isArabic: isArabic,
-                  height: 280,
-                  onTap: onSelected,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSizes.sm),
-          // الصف الثاني: ثلاث وجهات أصغر
-          Row(
-            children: [
-              for (int i = 2; i < 5; i++) ...[
-                if (i != 2) const SizedBox(width: AppSizes.sm),
-                Expanded(
-                  child: _DestinationCard(
-                    destination: _destinations[i],
-                    isArabic: isArabic,
-                    height: 200,
-                    onTap: onSelected,
-                  ),
-                ),
-              ],
-            ],
+          const SizedBox(height: AppSizes.md),
+          SizedBox(
+            height: 200,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _trendingCities.length,
+              separatorBuilder: (_, __) => const SizedBox(width: AppSizes.sm),
+              itemBuilder: (context, index) {
+                final city = _trendingCities[index];
+                return _TrendingCityCard(
+                  city: city,
+                  onTap: () => onSelected(city.searchQuery),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -131,37 +108,33 @@ class TrendingDestinations extends StatelessWidget {
   }
 }
 
-class _DestinationCard extends StatelessWidget {
-  final _Destination destination;
-  final bool isArabic;
-  final double height;
-  final void Function(String cityQuery) onTap;
+class _TrendingCityCard extends StatelessWidget {
+  final _TrendingCity city;
+  final VoidCallback onTap;
 
-  const _DestinationCard({
-    required this.destination,
-    required this.isArabic,
-    required this.height,
-    required this.onTap,
-  });
+  const _TrendingCityCard({required this.city, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final cityLabel = isArabic ? destination.cityAr : destination.cityEn;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-      child: InkWell(
-        onTap: () => onTap(destination.cityEn),
-        child: SizedBox(
-          height: height,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        width: 220,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
           child: Stack(
             fit: StackFit.expand,
             children: [
               Container(color: Colors.grey.shade200),
               Image.asset(
-                destination.imageAsset,
+                city.imageAsset,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade300),
+                filterQuality: FilterQuality.high,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.grey.shade300,
+                  child: const Icon(Icons.location_city, color: AppColors.textHint, size: 32),
+                ),
               ),
               // تظليل تدريجي أسفل الصورة لوضوح النص الأبيض
               const DecoratedBox(
@@ -177,35 +150,15 @@ class _DestinationCard extends StatelessWidget {
                 left: 12,
                 bottom: 10,
                 right: 12,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      cityLabel,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: destination.badgeColor,
-                        borderRadius: BorderRadius.circular(3),
-                        border: Border.all(color: Colors.white, width: 0.5),
-                      ),
-                      child: Text(
-                        destination.countryCode,
-                        style: TextStyle(
-                          color: destination.badgeTextColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  city.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

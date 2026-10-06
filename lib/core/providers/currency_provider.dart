@@ -19,6 +19,7 @@ enum AppCurrency {
   pkr,
   inr,
   cop,
+  bdt,
 }
 
 extension AppCurrencySymbol on AppCurrency {
@@ -50,6 +51,8 @@ extension AppCurrencySymbol on AppCurrency {
         return '₹';
       case AppCurrency.cop:
         return 'COL\$';
+      case AppCurrency.bdt:
+        return '৳';
     }
   }
 
@@ -81,6 +84,8 @@ extension AppCurrencySymbol on AppCurrency {
         return 'INR';
       case AppCurrency.cop:
         return 'COP';
+      case AppCurrency.bdt:
+        return 'BDT';
     }
   }
 
@@ -113,6 +118,8 @@ extension AppCurrencySymbol on AppCurrency {
         return '🇮🇳';
       case AppCurrency.cop:
         return '🇨🇴';
+      case AppCurrency.bdt:
+        return '🇧🇩';
     }
   }
 }

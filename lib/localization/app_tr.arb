@@ -1,0 +1,73 @@
+{
+  "@@locale": "tr",
+  "appName": "Nuzul",
+  "login": "Giriş Yap",
+  "register": "Hesap Oluştur",
+  "email": "E-posta",
+  "password": "Şifre",
+  "confirmPassword": "Şifreyi Onayla",
+  "fullName": "Ad Soyad",
+  "noAccountRegister": "Hesabınız yok mu? Hesap oluşturun",
+  "haveAccountLogin": "Zaten bir hesabınız var mı? Giriş yapın",
+  "whereTo": "Nereye? (Şehir)",
+  "guests": "misafir",
+  "search": "Ara",
+  "bookNow": "Şimdi Rezervasyon Yap",
+  "myBookings": "Rezervasyonlarım",
+  "searchPrompt": "Uygun otelleri görmek için bir şehir arayın",
+  "noResults": "Bu şehir ve tarihler için uygun otel yok",
+  "searching": "Oteller aranıyor...",
+  "errorLoadResults": "Sonuçlar yüklenemedi, bağlantınızı kontrol edin",
+  "retry": "Tekrar Dene",
+  "perNight": "gece",
+  "confirmBookingTitle": "Rezervasyonu Onayla",
+  "checkInLabel": "Giriş Tarihi",
+  "checkOutLabel": "Çıkış Tarihi",
+  "nightsLabel": "Gece Sayısı",
+  "guestsLabel": "Misafir Sayısı",
+  "totalLabel": "Toplam",
+  "confirmBookingButton": "Rezervasyonu Onayla",
+  "paymentNote": "Not: Stripe üzerinden gerçek ödeme bir sonraki adımda eklenecek — bu rezervasyon şu anda \"beklemede\" durumunda kaydedildi.",
+  "bookingSuccessTitle": "Rezervasyon Talebi Gönderildi",
+  "ok": "Tamam",
+  "statusPending": "Beklemede",
+  "statusConfirmed": "Onaylandı",
+  "statusCancelled": "İptal Edildi",
+  "cancelBooking": "Rezervasyonu İptal Et",
+  "cancelBookingConfirmTitle": "Rezervasyonu İptal Et",
+  "cancelBookingUndo": "Geri Al",
+  "cancelBookingYes": "Evet, İptal Et",
+  "noBookingsYet": "Henüz rezervasyonunuz yok",
+  "loadingBookings": "Rezervasyonlarınız yükleniyor...",
+  "errorLoadBookings": "Rezervasyonlar yüklenemedi, bağlantınızı kontrol edin",
+  "loginRequired": "Önce giriş yapmalısınız",
+  "roomTypeSectionTitle": "Oda Tipi",
+  "roomQueen": "Queen Oda (2 yatak)",
+  "roomKing": "King Oda",
+  "roomStudioSuite": "Stüdyo Süit",
+  "aboutAreaTitle": "Çevredeki Bölge Hakkında",
+  "aboutAreaDescription": "Bu otel {city} içinde, önemli simge yapılara ve temel olanaklara yakın, avantajlı bir konumda yer alır ve konaklamanız boyunca kolay ulaşım sağlar.",
+  "@aboutAreaDescription": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentSucceededBookingError": "Ödeme başarılı oldu, ancak rezervasyon kaydedilirken bir hata oluştu: {message}",
+  "@paymentSucceededBookingError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingCreateError": "Rezervasyon kaydedilirken bir hata oluştu: {message}",
+  "@bookingCreateError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  }
+}

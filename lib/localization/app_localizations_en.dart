@@ -153,4 +153,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String aboutAreaDescription(String city) {
     return 'This hotel enjoys a prime location in $city, close to major landmarks and essential facilities, making it a convenient choice for getting around during your stay.';
   }
+
+  @override
+  String paymentSucceededBookingError(String message) {
+    return 'Payment succeeded, but an error occurred while recording the booking: $message';
+  }
+
+  @override
+  String bookingCreateError(String message) {
+    return 'An error occurred while recording the booking: $message';
+  }
 }

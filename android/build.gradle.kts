@@ -24,9 +24,17 @@ subprojects {
 // ومش جزء من البناء الفعلي، بس بيفشل بسبب اعتماد stripe_android على
 // مكتبة Google داخلية مقفولة (play-services-tapandpay) خاصة بميزة
 // "Push Provisioning" اللي أصلاً مش مستخدمة بالمشروع.
+//
+// ملحوظة: استخدمنا tasks.configureEach بدل subprojects { afterEvaluate
+// {...} } عمدًا — لأن القسم اللي فوق (evaluationDependsOn(":app")) بيجبر
+// موديول app يتقيّم فورًا لكل subproject شامل نفسه، فلو استخدمنا
+// afterEvaluate هنا (في قسم subprojects منفصل بعده) بيوصلنا خطأ
+// "Cannot run Project.afterEvaluate(Action) when the project is already
+// evaluated" لموديول app بالتحديد. tasks.configureEach lazy بطبيعتها
+// ومش محتاجة تستنى evaluation، فبتتجنب المشكلة دي تمامًا.
 subprojects {
-    afterEvaluate {
-        tasks.matching { it.name.startsWith("lintVital") }.configureEach {
+    tasks.configureEach {
+        if (name.startsWith("lintVital")) {
             enabled = false
         }
     }

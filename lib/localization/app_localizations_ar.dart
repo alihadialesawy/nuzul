@@ -151,4 +151,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String aboutAreaDescription(String city) {
     return 'يقع هذا الفندق في موقع مميز داخل $city، بالقرب من أبرز المعالم والمرافق الحيوية، مما يجعله خيارًا مناسبًا للتنقل بسهولة خلال إقامتك.';
   }
+
+  @override
+  String paymentSucceededBookingError(String message) {
+    return 'تمت عملية الدفع بنجاح، لكن حدث خطأ أثناء تسجيل الحجز: $message';
+  }
+
+  @override
+  String bookingCreateError(String message) {
+    return 'حدث خطأ أثناء تسجيل الحجز: $message';
+  }
 }
