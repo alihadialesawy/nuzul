@@ -9,24 +9,77 @@ import '../../core/widgets/loading_view.dart';
 import '../../core/widgets/empty_view.dart';
 import '../../data/models/inbox_item_model.dart';
 import '../../data/repositories/inbox_repository.dart';
+import '../../data/repositories/hotelbeds_booking_repository.dart' show CancellationQuote;
 import '../../localization/app_localizations.dart';
-import '../booking/booking_page.dart' show bookingRepositoryProvider;
+import '../booking/booking_page.dart'
+    show bookingRepositoryProvider, hotelBedsBookingRepositoryProvider;
+import 'hotel_voucher_page.dart';
 
 final inboxRepositoryProvider = Provider((ref) => InboxRepository());
+
+/// نص حسب لغة التطبيق (اللغات التسع).
+String _tm(
+    BuildContext context, {
+      required String ar,
+      required String en,
+      required String es,
+      required String tr,
+      required String id,
+      required String hi,
+      required String ur,
+      required String fr,
+      required String bn,
+    }) {
+  switch (Localizations.localeOf(context).languageCode) {
+    case 'ar':
+      return ar;
+    case 'es':
+      return es;
+    case 'tr':
+      return tr;
+    case 'id':
+      return id;
+    case 'hi':
+      return hi;
+    case 'ur':
+      return ur;
+    case 'fr':
+      return fr;
+    case 'bn':
+      return bn;
+    default:
+      return en;
+  }
+}
+
+/// تاريخ بصيغة أمريكية واضحة: "Oct 12, 2026" (بدل 12/10/2026 الملتبسة).
+String _usDate(DateTime d) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${months[d.month - 1]} ${d.day}, ${d.year}';
+}
+
+String _usd(double v) => '\$${v.toStringAsFixed(2)}';
+
+/// محاولات HotelBeds غير المكتملة لا تُعرض كحجوزات.
+const _hiddenStatuses = {'awaiting_payment', 'failed'};
 
 /// المصدر الموحّد لكل الحجوزات (فنادق + طيران عبر Duffel + سيارات) --
 /// نفس المصدر بالضبط المستخدم في شاشة Inbox، بدل جدول bookings المحلي
 /// وحده (اللي كان بيفوّت حجوزات الطيران الحقيقية تمامًا).
-final myBookingsProvider = FutureProvider<List<InboxItemModel>>((ref) async {
+// autoDispose: تُعاد قراءة الحجوزات من قاعدة البيانات في كل مرة تُفتح فيها
+// الصفحة (بدونه كانت تعرض نسخة قديمة محفوظة، فلا يظهر الحجز الجديد ولا
+// تتحدث الحالة بعد الإلغاء).
+final myBookingsProvider = FutureProvider.autoDispose<List<InboxItemModel>>((ref) async {
   final repo = ref.watch(inboxRepositoryProvider);
   final result = await repo.fetchInboxItems();
 
   return result.when(
     success: (items) => items
         .where((item) =>
-    item.type == InboxItemType.hotelBooking ||
+    (item.type == InboxItemType.hotelBooking ||
         item.type == InboxItemType.flightBooking ||
-        item.type == InboxItemType.carBooking)
+        item.type == InboxItemType.carBooking) &&
+        !_hiddenStatuses.contains(item.status))
         .toList(),
     failure: (message) => throw Exception(message),
   );
@@ -41,7 +94,16 @@ class MyBookingsPage extends ConsumerWidget {
     final bookingsAsync = ref.watch(myBookingsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.myBookings)),
+      appBar: AppBar(
+        title: Text(l10n.myBookings),
+        actions: [
+          IconButton(
+            tooltip: MaterialLocalizations.of(context).refreshIndicatorSemanticLabel,
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(myBookingsProvider),
+          ),
+        ],
+      ),
       body: bookingsAsync.when(
         loading: () => LoadingView(message: l10n.loadingBookings),
         error: (error, _) => ErrorView(
@@ -104,14 +166,138 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
 
   /// إلغاء الحجز متاح حاليًا لحجوزات الفنادق فقط (نفس السلوك القديم) --
   /// إلغاء رحلات Duffel محتاج تدفق منفصل عبر Duffel API مش مبني لسه.
-  bool get _canCancel =>
-      widget.item.type == InboxItemType.hotelBooking &&
-          (widget.item.status == 'pending' || widget.item.status == 'confirmed');
+  bool get _canCancel {
+    if (widget.item.type != InboxItemType.hotelBooking) return false;
+    // حجوزات HotelBeds: الإلغاء فقط للمؤكدة (عبر الفندق + الاسترداد).
+    if (widget.item.hotelBooking?.isHotelBeds == true) {
+      return widget.item.status == 'confirmed';
+    }
+    return widget.item.status == 'pending' || widget.item.status == 'confirmed';
+  }
+
+  /// القسيمة متاحة لحجوزات HotelBeds المؤكدة أو الملغاة (للرجوع إليها).
+  bool get _hasVoucher {
+    final b = widget.item.hotelBooking;
+    return b != null &&
+        b.isHotelBeds &&
+        b.supplierReference != null &&
+        (b.status == 'confirmed' || b.status == 'cancelled');
+  }
+
+  /// إلغاء حجز HotelBeds: عرض الرسوم والاسترداد أولًا، ثم الإلغاء الفعلي.
+  Future<void> _cancelHotelBeds() async {
+    final l10n = AppLocalizations.of(context)!;
+    final booking = widget.item.hotelBooking!;
+    final repo = ref.read(hotelBedsBookingRepositoryProvider);
+
+    setState(() => _isCancelling = true);
+    final quoteResult = await repo.cancellationQuote(booking.id);
+    if (!mounted) return;
+
+    CancellationQuote? quote;
+    quoteResult.when(
+      success: (q) {
+        quote = q;
+      },
+      failure: (message) {
+        setState(() => _isCancelling = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: AppColors.error),
+        );
+      },
+    );
+    if (quote == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.cancelBookingConfirmTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(booking.hotelName ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: AppSizes.sm),
+            Text(_tm(ctx,
+                ar: 'رسوم الإلغاء: ${_usd(quote!.fee)}',
+                en: 'Cancellation fee: ${_usd(quote!.fee)}',
+                es: 'Cargo por cancelación: ${_usd(quote!.fee)}',
+                tr: 'İptal ücreti: ${_usd(quote!.fee)}',
+                id: 'Biaya pembatalan: ${_usd(quote!.fee)}',
+                hi: 'रद्दीकरण शुल्क: ${_usd(quote!.fee)}',
+                ur: 'منسوخی فیس: ${_usd(quote!.fee)}',
+                fr: 'Frais d\'annulation : ${_usd(quote!.fee)}',
+                bn: 'বাতিল ফি: ${_usd(quote!.fee)}')),
+            Text(
+              _tm(ctx,
+                  ar: 'المبلغ المسترد: ${_usd(quote!.refund)}',
+                  en: 'Refund: ${_usd(quote!.refund)}',
+                  es: 'Reembolso: ${_usd(quote!.refund)}',
+                  tr: 'İade: ${_usd(quote!.refund)}',
+                  id: 'Pengembalian dana: ${_usd(quote!.refund)}',
+                  hi: 'रिफ़ंड: ${_usd(quote!.refund)}',
+                  ur: 'واپسی: ${_usd(quote!.refund)}',
+                  fr: 'Remboursement : ${_usd(quote!.refund)}',
+                  bn: 'ফেরত: ${_usd(quote!.refund)}'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancelBookingUndo),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.cancelBookingYes, style: const TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (confirmed != true) {
+      setState(() => _isCancelling = false);
+      return;
+    }
+
+    final result = await repo.cancel(booking.id);
+    if (!mounted) return;
+
+    result.when(
+      success: (r) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_tm(context,
+              ar: 'تم إلغاء الحجز. يصل المبلغ المسترد ${_usd(r.refund)} إلى بطاقتك خلال 5–10 أيام عمل.',
+              en: 'Booking cancelled. Your refund of ${_usd(r.refund)} will reach your card in 5–10 business days.',
+              es: 'Reserva cancelada. Tu reembolso de ${_usd(r.refund)} llegará a tu tarjeta en 5–10 días hábiles.',
+              tr: 'Rezervasyon iptal edildi. ${_usd(r.refund)} iadeniz 5–10 iş günü içinde kartınıza yansıyacak.',
+              id: 'Pemesanan dibatalkan. Pengembalian ${_usd(r.refund)} akan masuk ke kartu Anda dalam 5–10 hari kerja.',
+              hi: 'बुकिंग रद्द हो गई। ${_usd(r.refund)} का रिफ़ंड 5–10 कार्यदिवसों में आपके कार्ड पर आएगा।',
+              ur: 'بکنگ منسوخ ہو گئی۔ ${_usd(r.refund)} کی واپسی 5–10 کاروباری دنوں میں آپ کے کارڈ پر آئے گی۔',
+              fr: 'Réservation annulée. Votre remboursement de ${_usd(r.refund)} arrivera sur votre carte sous 5 à 10 jours ouvrés.',
+              bn: 'বুকিং বাতিল হয়েছে। ${_usd(r.refund)} ফেরত ৫–১০ কার্যদিবসে আপনার কার্ডে আসবে।')),
+        ));
+        ref.invalidate(myBookingsProvider);
+      },
+      failure: (message) {
+        setState(() => _isCancelling = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: AppColors.error),
+        );
+      },
+    );
+  }
 
   Future<void> _confirmAndCancel() async {
     final l10n = AppLocalizations.of(context)!;
     final booking = widget.item.hotelBooking;
     if (booking == null) return;
+    if (booking.isHotelBeds) {
+      await _cancelHotelBeds();
+      return;
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -189,6 +375,22 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
             ),
             const Divider(height: AppSizes.lg),
             _buildDetailsRow(context),
+            if (_hasVoucher) ...[
+              const SizedBox(height: AppSizes.sm),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                  label: Text(_tm(context,
+                      ar: 'عرض القسيمة', en: 'View voucher', es: 'Ver bono', tr: 'Kuponu görüntüle',
+                      id: 'Lihat voucher', hi: 'वाउचर देखें', ur: 'واؤچر دیکھیں',
+                      fr: 'Voir le bon', bn: 'ভাউচার দেখুন')),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => HotelVoucherPage(booking: item.hotelBooking!),
+                  )),
+                ),
+              ),
+            ],
             if (_canCancel) ...[
               const SizedBox(height: AppSizes.sm),
               SizedBox(
@@ -316,17 +518,53 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
     if (item.type == InboxItemType.hotelBooking) {
       final booking = item.hotelBooking;
       if (booking == null) return const SizedBox.shrink();
-      return Row(
+      final dates = Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '${Formatters.date(booking.checkIn)} - ${Formatters.date(booking.checkOut)}',
+            '${_usDate(booking.checkIn)} – ${_usDate(booking.checkOut)}',
             style: const TextStyle(fontSize: 13),
           ),
           Text(
-            Formatters.currency(booking.totalPrice),
+            // حجوزات HotelBeds: المبلغ المدفوع فعليًا بالدولار.
+            booking.isHotelBeds && booking.chargeAmount != null
+                ? '${_usd(booking.chargeAmount!)} USD'
+                : Formatters.currency(booking.totalPrice),
             style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
           ),
+        ],
+      );
+      if (!booking.isHotelBeds) return dates;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          dates,
+          if (booking.supplierReference != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '${_tm(context, ar: 'رقم الحجز', en: 'Booking reference', es: 'Referencia', tr: 'Rezervasyon no', id: 'Nomor pemesanan', hi: 'बुकिंग संदर्भ', ur: 'بکنگ نمبر', fr: 'Référence', bn: 'বুকিং রেফারেন্স')}: ${booking.supplierReference}',
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+            ),
+          if (booking.status == 'cancelled' && booking.refundAmount != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                _tm(context,
+                    ar: 'المبلغ المسترد: ${_usd(booking.refundAmount!)}',
+                    en: 'Refunded: ${_usd(booking.refundAmount!)}',
+                    es: 'Reembolsado: ${_usd(booking.refundAmount!)}',
+                    tr: 'İade edildi: ${_usd(booking.refundAmount!)}',
+                    id: 'Dikembalikan: ${_usd(booking.refundAmount!)}',
+                    hi: 'रिफ़ंड किया गया: ${_usd(booking.refundAmount!)}',
+                    ur: 'واپس کی گئی رقم: ${_usd(booking.refundAmount!)}',
+                    fr: 'Remboursé : ${_usd(booking.refundAmount!)}',
+                    bn: 'ফেরত দেওয়া হয়েছে: ${_usd(booking.refundAmount!)}'),
+                style: const TextStyle(fontSize: 13, color: AppColors.success),
+              ),
+            ),
         ],
       );
     }

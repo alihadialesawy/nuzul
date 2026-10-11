@@ -21,10 +21,17 @@ import 'currency_selector_button.dart';
 /// روابط التواصل الاجتماعي (Facebook/Instagram/TikTok/YouTube) تظهر في الشريط السفلي
 /// بجانب زر العملة، وتفتح حساب Flynoom الرسمي في تبويب جديد على الويب،
 /// أو داخل تطبيق فيسبوك/إنستغرام/تيك توك/يوتيوب على الجوال إن كان مثبتًا.
+///
+/// سطر حقوق النشر يستخدم الاسم القانوني المسجّل للشركة "FLYNOOM LLC"
+/// (كما في سجل ولاية ميشيغان) بالحروف اللاتينية في كل اللغات، ليطابق
+/// المستندات الرسمية المرسلة إلى Apple وD&B.
 class AppFooter extends StatelessWidget {
   const AppFooter({super.key});
 
   static const double _columnWidth = 180;
+
+  /// الاسم القانوني للشركة — لا يُترجم.
+  static const String legalName = 'FLYNOOM LLC';
 
   /// الحسابات الرسمية — نفس اسم المستخدم على المنصتين.
   static const String facebookUrl = 'https://www.facebook.com/flynoom.booking';
@@ -299,6 +306,21 @@ class AppFooter extends StatelessWidget {
     };
   }
 
+  /// سطر حقوق النشر بالاسم القانوني للشركة.
+  static String _copyrightLine(String languageCode) {
+    return switch (languageCode) {
+      'ar' => '© 2026 $legalName. جميع الحقوق محفوظة.',
+      'tr' => '© 2026 $legalName. Tüm hakları saklıdır.',
+      'es' => '© 2026 $legalName. Todos los derechos reservados.',
+      'id' => '© 2026 $legalName. Semua hak dilindungi.',
+      'hi' => '© 2026 $legalName. सर्वाधिकार सुरक्षित।',
+      'ur' => '© 2026 $legalName. جملہ حقوق محفوظ ہیں۔',
+      'fr' => '© 2026 $legalName. Tous droits réservés.',
+      'bn' => '© ২০২৬ $legalName. সর্বস্বত্ব সংরক্ষিত।',
+      _ => '© 2026 $legalName. All rights reserved.',
+    };
+  }
+
   void _showComingSoon(BuildContext context, String languageCode) {
     final message = switch (languageCode) {
       'ar' => 'قريبًا',
@@ -409,17 +431,7 @@ class AppFooter extends StatelessWidget {
               right: AppSizes.md,
             ),
             child: Text(
-              switch (languageCode) {
-                'ar' => '© 2026 Flynoom. جميع الحقوق محفوظة.',
-                'tr' => '© 2026 Flynoom. Tüm hakları saklıdır.',
-                'es' => '© 2026 Flynoom. Todos los derechos reservados.',
-                'id' => '© 2026 Flynoom. Semua hak dilindungi.',
-                'hi' => '© 2026 Flynoom. सर्वाधिकार सुरक्षित।',
-                'ur' => '© 2026 Flynoom. جملہ حقوق محفوظ ہیں۔',
-                'fr' => '© 2026 Flynoom. Tous droits réservés.',
-                'bn' => '© ২০২৬ Flynoom. সর্বস্বত্ব সংরক্ষিত।',
-                _ => '© 2026 Flynoom. All rights reserved.',
-              },
+              _copyrightLine(languageCode),
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textHint, fontSize: 12),
             ),

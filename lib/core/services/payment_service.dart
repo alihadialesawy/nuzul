@@ -37,6 +37,22 @@ class PaymentService {
         return const Failure('تعذر بدء عملية الدفع، حاول مرة أخرى');
       }
 
+      return confirmWithClientSecret(clientSecret: clientSecret, context: context);
+    } catch (e) {
+      return Failure(ErrorTranslator.translate(e));
+    }
+  }
+
+  /// يعرض نافذة البطاقة ويؤكد PaymentIntent أنشأه السيرفر مسبقًا.
+  ///
+  /// تُستخدم لحجوزات HotelBeds: hotelbeds-prepare ينشئ الـ PaymentIntent
+  /// بالمبلغ المحسوب على السيرفر وبـ capture_method=manual، فيُحجز المبلغ
+  /// على البطاقة فقط، ولا يُسحب إلا بعد تأكيد الفندق (hotelbeds-book).
+  Future<Result<bool>> confirmWithClientSecret({
+    required String clientSecret,
+    BuildContext? context,
+  }) async {
+    try {
       // على الويب: PaymentSheet غير مدعومة، نستخدم نافذة CardField مخصصة
       if (kIsWeb) {
         if (context == null) {
@@ -45,11 +61,12 @@ class PaymentService {
         return _payOnWeb(context, clientSecret);
       }
 
-      // على الموبايل: نفس المسار المستخدم فعليًا (PaymentSheet)
+      // على الموبايل: PaymentSheet
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: clientSecret,
-          merchantDisplayName: 'نزل - Nuzul',
+          // يجب أن يطابق اسم الشركة الذي يراه العميل في كشف حسابه.
+          merchantDisplayName: 'Flynoom',
           style: ThemeMode.light,
         ),
       );

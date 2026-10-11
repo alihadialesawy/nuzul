@@ -1,4 +1,5 @@
 import 'core/widgets/app_nav_rail.dart';
+import 'core/widgets/beta_banner.dart';
 import 'core/fast_scroll_behavior.dart';
 import 'presentation/profile/my_coins_page.dart';
 import 'package:flutter/material.dart';
@@ -337,6 +338,18 @@ class NuzulApp extends ConsumerWidget {
       scrollBehavior: FastScrollBehavior(),
 
       routerConfig: router,
+
+      // شريط "مرحلة تجريبية" أعلى كل الصفحات (على الويب فقط؛ على
+      // Android/iOS يُرجع BetaBanner مساحة فارغة). عند فتح الحجز الحقيقي
+      // احذف BetaBanner من هنا وأبقِ child وحده.
+      builder: (context, child) {
+        return Column(
+          children: [
+            const BetaBanner(),
+            Expanded(child: child ?? const SizedBox.shrink()),
+          ],
+        );
+      },
 
       // اللغة الحالية تتغير تلقائيًا عند اختيارها من قائمة اللغة
       locale: locale,

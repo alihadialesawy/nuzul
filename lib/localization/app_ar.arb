@@ -1,4 +1,6 @@
 {
+  "nightsCount": "{count, plural, =1{ليلة واحدة} =2{ليلتان} few{{count} ليالٍ} many{{count} ليلة} other{{count} ليلة}}",
+  "@nightsCount": { "placeholders": { "count": { "type": "int" } } },
   "@@locale": "ar",
   "appName": "نزل",
   "login": "تسجيل الدخول",

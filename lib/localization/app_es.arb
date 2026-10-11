@@ -1,4 +1,5 @@
 {
+  "nightsCount": "{count, plural, =1{1 noche} other{{count} noches}}",
   "@@locale": "es",
   "appName": "Safr-AI",
   "login": "Iniciar sesión",

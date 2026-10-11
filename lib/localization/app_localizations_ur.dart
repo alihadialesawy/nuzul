@@ -9,6 +9,17 @@ class AppLocalizationsUr extends AppLocalizations {
   AppLocalizationsUr([String locale = 'ur']) : super(locale);
 
   @override
+  String nightsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count راتیں',
+      one: '1 رات',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get appName => 'Nuzul';
 
   @override

@@ -12,11 +12,58 @@ import '../../core/widgets/app_banner.dart';
 import '../../data/models/hotel_model.dart';
 import '../../data/models/selected_room.dart';
 import '../../data/repositories/booking_repository.dart';
+import '../../data/repositories/hotelbeds_booking_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 import '../../core/services/payment_service.dart';
 import '../../localization/app_localizations.dart';
 
 final bookingRepositoryProvider = Provider((ref) => BookingRepository());
 final paymentServiceProvider = Provider((ref) => PaymentService());
+final hotelBedsBookingRepositoryProvider = Provider((ref) => HotelBedsBookingRepository());
+
+/// نص حسب لغة التطبيق (اللغات التسع).
+String _tb(
+    BuildContext context, {
+      required String ar,
+      required String en,
+      required String es,
+      required String tr,
+      required String id,
+      required String hi,
+      required String ur,
+      required String fr,
+      required String bn,
+    }) {
+  switch (Localizations.localeOf(context).languageCode) {
+    case 'ar':
+      return ar;
+    case 'es':
+      return es;
+    case 'tr':
+      return tr;
+    case 'id':
+      return id;
+    case 'hi':
+      return hi;
+    case 'ur':
+      return ur;
+    case 'fr':
+      return fr;
+    case 'bn':
+      return bn;
+    default:
+      return en;
+  }
+}
+
+/// "BED AND BREAKFAST" → "Bed And Breakfast"
+String _titleCase(String s) => s
+    .toLowerCase()
+    .split(' ')
+    .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+    .join(' ');
+
+String _usd(double v) => '\$${v.toStringAsFixed(2)} USD';
 
 /// Stripe غير مدعوم حاليًا إلا على Android/iOS (وWeb إن تم إعداده لاحقًا).
 /// على أنظمة سطح المكتب (Windows/macOS/Linux) نتخطى الدفع الفعلي مؤقتًا
@@ -55,6 +102,35 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   bool _isSubmitting = false;
   String? _errorMessage;
 
+  // بيانات صاحب الحجز (فنادق HotelBeds فقط) — كما في الهوية.
+  final _holderFormKey = GlobalKey<FormState>();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+
+  /// غرفة HotelBeds المختارة (null للفنادق المحلية).
+  SelectedRoom? get _hbRoom {
+    final rooms = widget.selectedRooms;
+    if (rooms == null || rooms.isEmpty) return null;
+    return rooms.first.isHotelBeds ? rooms.first : null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.text = Supabase.instance.client.auth.currentUser?.email ?? '';
+  }
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
   int get _nights => widget.checkOut.difference(widget.checkIn).inDays;
 
   List<SelectedRoom> get _rooms =>
@@ -73,7 +149,501 @@ class _BookingPageState extends ConsumerState<BookingPage> {
 
   double get _totalPrice => _subtotalPerNight * _nights;
 
+  // ═══════════════════════ حجز HotelBeds الحقيقي ═══════════════════════
+  //
+  // 1) hotelbeds-prepare: CheckRate + السعر النهائي + ملاحظات الفندق + PaymentIntent.
+  // 2) مراجعة: يرى العميل السعر النهائي بالدولار وسياسة الإلغاء والملاحظات ويوافق.
+  // 3) البطاقة: يُحجز المبلغ فقط (لا يُسحب).
+  // 4) hotelbeds-book: الحجز عند HotelBeds ثم السحب، أو الإلغاء إن فشل.
+
+  Future<void> _confirmHotelBedsBooking(SelectedRoom room) async {
+    if (!(_holderFormKey.currentState?.validate() ?? false)) return;
+
+    if (!_isStripeSupportedPlatform) {
+      setState(() => _errorMessage = _tb(context,
+          ar: 'الدفع متاح حاليًا من الموقع أو تطبيق الجوال فقط.',
+          en: 'Payment is currently available on the website or mobile app only.',
+          es: 'El pago solo está disponible en el sitio web o la app móvil.',
+          tr: 'Ödeme şu anda yalnızca web sitesi veya mobil uygulamada kullanılabilir.',
+          id: 'Pembayaran saat ini hanya tersedia di situs web atau aplikasi seluler.',
+          hi: 'भुगतान अभी केवल वेबसाइट या मोबाइल ऐप पर उपलब्ध है।',
+          ur: 'ادائیگی فی الحال صرف ویب سائٹ یا موبائل ایپ پر دستیاب ہے۔',
+          fr: 'Le paiement est actuellement disponible uniquement sur le site ou l\'application mobile.',
+          bn: 'পেমেন্ট এখন শুধু ওয়েবসাইট বা মোবাইল অ্যাপে উপলব্ধ।'));
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+
+    final repo = ref.read(hotelBedsBookingRepositoryProvider);
+
+    // 1) تثبيت السعر
+    final quoteResult = await repo.prepare(
+      rateKey: room.rateKey!,
+      hotelCode: widget.hotel.id.replaceFirst('hb_', ''),
+      hotelName: widget.hotel.name,
+      hotelCity: widget.hotel.city,
+      hotelImage: widget.hotel.images.isNotEmpty ? widget.hotel.images.first : null,
+      roomName: room.label,
+      checkIn: widget.checkIn,
+      checkOut: widget.checkOut,
+      guests: widget.guests,
+      expectedPrice: room.totalPrice,
+      expectedPriceUsd: room.priceUsd,
+      holder: BookingHolder(
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+      ),
+    );
+    if (!mounted) return;
+
+    HotelBedsQuote? quote;
+    quoteResult.when(
+      success: (q) {
+        quote = q;
+      },
+      failure: (message) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = message;
+        });
+      },
+    );
+    if (quote == null) return;
+
+    // 2) مراجعة وموافقة العميل
+    final agreed = await _showReviewDialog(quote!);
+    if (!mounted) return;
+    if (agreed != true) {
+      setState(() => _isSubmitting = false);
+      return;
+    }
+
+    // 3) البطاقة (حجز المبلغ فقط)
+    final payResult = await ref
+        .read(paymentServiceProvider)
+        .confirmWithClientSecret(clientSecret: quote!.clientSecret, context: context);
+    if (!mounted) return;
+
+    var authorized = false;
+    payResult.when(
+      success: (_) {
+        authorized = true;
+      },
+      failure: (message) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = message;
+        });
+      },
+    );
+    if (!authorized) return;
+
+    // 4) الحجز عند الفندق
+    final bookResult = await repo.book(quote!.bookingId);
+    if (!mounted) return;
+
+    bookResult.when(
+      success: (outcome) {
+        setState(() => _isSubmitting = false);
+        _showHotelBedsResultDialog(outcome);
+      },
+      failure: (message) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = message;
+        });
+      },
+    );
+  }
+
+  Future<bool?> _showReviewDialog(HotelBedsQuote quote) {
+    final currentFee = quote.currentCancellationFee;
+    final upcoming = quote.upcomingPolicies;
+    final hasPolicies = quote.cancellationPolicies.isNotEmpty;
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(_tb(ctx,
+            ar: 'راجع حجزك قبل الدفع', en: 'Review before payment', es: 'Revisa antes de pagar',
+            tr: 'Ödemeden önce gözden geçirin', id: 'Tinjau sebelum membayar',
+            hi: 'भुगतान से पहले समीक्षा करें', ur: 'ادائیگی سے پہلے جائزہ لیں',
+            fr: 'Vérifiez avant de payer', bn: 'পেমেন্টের আগে পর্যালোচনা করুন')),
+        content: SizedBox(
+          width: 460,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  [
+                    widget.hotel.name,
+                    if (quote.roomName != null) quote.roomName!,
+                    if (quote.boardName != null) _titleCase(quote.boardName!),
+                  ].join(' · '),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                if (quote.priceChanged) ...[
+                  const SizedBox(height: AppSizes.sm),
+                  Text(
+                    _tb(ctx,
+                        ar: 'تغيّر السعر منذ بحثك. السعر أدناه هو السعر النهائي.',
+                        en: 'The price has changed since your search. The price below is final.',
+                        es: 'El precio cambió desde tu búsqueda. El precio de abajo es el final.',
+                        tr: 'Aramanızdan bu yana fiyat değişti. Aşağıdaki fiyat nihaidir.',
+                        id: 'Harga berubah sejak pencarian Anda. Harga di bawah adalah harga final.',
+                        hi: 'आपकी खोज के बाद कीमत बदल गई है। नीचे दी गई कीमत अंतिम है।',
+                        ur: 'آپ کی تلاش کے بعد قیمت بدل گئی ہے۔ نیچے دی گئی قیمت حتمی ہے۔',
+                        fr: 'Le prix a changé depuis votre recherche. Le prix ci-dessous est définitif.',
+                        bn: 'আপনার অনুসন্ধানের পর দাম বদলেছে। নিচের দামটি চূড়ান্ত।'),
+                    style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600),
+                  ),
+                ],
+                const SizedBox(height: AppSizes.md),
+                // سياسة الإلغاء
+                Text(
+                  _tb(ctx,
+                      ar: 'سياسة الإلغاء', en: 'Cancellation policy', es: 'Política de cancelación',
+                      tr: 'İptal politikası', id: 'Kebijakan pembatalan', hi: 'रद्दीकरण नीति',
+                      ur: 'منسوخی کی پالیسی', fr: 'Politique d\'annulation', bn: 'বাতিল নীতি'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                if (quote.isNonRefundable)
+                  Text(_tb(ctx,
+                      ar: 'غير قابل للاسترداد: يُخصم كامل المبلغ عند الإلغاء.',
+                      en: 'Non-refundable: the full amount is charged if you cancel.',
+                      es: 'No reembolsable: se cobra el importe total si cancelas.',
+                      tr: 'İade edilmez: iptal ederseniz tutarın tamamı tahsil edilir.',
+                      id: 'Tidak dapat dikembalikan: jumlah penuh dikenakan jika Anda membatalkan.',
+                      hi: 'नॉन-रिफ़ंडेबल: रद्द करने पर पूरी राशि ली जाएगी।',
+                      ur: 'ناقابلِ واپسی: منسوخی پر پوری رقم وصول کی جائے گی۔',
+                      fr: 'Non remboursable : le montant total est dû en cas d\'annulation.',
+                      bn: 'অফেরতযোগ্য: বাতিল করলে পুরো টাকা কাটা হবে।'))
+                else ...[
+                  if (currentFee > 0)
+                    Text(_tb(ctx,
+                        ar: 'رسوم الإلغاء إذا ألغيت الآن: ${_usd(currentFee)}',
+                        en: 'Cancellation fee if you cancel now: ${_usd(currentFee)}',
+                        es: 'Cargo si cancelas ahora: ${_usd(currentFee)}',
+                        tr: 'Şimdi iptal ederseniz ücret: ${_usd(currentFee)}',
+                        id: 'Biaya jika membatalkan sekarang: ${_usd(currentFee)}',
+                        hi: 'अभी रद्द करने पर शुल्क: ${_usd(currentFee)}',
+                        ur: 'ابھی منسوخ کرنے پر فیس: ${_usd(currentFee)}',
+                        fr: 'Frais si vous annulez maintenant : ${_usd(currentFee)}',
+                        bn: 'এখন বাতিল করলে ফি: ${_usd(currentFee)}'))
+                  else if (upcoming.isNotEmpty)
+                    Text(_tb(ctx,
+                        ar: 'إلغاء مجاني حتى ${upcoming.first.localDateTimeText} (بتوقيت الفندق).',
+                        en: 'Free cancellation until ${upcoming.first.localDateTimeText} (hotel local time).',
+                        es: 'Cancelación gratuita hasta el ${upcoming.first.localDateTimeText} (hora local del hotel).',
+                        tr: '${upcoming.first.localDateTimeText} tarihine kadar ücretsiz iptal (otel yerel saati).',
+                        id: 'Pembatalan gratis hingga ${upcoming.first.localDateTimeText} (waktu setempat hotel).',
+                        hi: '${upcoming.first.localDateTimeText} तक मुफ़्त रद्दीकरण (होटल का स्थानीय समय)।',
+                        ur: '${upcoming.first.localDateTimeText} تک مفت منسوخی (ہوٹل کا مقامی وقت)۔',
+                        fr: 'Annulation gratuite jusqu\'au ${upcoming.first.localDateTimeText} (heure locale de l\'hôtel).',
+                        bn: '${upcoming.first.localDateTimeText} পর্যন্ত বিনামূল্যে বাতিল (হোটেলের স্থানীয় সময়)।'))
+                  else if (!hasPolicies)
+                      Text(_tb(ctx,
+                          ar: 'إلغاء مجاني.', en: 'Free cancellation.', es: 'Cancelación gratuita.',
+                          tr: 'Ücretsiz iptal.', id: 'Pembatalan gratis.', hi: 'मुफ़्त रद्दीकरण।',
+                          ur: 'مفت منسوخی۔', fr: 'Annulation gratuite.', bn: 'বিনামূল্যে বাতিল।')),
+                  for (final p in upcoming)
+                    Text(
+                      _tb(ctx,
+                          ar: 'من ${p.localDateTimeText}: رسوم ${_usd(p.customerFee)}',
+                          en: 'From ${p.localDateTimeText}: fee ${_usd(p.customerFee)}',
+                          es: 'Desde el ${p.localDateTimeText}: cargo de ${_usd(p.customerFee)}',
+                          tr: '${p.localDateTimeText} itibarıyla: ${_usd(p.customerFee)} ücret',
+                          id: 'Mulai ${p.localDateTimeText}: biaya ${_usd(p.customerFee)}',
+                          hi: '${p.localDateTimeText} से: शुल्क ${_usd(p.customerFee)}',
+                          ur: '${p.localDateTimeText} سے: فیس ${_usd(p.customerFee)}',
+                          fr: 'À partir du ${p.localDateTimeText} : frais de ${_usd(p.customerFee)}',
+                          bn: '${p.localDateTimeText} থেকে: ফি ${_usd(p.customerFee)}'),
+                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                ],
+                // ملاحظات الفندق (إلزامية قبل الدفع)
+                if (quote.rateComments != null && quote.rateComments!.isNotEmpty) ...[
+                  const SizedBox(height: AppSizes.md),
+                  Text(
+                    _tb(ctx,
+                        ar: 'معلومات مهمة من الفندق', en: 'Important information from the hotel',
+                        es: 'Información importante del hotel', tr: 'Otelden önemli bilgiler',
+                        id: 'Informasi penting dari hotel', hi: 'होटल की महत्वपूर्ण जानकारी',
+                        ur: 'ہوٹل کی اہم معلومات', fr: 'Informations importantes de l\'hôtel',
+                        bn: 'হোটেলের গুরুত্বপূর্ণ তথ্য'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    quote.rateComments!,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                ],
+                const Divider(height: AppSizes.lg * 2),
+                // الرسوم الإلزامية التي تُدفع في الفندق — تظهر قبل الدفع (FTC).
+                if (quote.payAtHotelUsd > 0) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(_tb(ctx,
+                            ar: 'رسوم تُدفع في الفندق (تقديرية، بالعملة المحلية)',
+                            en: 'Fees payable at the hotel (estimate, in local currency)',
+                            es: 'Tasas a pagar en el hotel (estimado, en moneda local)',
+                            tr: 'Otelde ödenecek ücretler (tahmini, yerel para birimi)',
+                            id: 'Biaya dibayar di hotel (perkiraan, mata uang lokal)',
+                            hi: 'होटल में देय शुल्क (अनुमानित, स्थानीय मुद्रा में)',
+                            ur: 'ہوٹل میں قابلِ ادائیگی فیس (تخمینہ، مقامی کرنسی میں)',
+                            fr: 'Frais à payer à l\'hôtel (estimation, en devise locale)',
+                            bn: 'হোটেলে প্রদেয় ফি (আনুমানিক, স্থানীয় মুদ্রায়)')),
+                      ),
+                      Text(_usd(quote.payAtHotelUsd)),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(_tb(ctx,
+                            ar: 'السعر الإجمالي للإقامة', en: 'Total price of your stay',
+                            es: 'Precio total de tu estancia', tr: 'Konaklamanın toplam fiyatı',
+                            id: 'Total harga menginap', hi: 'आपके ठहराव की कुल कीमत',
+                            ur: 'آپ کے قیام کی کل قیمت', fr: 'Prix total de votre séjour',
+                            bn: 'আপনার থাকার মোট মূল্য')),
+                      ),
+                      Text(_usd(quote.totalUsd),
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.sm),
+                ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _tb(ctx,
+                            ar: 'المبلغ الإجمالي', en: 'Total charge', es: 'Cargo total',
+                            tr: 'Toplam tutar', id: 'Total tagihan', hi: 'कुल शुल्क',
+                            ur: 'کل رقم', fr: 'Montant total', bn: 'মোট চার্জ'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                    Text(
+                      _usd(quote.chargeAmount),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _tb(ctx,
+                      ar: 'يُحجز المبلغ على بطاقتك ولا يُسحب إلا بعد تأكيد الفندق.',
+                      en: 'The amount is held on your card and only charged once the hotel confirms.',
+                      es: 'El importe se retiene en tu tarjeta y solo se cobra cuando el hotel confirma.',
+                      tr: 'Tutar kartınızda bloke edilir ve yalnızca otel onayladığında tahsil edilir.',
+                      id: 'Jumlah ditahan di kartu Anda dan baru ditagih setelah hotel mengonfirmasi.',
+                      hi: 'राशि आपके कार्ड पर होल्ड की जाती है और होटल की पुष्टि के बाद ही ली जाती है।',
+                      ur: 'رقم آپ کے کارڈ پر روکی جاتی ہے اور ہوٹل کی تصدیق کے بعد ہی وصول ہوتی ہے۔',
+                      fr: 'Le montant est bloqué sur votre carte et débité seulement après confirmation de l\'hôtel.',
+                      bn: 'টাকাটি আপনার কার্ডে আটকে রাখা হয় এবং হোটেল নিশ্চিত করলে তবেই কাটা হয়।'),
+                  style: const TextStyle(fontSize: 12, color: AppColors.textHint),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(_tb(ctx,
+                ar: 'إلغاء', en: 'Cancel', es: 'Cancelar', tr: 'Vazgeç', id: 'Batal',
+                hi: 'रद्द करें', ur: 'منسوخ کریں', fr: 'Annuler', bn: 'বাতিল')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(_tb(ctx,
+                ar: 'أوافق وأتابع للدفع', en: 'Agree and pay', es: 'Aceptar y pagar',
+                tr: 'Kabul et ve öde', id: 'Setuju dan bayar', hi: 'सहमत हूं और भुगतान करें',
+                ur: 'متفق ہوں اور ادائیگی کریں', fr: 'Accepter et payer', bn: 'সম্মত ও পেমেন্ট')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHotelBedsResultDialog(HotelBedsBookingOutcome outcome) {
+    final confirmed = outcome.isConfirmed;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(
+          confirmed ? Icons.check_circle : Icons.hourglass_top,
+          color: confirmed ? AppColors.success : AppColors.primary,
+          size: 48,
+        ),
+        title: Text(confirmed
+            ? _tb(ctx,
+            ar: 'تم تأكيد حجزك', en: 'Your booking is confirmed', es: 'Tu reserva está confirmada',
+            tr: 'Rezervasyonunuz onaylandı', id: 'Pemesanan Anda dikonfirmasi',
+            hi: 'आपकी बुकिंग की पुष्टि हो गई', ur: 'آپ کی بکنگ کی تصدیق ہو گئی',
+            fr: 'Votre réservation est confirmée', bn: 'আপনার বুকিং নিশ্চিত হয়েছে')
+            : _tb(ctx,
+            ar: 'حجزك قيد التأكيد', en: 'Your booking is being confirmed',
+            es: 'Tu reserva se está confirmando', tr: 'Rezervasyonunuz onaylanıyor',
+            id: 'Pemesanan Anda sedang dikonfirmasi', hi: 'आपकी बुकिंग की पुष्टि हो रही है',
+            ur: 'آپ کی بکنگ کی تصدیق ہو رہی ہے', fr: 'Votre réservation est en cours de confirmation',
+            bn: 'আপনার বুকিং নিশ্চিত করা হচ্ছে')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.hotel.name, textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: AppSizes.sm),
+            if (confirmed && outcome.reference != null)
+              SelectableText(
+                '${_tb(ctx, ar: 'رقم الحجز', en: 'Booking reference', es: 'Referencia de reserva', tr: 'Rezervasyon numarası', id: 'Nomor pemesanan', hi: 'बुकिंग संदर्भ', ur: 'بکنگ نمبر', fr: 'Référence de réservation', bn: 'বুকিং রেফারেন্স')}: ${outcome.reference}',
+                textAlign: TextAlign.center,
+              )
+            else
+              Text(
+                _tb(ctx,
+                    ar: 'لم يُسحب أي مبلغ بعد. سنراجع حجزك ونتواصل معك قريبًا. مرجعك: ${outcome.clientReference}',
+                    en: 'Nothing has been charged yet. We are reviewing your booking and will contact you shortly. Your reference: ${outcome.clientReference}',
+                    es: 'Aún no se ha cobrado nada. Estamos revisando tu reserva y te contactaremos pronto. Tu referencia: ${outcome.clientReference}',
+                    tr: 'Henüz ücret alınmadı. Rezervasyonunuzu inceliyoruz ve kısa süre içinde sizinle iletişime geçeceğiz. Referansınız: ${outcome.clientReference}',
+                    id: 'Belum ada tagihan. Kami sedang meninjau pemesanan Anda dan akan segera menghubungi Anda. Referensi Anda: ${outcome.clientReference}',
+                    hi: 'अभी कोई राशि नहीं ली गई है। हम आपकी बुकिंग की समीक्षा कर रहे हैं और जल्द संपर्क करेंगे। आपका संदर्भ: ${outcome.clientReference}',
+                    ur: 'ابھی کوئی رقم وصول نہیں کی گئی۔ ہم آپ کی بکنگ کا جائزہ لے رہے ہیں اور جلد رابطہ کریں گے۔ آپ کا حوالہ: ${outcome.clientReference}',
+                    fr: 'Rien n\'a encore été débité. Nous vérifions votre réservation et vous contacterons rapidement. Votre référence : ${outcome.clientReference}',
+                    bn: 'এখনও কোনো টাকা কাটা হয়নি। আমরা আপনার বুকিং পর্যালোচনা করছি এবং শীঘ্রই যোগাযোগ করব। আপনার রেফারেন্স: ${outcome.clientReference}'),
+                textAlign: TextAlign.center,
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              context.pop();
+            },
+            child: Text(AppLocalizations.of(ctx)!.ok),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _holderForm(BuildContext context) {
+    String? requiredField(String? v) => (v == null || v.trim().isEmpty)
+        ? _tb(context,
+        ar: 'مطلوب', en: 'Required', es: 'Obligatorio', tr: 'Zorunlu', id: 'Wajib',
+        hi: 'आवश्यक', ur: 'ضروری', fr: 'Obligatoire', bn: 'আবশ্যক')
+        : null;
+
+    InputDecoration deco(String label) => InputDecoration(
+      labelText: label,
+      border: const OutlineInputBorder(),
+      isDense: true,
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.md),
+        child: Form(
+          key: _holderFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _tb(context,
+                    ar: 'بيانات صاحب الحجز (كما في الهوية)',
+                    en: 'Main guest details (as on ID)',
+                    es: 'Datos del huésped principal (como en el documento)',
+                    tr: 'Ana misafir bilgileri (kimlikteki gibi)',
+                    id: 'Data tamu utama (sesuai identitas)',
+                    hi: 'मुख्य अतिथि का विवरण (पहचान पत्र के अनुसार)',
+                    ur: 'مرکزی مہمان کی تفصیلات (شناختی کارڈ کے مطابق)',
+                    fr: 'Coordonnées du client principal (comme sur la pièce d\'identité)',
+                    bn: 'প্রধান অতিথির তথ্য (পরিচয়পত্র অনুযায়ী)'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: AppSizes.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _firstNameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: deco(_tb(context,
+                          ar: 'الاسم الأول', en: 'First name', es: 'Nombre', tr: 'Ad',
+                          id: 'Nama depan', hi: 'पहला नाम', ur: 'پہلا نام', fr: 'Prénom',
+                          bn: 'নামের প্রথম অংশ')),
+                      validator: requiredField,
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.sm),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _lastNameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: deco(_tb(context,
+                          ar: 'اسم العائلة', en: 'Last name', es: 'Apellido', tr: 'Soyad',
+                          id: 'Nama belakang', hi: 'उपनाम', ur: 'خاندانی نام', fr: 'Nom',
+                          bn: 'নামের শেষ অংশ')),
+                      validator: requiredField,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSizes.sm),
+              TextFormField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: deco(_tb(context,
+                    ar: 'البريد الإلكتروني', en: 'Email', es: 'Correo electrónico', tr: 'E-posta',
+                    id: 'Email', hi: 'ईमेल', ur: 'ای میل', fr: 'E-mail', bn: 'ইমেইল')),
+                validator: requiredField,
+              ),
+              const SizedBox(height: AppSizes.sm),
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: deco(_tb(context,
+                    ar: 'رقم الهاتف', en: 'Phone number', es: 'Teléfono', tr: 'Telefon',
+                    id: 'Nomor telepon', hi: 'फ़ोन नंबर', ur: 'فون نمبر', fr: 'Téléphone',
+                    bn: 'ফোন নম্বর')),
+                validator: requiredField,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _confirmBooking() async {
+    final hbRoom = _hbRoom;
+    if (hbRoom != null) {
+      await _confirmHotelBedsBooking(hbRoom);
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
@@ -266,10 +836,12 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                       value: Formatters.date(widget.checkOut),
                     ),
                     const Divider(),
+                    // عدد الليالي مترجم بصيغ الجمع الصحيحة لكل لغة (مفتاح nightsCount)
+                    // بدل Formatters.nights التي كانت تُرجع نصًا عربيًا ثابتًا.
                     _DetailRow(
                       icon: Icons.nights_stay_outlined,
                       label: l10n.nightsLabel,
-                      value: Formatters.nights(widget.checkIn, widget.checkOut),
+                      value: l10n.nightsCount(_nights),
                     ),
                     const Divider(),
                     _DetailRow(
@@ -331,6 +903,12 @@ class _BookingPageState extends ConsumerState<BookingPage> {
               ),
             ),
 
+            // بيانات صاحب الحجز (فنادق HotelBeds فقط)
+            if (_hbRoom != null) ...[
+              const SizedBox(height: AppSizes.md),
+              _holderForm(context),
+            ],
+
             if (_errorMessage != null) ...[
               const SizedBox(height: AppSizes.md),
               Text(
@@ -356,12 +934,15 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                   : Text(l10n.confirmBookingButton),
             ),
 
-            const SizedBox(height: AppSizes.sm),
-            Text(
-              l10n.paymentNote,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textHint, fontSize: 12),
-            ),
+            // ملاحظة الدفع القديمة لا تنطبق على حجوزات HotelBeds.
+            if (_hbRoom == null) ...[
+              const SizedBox(height: AppSizes.sm),
+              Text(
+                l10n.paymentNote,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textHint, fontSize: 12),
+              ),
+            ],
 
             const AppFooter(),
           ],

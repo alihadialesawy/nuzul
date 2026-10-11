@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -139,9 +140,24 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
   int _currentImagePage = 0;
   bool _isFavorite = false;
 
+  /// فنادق HotelBeds: الغرف والأسعار الحقيقية من نتيجة البحث نفسها
+  /// (HotelBedsSearchCache) — بدون استدعاء Availability مرة ثانية.
+  /// null = الصفحة فُتحت بدون بحث أو انتهت صلاحية الأسعار.
+  HotelBedsResult? _hbResult;
+
+  bool get _isHotelBeds => widget.hotel.id.startsWith('hb_');
+
   @override
   void initState() {
     super.initState();
+    if (_isHotelBeds) {
+      _hbResult = HotelBedsSearchCache.lookup(
+        code: widget.hotel.id.replaceFirst('hb_', ''),
+        checkIn: widget.checkIn,
+        checkOut: widget.checkOut,
+        guests: widget.guests,
+      );
+    }
     // فنادق HotelBeds بتيجي بمعرّف بادئته hb_ ومن غير صور من استعلام
     // البحث المبسط -- نجيب الصور الفعلية لحظيًا هنا بس (مش في قائمة
     // البحث كلها) عشان نتجنب إبطاء صفحة النتائج.
@@ -218,83 +234,258 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
     );
   }
 
-  /// كارت صورة مصغّر بشكل يشبه Booking.com: مربع صغير مع أيقونة قلب
-  /// (مفضّلة) فوق يمين، ونقط تنقل تحت لو فيه أكتر من صورة. بنعرض أول 8
-  /// صور بس كحد أقصى لتفادي عدد نقط تنقل ضخم لما يكون فيه عشرات الصور.
-  Widget _buildImageGallery(HotelModel hotel) {
-    final displayImages = hotel.images.take(8).toList();
+  /// حجز سعر واحد من HotelBeds: ننقل rateKey وكل تفاصيل السعر لصفحة الحجز.
+  /// [totalSar] = سعر الإقامة كاملة محوّلًا للريال (للعرض والمجاميع فقط؛
+  /// المبلغ النهائي يُحسب على السيرفر من rateKey في خطوة الحجز).
+  Future<void> _reserveHotelBedsRate(
+      HotelBedsRoom room,
+      HotelBedsRate rate,
+      double totalSar,
+      ) async {
+    final nights = widget.checkOut.difference(widget.checkIn).inDays.clamp(1, 365);
+    final firstPolicy = rate.firstCancellationPolicy;
+    final policyFrom = firstPolicy != null ? DateTime.tryParse(firstPolicy.from) : null;
+    final freeUntil = (policyFrom != null && DateTime.now().isBefore(policyFrom))
+        ? firstPolicy!.localDateTimeText
+        : null;
 
-    return Center(
-      child: ClipRRect(
+    final selected = SelectedRoom(
+      label: [
+        _titleCase(room.name),
+        if (rate.boardName != null) _titleCase(rate.boardName!),
+      ].join(' · '),
+      pricePerNight: totalSar / nights / rate.rooms,
+      quantity: rate.rooms,
+      rateKey: rate.rateKey,
+      rateType: rate.rateType,
+      paymentType: rate.paymentType,
+      boardName: rate.boardName,
+      currency: _hbResult?.currency,
+      totalPrice: rate.price,
+      priceUsd: rate.priceUsd,
+      payAtHotelUsd: rate.payAtHotelUsd,
+      freeCancellationUntil: freeUntil,
+      isNonRefundable: rate.isNonRefundable,
+      rateCommentsId: rate.rateCommentsId,
+      rateComments: rate.rateComments,
+    );
+
+    final user = ref.read(currentUserProvider);
+    if (user == null) {
+      await context.push(AppRoutes.login);
+      if (!context.mounted) return;
+    }
+
+    context.push(
+      AppRoutes.booking,
+      extra: {
+        'hotel': _hotel,
+        'checkIn': widget.checkIn,
+        'checkOut': widget.checkOut,
+        'guests': widget.guests,
+        'selectedRooms': [selected],
+      },
+    );
+  }
+
+  /// أقصى عدد صور في المعرض.
+  static const int _maxGalleryImages = 30;
+
+  /// معرض صور بشكل Booking.com:
+  /// - شاشة عريضة (≥ 640px) وفيها 3 صور أو أكثر: صورة كبيرة + شبكة 2×2 مصغّرة،
+  ///   وآخر مصغّرة عليها "+N" لو فيه صور أكثر.
+  /// - شاشة ضيقة: صورة كبيرة بعرض الصفحة.
+  /// - في الحالتين: أسهم تنقل + عدّاد (3 / 12)، والضغط يفتح عارض ملء الشاشة.
+  Widget _buildImageGallery(HotelModel hotel) {
+    final images = hotel.images.take(_maxGalleryImages).toList();
+
+    if (images.isEmpty) {
+      return ClipRRect(
         borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-        child: SizedBox(
-          width: 260,
-          height: 260,
-          child: Stack(
-            fit: StackFit.expand,
+        child: Container(
+          height: 240,
+          color: AppColors.divider,
+          child: const Center(child: Icon(Icons.hotel, size: 48, color: AppColors.textHint)),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 640 && images.length >= 3;
+        final height = wide ? 400.0 : 280.0;
+
+        if (!wide) {
+          return SizedBox(height: height, child: _mainCarousel(images));
+        }
+
+        final thumbs = images.skip(1).take(4).toList();
+        final remaining = images.length - 1 - thumbs.length;
+
+        Widget thumb(int t) {
+          if (t >= thumbs.length) return const SizedBox.shrink();
+          final isLast = t == thumbs.length - 1 && remaining > 0;
+          return _GalleryTile(
+            url: thumbs[t],
+            overlayText: isLast ? '+$remaining' : null,
+            onTap: () => _openGalleryViewer(images, t + 1),
+          );
+        }
+
+        return SizedBox(
+          height: height,
+          child: Row(
             children: [
-              Container(
-                color: AppColors.divider,
-                child: displayImages.isNotEmpty
-                    ? PageView.builder(
-                  controller: _imageController,
-                  onPageChanged: (i) => setState(() => _currentImagePage = i),
-                  itemCount: displayImages.length,
-                  itemBuilder: (context, i) => Image.network(
-                    displayImages[i],
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
-                  ),
-                )
-                    : const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
-              ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: GestureDetector(
-                  onTap: () => setState(() => _isFavorite = !_isFavorite),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
+              Expanded(flex: 2, child: _mainCarousel(images)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Row(children: [
+                        Expanded(child: thumb(0)),
+                        const SizedBox(width: 6),
+                        Expanded(child: thumb(1)),
+                      ]),
                     ),
-                    child: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      size: 18,
-                      color: _isFavorite ? AppColors.error : AppColors.textSecondary,
+                    const SizedBox(height: 6),
+                    Expanded(
+                      child: Row(children: [
+                        Expanded(child: thumb(2)),
+                        const SizedBox(width: 6),
+                        Expanded(child: thumb(3)),
+                      ]),
                     ),
-                  ),
+                  ],
                 ),
               ),
-              if (displayImages.length > 1)
-                Positioned(
-                  bottom: 8,
-                  left: 0,
-                  right: 0,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(displayImages.length, (i) {
-                      final isActive = i == _currentImagePage;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        width: isActive ? 8 : 6,
-                        height: isActive ? 8 : 6,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isActive ? Colors.white : Colors.white70,
-                        ),
-                      );
-                    }),
-                  ),
-                ),
             ],
           ),
-        ),
+        );
+      },
+    );
+  }
+
+  /// الصورة الكبيرة: تمرير + أسهم + عدّاد + قلب المفضلة.
+  Widget _mainCarousel(List<String> images) {
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final hasMany = images.length > 1;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(
+            color: AppColors.divider,
+            child: PageView.builder(
+              controller: _imageController,
+              onPageChanged: (i) => setState(() => _currentImagePage = i),
+              itemCount: images.length,
+              itemBuilder: (context, i) => GestureDetector(
+                onTap: () => _openGalleryViewer(images, i),
+                child: Image.network(
+                  images[i],
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
+                ),
+              ),
+            ),
+          ),
+          if (hasMany) ...[
+            PositionedDirectional(
+              start: 8,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: _ArrowButton(
+                  icon: rtl ? Icons.chevron_right : Icons.chevron_left,
+                  onTap: () => _imageController.previousPage(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                  ),
+                ),
+              ),
+            ),
+            PositionedDirectional(
+              end: 8,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: _ArrowButton(
+                  icon: rtl ? Icons.chevron_left : Icons.chevron_right,
+                  onTap: () => _imageController.nextPage(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                  ),
+                ),
+              ),
+            ),
+            PositionedDirectional(
+              bottom: 10,
+              end: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_currentImagePage + 1} / ${images.length}',
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            ),
+          ],
+          PositionedDirectional(
+            top: 10,
+            end: 10,
+            child: GestureDetector(
+              onTap: () => setState(() => _isFavorite = !_isFavorite),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: Icon(
+                  _isFavorite ? Icons.favorite : Icons.favorite_border,
+                  size: 18,
+                  color: _isFavorite ? AppColors.error : AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  void _openGalleryViewer(List<String> images, int initialIndex) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => _GalleryViewer(images: images, initialIndex: initialIndex),
+    );
+  }
+
+  /// نجوم تصنيف الفندق الرسمي (من HotelBeds) — وليست تقييم نزلاء.
+  Widget _buildStarCategory(HotelModel hotel) {
+    final stars = hotel.rating.round().clamp(0, 5);
+    if (stars == 0) return const SizedBox.shrink();
+    return Row(
+      children: [
+        ...List.generate(
+          stars,
+              (_) => const Icon(Icons.star, size: 18, color: Color(0xFFF7B500)),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          _t3(context,
+              ar: 'فندق $stars نجوم', en: '$stars-star hotel', es: 'Hotel de $stars estrellas',
+              tr: '$stars yıldızlı otel', id: 'Hotel bintang $stars', hi: '$stars-सितारा होटल',
+              ur: '$stars ستارہ ہوٹل', fr: 'Hôtel $stars étoiles', bn: '$stars-তারকা হোটেল'),
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
+      ],
     );
   }
 
@@ -321,7 +512,7 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                 child: ListView(
                   padding: const EdgeInsets.all(AppSizes.md),
                   children: [
-                    // معرض صورة الفندق المصغّر (شكل كارت Booking.com)
+                    // معرض صور الفندق (شكل Booking.com)
                     _buildImageGallery(hotel),
 
                     const SizedBox(height: AppSizes.md),
@@ -339,10 +530,15 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                       ],
                     ),
                     const SizedBox(height: AppSizes.sm),
-                    RatingBadge(
-                      rating: hotel.rating,
-                      reviewCount: hotel.reviewCount,
-                    ),
+                    // فنادق HotelBeds: نجوم التصنيف الرسمي (لا يوجد تقييم نزلاء
+                    // حقيقي بعد، فلا نعرض "درجة مراجعات" غير حقيقية).
+                    if (_isHotelBeds)
+                      _buildStarCategory(hotel)
+                    else
+                      RatingBadge(
+                        rating: hotel.rating,
+                        reviewCount: hotel.reviewCount,
+                      ),
 
                     const SizedBox(height: AppSizes.lg),
 
@@ -352,14 +548,27 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     const SizedBox(height: AppSizes.sm),
-                    _RoomTypesTable(
-                      roomOptions: _roomOptions,
-                      hotel: hotel,
-                      l10n: l10n,
-                      quantities: _quantities,
-                      onQuantityChanged: _onQuantityChanged,
-                      onReserve: _reserveSelectedRooms,
-                    ),
+                    if (_isHotelBeds)
+                      (_hbResult == null
+                          ? const _ExpiredResultsCard()
+                          : _HotelBedsRoomsList(
+                        result: _hbResult!,
+                        nights: widget.checkOut
+                            .difference(widget.checkIn)
+                            .inDays
+                            .clamp(1, 365),
+                        onReserve: _reserveHotelBedsRate,
+                      ))
+                    else
+                    // فنادق الجدول المحلي (المميزة) — الجدول القديم كما هو.
+                      _RoomTypesTable(
+                        roomOptions: _roomOptions,
+                        hotel: hotel,
+                        l10n: l10n,
+                        quantities: _quantities,
+                        onQuantityChanged: _onQuantityChanged,
+                        onReserve: _reserveSelectedRooms,
+                      ),
 
                     const SizedBox(height: AppSizes.lg),
 
@@ -667,6 +876,379 @@ class _RoomTypesTable extends StatelessWidget {
               ),
             );
           }),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════ غرف HotelBeds الحقيقية ═══════════════════════════
+
+/// "DOUBLE STANDARD" → "Double Standard"
+String _titleCase(String s) => s
+    .toLowerCase()
+    .split(' ')
+    .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+    .join(' ');
+
+
+/// كارت يظهر لو الصفحة فُتحت بدون نتائج بحث صالحة (تحديث المتصفح، رابط
+/// مباشر، أو مرّت أكثر من 30 دقيقة). لا نعيد Availability من هنا.
+class _ExpiredResultsCard extends StatelessWidget {
+  const _ExpiredResultsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.update, color: AppColors.textSecondary),
+                const SizedBox(width: AppSizes.sm),
+                Expanded(
+                  child: Text(
+                    _t3(context,
+                        ar: 'انتهت صلاحية الأسعار أو لم يتم البحث بعد. ابحث من جديد لعرض الغرف المتاحة وأسعارها المحدّثة.',
+                        en: 'Prices have expired or no search was made. Search again to see available rooms and updated prices.',
+                        es: 'Los precios han caducado o no se realizó una búsqueda. Busca de nuevo para ver las habitaciones disponibles y los precios actualizados.',
+                        tr: 'Fiyatların süresi doldu veya arama yapılmadı. Müsait odaları ve güncel fiyatları görmek için tekrar arayın.',
+                        id: 'Harga sudah kedaluwarsa atau belum ada pencarian. Cari lagi untuk melihat kamar yang tersedia dan harga terbaru.',
+                        hi: 'कीमतें समाप्त हो गई हैं या कोई खोज नहीं की गई। उपलब्ध कमरे और अपडेटेड कीमतें देखने के लिए फिर से खोजें।',
+                        ur: 'قیمتوں کی میعاد ختم ہو گئی ہے یا تلاش نہیں کی گئی۔ دستیاب کمرے اور تازہ قیمتیں دیکھنے کے لیے دوبارہ تلاش کریں۔',
+                        fr: 'Les prix ont expiré ou aucune recherche n\'a été effectuée. Relancez la recherche pour voir les chambres disponibles et les prix à jour.',
+                        bn: 'দামের মেয়াদ শেষ হয়েছে বা কোনো অনুসন্ধান করা হয়নি। উপলব্ধ রুম ও হালনাগাদ দাম দেখতে আবার অনুসন্ধান করুন।'),
+                    style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.sm),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.search, size: 18),
+                label: Text(_t3(context,
+                    ar: 'ابحث من جديد', en: 'Search again', es: 'Buscar de nuevo', tr: 'Tekrar ara',
+                    id: 'Cari lagi', hi: 'फिर से खोजें', ur: 'دوبارہ تلاش کریں',
+                    fr: 'Rechercher à nouveau', bn: 'আবার অনুসন্ধান করুন')),
+                onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// قائمة الغرف الحقيقية من HotelBeds: لكل غرفة كارت، وتحته كل أسعارها
+/// (نوع الوجبات، سياسة الإلغاء بتوقيت الفندق، الضرائب التي تُدفع في الفندق،
+/// السعر الإجمالي وسعر الليلة، وزر حجز لكل سعر).
+class _HotelBedsRoomsList extends ConsumerWidget {
+  final HotelBedsResult result;
+  final int nights;
+  final void Function(HotelBedsRoom room, HotelBedsRate rate, double totalSar) onReserve;
+
+  const _HotelBedsRoomsList({
+    required this.result,
+    required this.nights,
+    required this.onReserve,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rooms = result.rooms.where((r) => r.rates.isNotEmpty).toList()
+      ..sort((a, b) => (a.minTotalUsd ?? 0).compareTo(b.minTotalUsd ?? 0));
+
+    if (rooms.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.md),
+          child: Text(_t3(context,
+              ar: 'لا توجد غرف متاحة لهذه التواريخ', en: 'No rooms available for these dates',
+              es: 'No hay habitaciones disponibles para estas fechas', tr: 'Bu tarihler için müsait oda yok',
+              id: 'Tidak ada kamar tersedia untuk tanggal ini', hi: 'इन तारीखों के लिए कोई कमरा उपलब्ध नहीं',
+              ur: 'ان تاریخوں کے لیے کوئی کمرہ دستیاب نہیں', fr: 'Aucune chambre disponible pour ces dates',
+              bn: 'এই তারিখে কোনো রুম উপলব্ধ নেই')),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final room in rooms)
+          Card(
+            margin: const EdgeInsets.only(bottom: AppSizes.sm),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSizes.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.bed_outlined, size: 20, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _titleCase(room.name),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.sm),
+                  ...([...room.rates]..sort((a, b) => a.totalUsd.compareTo(b.totalUsd))).map((rate) {
+                    // أسعار بالدولار من السيرفر (نفس معادلة الدفع). نمررها كريال
+                    // بالسعر الثابت لأن PriceText يتوقع ريالًا.
+                    const sarPerUsd = 3.75;
+                    final payNowSar = rate.priceUsd * sarPerUsd;
+                    return _RateRow(
+                      rate: rate,
+                      nights: nights,
+                      totalSar: rate.totalUsd * sarPerUsd,
+                      payNowSar: payNowSar,
+                      payAtHotelSar: rate.payAtHotelUsd * sarPerUsd,
+                      onReserve: () => onReserve(room, rate, payNowSar),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _RateRow extends StatelessWidget {
+  final HotelBedsRate rate;
+  final int nights;
+
+  /// السعر الشامل (يشمل رسوم الفندق الإلزامية) — الرقم الرئيسي.
+  final double totalSar;
+  final double payNowSar;
+  final double payAtHotelSar;
+  final VoidCallback onReserve;
+
+  const _RateRow({
+    required this.rate,
+    required this.nights,
+    required this.totalSar,
+    required this.payNowSar,
+    required this.payAtHotelSar,
+    required this.onReserve,
+  });
+
+  Widget _cancellationLine(BuildContext context) {
+    if (rate.isNonRefundable) {
+      return _ChoiceLine(
+        icon: Icons.block,
+        color: AppColors.textSecondary,
+        text: _t3(context,
+            ar: 'غير قابل للاسترداد', en: 'Non-refundable', es: 'No reembolsable', tr: 'İade edilmez',
+            id: 'Tidak dapat dikembalikan', hi: 'नॉन-रिफ़ंडेबल', ur: 'ناقابلِ واپسی',
+            fr: 'Non remboursable', bn: 'অফেরতযোগ্য'),
+      );
+    }
+
+    final policy = rate.firstCancellationPolicy;
+    if (policy == null) {
+      return _ChoiceLine(
+        icon: Icons.info_outline,
+        color: AppColors.textSecondary,
+        text: _t3(context,
+            ar: 'تُعرض سياسة الإلغاء قبل الدفع', en: 'Cancellation policy shown before payment',
+            es: 'La política de cancelación se muestra antes del pago',
+            tr: 'İptal politikası ödemeden önce gösterilir',
+            id: 'Kebijakan pembatalan ditampilkan sebelum pembayaran',
+            hi: 'रद्दीकरण नीति भुगतान से पहले दिखाई जाती है',
+            ur: 'منسوخی کی پالیسی ادائیگی سے پہلے دکھائی جاتی ہے',
+            fr: 'La politique d\'annulation est affichée avant le paiement',
+            bn: 'পেমেন্টের আগে বাতিল নীতি দেখানো হয়'),
+      );
+    }
+
+    final from = DateTime.tryParse(policy.from);
+    final stillFree = from != null && DateTime.now().isBefore(from);
+    if (stillFree) {
+      final d = policy.localDateTimeText;
+      return _ChoiceLine(
+        icon: Icons.check_circle_outline,
+        color: AppColors.success,
+        text: _t3(context,
+            ar: 'إلغاء مجاني حتى $d (بتوقيت الفندق)',
+            en: 'Free cancellation until $d (hotel local time)',
+            es: 'Cancelación gratuita hasta el $d (hora local del hotel)',
+            tr: '$d tarihine kadar ücretsiz iptal (otel yerel saati)',
+            id: 'Pembatalan gratis hingga $d (waktu setempat hotel)',
+            hi: '$d तक मुफ़्त रद्दीकरण (होटल का स्थानीय समय)',
+            ur: '$d تک مفت منسوخی (ہوٹل کا مقامی وقت)',
+            fr: 'Annulation gratuite jusqu\'au $d (heure locale de l\'hôtel)',
+            bn: '$d পর্যন্ত বিনামূল্যে বাতিল (হোটেলের স্থানীয় সময়)'),
+      );
+    }
+
+    return _ChoiceLine(
+      icon: Icons.warning_amber_outlined,
+      color: AppColors.textSecondary,
+      text: _t3(context,
+          ar: 'تُطبَّق رسوم عند الإلغاء', en: 'Cancellation fees apply',
+          es: 'Se aplican cargos por cancelación', tr: 'İptal ücreti uygulanır',
+          id: 'Dikenakan biaya pembatalan', hi: 'रद्दीकरण शुल्क लागू',
+          ur: 'منسوخی کی فیس لاگو ہے', fr: 'Frais d\'annulation applicables',
+          bn: 'বাতিল ফি প্রযোজ্য'),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.sm),
+      padding: const EdgeInsets.all(AppSizes.sm),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // التفاصيل
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (rate.boardName != null)
+                  _ChoiceLine(
+                    icon: Icons.restaurant_menu,
+                    color: AppColors.primary,
+                    text: _titleCase(rate.boardName!),
+                  ),
+                _cancellationLine(context),
+                if (rate.isPayAtHotel)
+                  _ChoiceLine(
+                    icon: Icons.storefront_outlined,
+                    color: AppColors.primary,
+                    text: _t3(context,
+                        ar: 'الدفع في الفندق', en: 'Pay at hotel', es: 'Pago en el hotel',
+                        tr: 'Otelde ödeme', id: 'Bayar di hotel', hi: 'होटल में भुगतान',
+                        ur: 'ہوٹل میں ادائیگی', fr: 'Paiement à l\'hôtel', bn: 'হোটেলে পেমেন্ট'),
+                  ),
+                for (final p in rate.promotions)
+                  _ChoiceLine(icon: Icons.local_offer_outlined, color: AppColors.primary, text: p),
+                if (rate.rateComments != null && rate.rateComments!.trim().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: const EdgeInsets.only(bottom: 6),
+                        dense: true,
+                        title: Text(
+                          _t3(context,
+                              ar: 'معلومات مهمة', en: 'Important information',
+                              es: 'Información importante', tr: 'Önemli bilgiler',
+                              id: 'Informasi penting', hi: 'महत्वपूर्ण जानकारी',
+                              ur: 'اہم معلومات', fr: 'Informations importantes',
+                              bn: 'গুরুত্বপূর্ণ তথ্য'),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        children: [
+                          Text(
+                            rate.rateComments!.trim(),
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSizes.sm),
+          // السعر + الحجز
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                PriceText(
+                  sarAmount: totalSar,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                Text(
+                  payAtHotelSar > 0
+                      ? '${_t3(context, ar: 'الإجمالي شاملًا رسوم الفندق', en: 'Total incl. hotel fees', es: 'Total con tasas del hotel', tr: 'Otel ücretleri dahil toplam', id: 'Total termasuk biaya hotel', hi: 'होटल शुल्क सहित कुल', ur: 'ہوٹل فیس سمیت کل', fr: 'Total frais d\'hôtel inclus', bn: 'হোটেল ফি সহ মোট')} · ${l10n.nightsCount(nights)}'
+                      : '${_t3(context, ar: 'الإجمالي', en: 'Total', es: 'Total', tr: 'Toplam', id: 'Total', hi: 'कुल', ur: 'کل', fr: 'Total', bn: 'মোট')} · ${l10n.nightsCount(nights)}',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  textAlign: TextAlign.end,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    PriceText(
+                      sarAmount: totalSar / nights,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    Text(
+                      ' ${l10n.perNight}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+                // تفصيل إلزامي لما يُدفع الآن وما يُدفع في الفندق.
+                if (payAtHotelSar > 0) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${_t3(context, ar: 'الآن', en: 'Pay now', es: 'Ahora', tr: 'Şimdi', id: 'Sekarang', hi: 'अभी', ur: 'ابھی', fr: 'Maintenant', bn: 'এখন')} ',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                      PriceText(
+                        sarAmount: payNowSar,
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${_t3(context, ar: 'في الفندق', en: 'At hotel', es: 'En el hotel', tr: 'Otelde', id: 'Di hotel', hi: 'होटल में', ur: 'ہوٹل میں', fr: 'À l\'hôtel', bn: 'হোটেলে')} ',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                      PriceText(
+                        sarAmount: payAtHotelSar,
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 6),
+                ElevatedButton(
+                  onPressed: onReserve,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  ),
+                  child: Text(
+                    _t3(context, ar: 'احجز', en: "I'll reserve", es: 'Reservar', tr: 'Rezervasyon Yap', id: 'Pesan',
+                        hi: 'बुक करें', ur: 'بک کریں', fr: 'Réserver', bn: 'বুক করুন'),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1261,6 +1843,177 @@ class _PaymentChip extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+// ═══════════════════════════ معرض الصور ═══════════════════════════
+
+class _ArrowButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _ArrowButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white.withValues(alpha: 0.9),
+    shape: const CircleBorder(),
+    elevation: 2,
+    child: InkWell(
+      customBorder: const CircleBorder(),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: Icon(icon, size: 24, color: AppColors.textSecondary),
+      ),
+    ),
+  );
+}
+
+class _GalleryTile extends StatelessWidget {
+  final String url;
+  final String? overlayText;
+  final VoidCallback onTap;
+  const _GalleryTile({required this.url, this.overlayText, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+    child: GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(
+            color: AppColors.divider,
+            child: Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+              const Icon(Icons.hotel, color: AppColors.textHint),
+            ),
+          ),
+          if (overlayText != null)
+            Container(
+              color: Colors.black45,
+              alignment: Alignment.center,
+              child: Text(
+                overlayText!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// عارض صور بملء الشاشة: أسهم + عدّاد + إغلاق، ويعمل بأسهم لوحة المفاتيح.
+class _GalleryViewer extends StatefulWidget {
+  final List<String> images;
+  final int initialIndex;
+  const _GalleryViewer({required this.images, required this.initialIndex});
+
+  @override
+  State<_GalleryViewer> createState() => _GalleryViewerState();
+}
+
+class _GalleryViewerState extends State<_GalleryViewer> {
+  late final PageController _controller = PageController(initialPage: widget.initialIndex);
+  late int _index = widget.initialIndex;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _go(int delta) {
+    final next = (_index + delta).clamp(0, widget.images.length - 1);
+    _controller.animateToPage(next,
+        duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    return Dialog.fullscreen(
+      backgroundColor: Colors.black,
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.arrowRight): () => _go(rtl ? -1 : 1),
+          const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _go(rtl ? 1 : -1),
+          const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).pop(),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _controller,
+                onPageChanged: (i) => setState(() => _index = i),
+                itemCount: widget.images.length,
+                itemBuilder: (_, i) => InteractiveViewer(
+                  child: Center(
+                    child: Image.network(
+                      widget.images[i],
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.hotel, size: 64, color: Colors.white54),
+                    ),
+                  ),
+                ),
+              ),
+              if (widget.images.length > 1) ...[
+                PositionedDirectional(
+                  start: 12,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _ArrowButton(
+                      icon: rtl ? Icons.chevron_right : Icons.chevron_left,
+                      onTap: () => _go(-1),
+                    ),
+                  ),
+                ),
+                PositionedDirectional(
+                  end: 12,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _ArrowButton(
+                      icon: rtl ? Icons.chevron_left : Icons.chevron_right,
+                      onTap: () => _go(1),
+                    ),
+                  ),
+                ),
+              ],
+              PositionedDirectional(
+                top: 12,
+                end: 12,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              Positioned(
+                bottom: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    '${_index + 1} / ${widget.images.length}',
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

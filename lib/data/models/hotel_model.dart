@@ -43,24 +43,20 @@
     );
   }
 
-  /// يحوّل عنصر واحد من رد `hotelbeds-search` Edge Function (حقول:
-  /// code, name, categoryName, destinationName, currency, minRate,
-  /// maxRate, zoneName) لنفس شكل HotelModel المستخدم في التطبيق.
+  /// يحوّل عنصر واحد من رد `hotelbeds-search` لنفس شكل HotelModel.
   ///
   /// ملاحظات مهمة على التحويل:
-  /// - `id` بيتحط بصيغة `hb_<code>` (بادئة hb_) عشان نميّزه بوضوح عن
-  ///   الـ id بتاع جدول hotels المحلي (uuid) في أي مكان بيتقارن فيه.
-  /// - HotelBeds مش بيرجّع صور ولا تقييم فعلي في استجابة البحث
-  ///   المبسطة دي (بترجع بس أسعار/تصنيف)، فـ images بتفضل قائمة فاضية
-  ///   و rating بيتقدّر تقريبيًا من categoryName (نص زي "4 STARS" أو
-  ///   "SUPERIOR 4*" أو "HOSTEL 2*") عن طريق استخراج أول رقم موجود
-  ///   فيه؛ لو مفيش رقم (زي "WITHOUT OFFICIAL CATEGORY") بيرجع 3.0
-  ///   كقيمة افتراضية معقولة.
-  /// - `pricePerNight` بياخد قيمة minRate (أرخص غرفة متاحة لليلة).
+  /// - `id` بصيغة `hb_<code>` لتمييزه عن uuid جدول hotels المحلي.
+  /// - rating يُقدَّر من categoryName (أول رقم فيه)، وإلا 3.0.
+  /// - ⚠️ السعر: minRate/minPrice في HotelBeds = إجمالي الإقامة كلها
+  ///   (كل الليالي) بعملة حساب HotelBeds، وليس سعر ليلة بالريال.
+  ///   لذلك يجب تمرير [pricePerNightSar] محسوبًا مسبقًا:
+  ///   (minPrice ÷ عدد الليالي) محوّلًا إلى SAR (HotelRepository يفعل ذلك).
   factory HotelModel.fromHotelBeds(
       Map<String, dynamic> json, {
         required String cityLabel,
         String? imageUrl,
+        double? pricePerNightSar,
       }) {
     final categoryName = json['categoryName'] as String? ?? '';
     final ratingMatch = RegExp(r'(\d+(\.\d+)?)').firstMatch(categoryName);
@@ -76,7 +72,9 @@
       city: (json['destinationName'] as String?)?.isNotEmpty == true
           ? json['destinationName'] as String
           : cityLabel,
-      pricePerNight: double.tryParse('${json['minRate']}') ?? 0.0,
+      pricePerNight: pricePerNightSar ??
+          double.tryParse('${json['minPrice'] ?? json['minRate']}') ??
+          0.0,
       rating: estimatedRating.clamp(1.0, 5.0),
       reviewCount: 0,
       images: (mainImage != null && mainImage.isNotEmpty) ? [mainImage] : const [],

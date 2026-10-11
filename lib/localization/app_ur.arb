@@ -1,4 +1,5 @@
 {
+  "nightsCount": "{count, plural, =1{1 رات} other{{count} راتیں}}",
   "@@locale": "ur",
   "appName": "Nuzul",
   "login": "لاگ ان کریں",

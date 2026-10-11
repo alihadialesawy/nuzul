@@ -112,6 +112,12 @@ abstract class AppLocalizations {
     Locale('ur')
   ];
 
+  /// No description provided for @nightsCount.
+  ///
+  /// In ar, this message translates to:
+  /// **'{count, plural, =1{ليلة واحدة} =2{ليلتان} few{{count} ليالٍ} many{{count} ليلة} other{{count} ليلة}}'**
+  String nightsCount(int count);
+
   /// No description provided for @appName.
   ///
   /// In ar, this message translates to:

@@ -2,8 +2,10 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/error_translator.dart';
+import '../../core/services/currency_service.dart';
 import '../models/hotel_model.dart';
 import '../models/destination_model.dart';
+import 'hotelbeds_repository.dart';
 
 /// يتعامل مع جدول hotels المحلي (للفنادق المميزة/المفضلة/إدارة
 /// الفنادق) ومع HotelBeds Edge Function (للبحث الحي الحقيقي).
@@ -12,11 +14,13 @@ class HotelRepository {
 
   /// بحث حي عن فنادق حقيقية عبر HotelBeds (Edge Function `hotelbeds-search`).
   ///
-  /// ملاحظة مهمة: HotelBeds محتاج كود وجهة رسمي (destinationCode، زي
-  /// BCN لبرشلونة أو RUH للرياض) — مش اسم مدينة حر. الكود ده لازم
-  /// ييجي من جدول `hotelbeds_destinations` المحلي (اللي بيتملى عن
-  /// طريق `hotelbeds-sync-destinations`)، عادة من شاشة اختيار/
-  /// autocomplete للوجهة في واجهة البحث.
+  /// - destinationCode: كود HotelBeds الرسمي من جدول hotelbeds_destinations.
+  /// - النتائج الكاملة (الغرف والأسعار وrateKeys) تُحفظ في
+  ///   HotelBedsSearchCache لتقرأها صفحة التفاصيل بدون بحث ثانٍ.
+  /// - سعر الليلة في HotelModel = (أقل سعر شامل بالدولار ÷ عدد الليالي)
+  ///   محوّلًا إلى SAR بالسعر الثابت، لأن PriceText يتوقع ريالًا.
+  /// - الصورة الرئيسية تصل جاهزة من hotelbeds-search (imageUrl)، فلا داعي
+  ///   لطلب صور إضافي يستهلك حصة HotelBeds.
   Future<Result<List<HotelModel>>> searchHotels({
     required String destinationCode,
     required String cityLabel,
@@ -37,6 +41,7 @@ class HotelRepository {
           'adults': guests,
           'children': 0,
           'rooms': 1,
+          'sourceMarket': 'US',
         },
       );
 
@@ -47,50 +52,41 @@ class HotelRepository {
       }
 
       final hotelsJson = (data as Map)['hotels'] as List? ?? [];
-
-      // نجيب صورة واحدة لكل فندق بطلب واحد مجمّع (batch) بدل طلب
-      // منفصل لكل فندق — عشان نوفر كوتة HotelBeds اليومية المحدودة.
-      // لو الطلب ده فشل لأي سبب (كوتة، شبكة، إلخ)، بنكمل من غير صور
-      // بدل ما نفشّل البحث كله.
-      final codes = hotelsJson
-          .map((row) => (row as Map)['code'])
-          .where((c) => c != null)
+      final results = hotelsJson
+          .map((row) => HotelBedsResult.fromJson(Map<String, dynamic>.from(row as Map)))
           .toList();
-      final imagesByCode = await _fetchHotelImages(codes);
 
-      final hotels = hotelsJson
-          .map((row) => HotelModel.fromHotelBeds(
-        Map<String, dynamic>.from(row as Map),
-        cityLabel: cityLabel,
-        imageUrl: imagesByCode[(row as Map)['code'].toString()],
-      ))
-          .toList();
+      // حفظ النتائج الكاملة لصفحة التفاصيل.
+      HotelBedsSearchCache.store(
+        results: results,
+        checkIn: checkIn,
+        checkOut: checkOut,
+        guests: guests,
+      );
+
+      final nights = checkOut.difference(checkIn).inDays.clamp(1, 365);
+      final hotels = <HotelModel>[];
+      for (var i = 0; i < results.length; i++) {
+        final r = results[i];
+        final totalUsd = r.minTotalUsd;
+        if (r.rooms.isEmpty || totalUsd == null || totalUsd <= 0) continue;
+
+        // السعر الشامل بالدولار محسوب على السيرفر بنفس معادلة الدفع
+        // (يشمل رسوم الفندق الإلزامية). نحوّله لريال بالسعر الثابت فقط
+        // لأن PriceText يتوقع ريالًا، فيرجع للدولار بنفس الرقم تمامًا.
+        final perNightSar = totalUsd / nights * CurrencyService.sarPerUsd;
+
+        hotels.add(HotelModel.fromHotelBeds(
+          Map<String, dynamic>.from(hotelsJson[i] as Map),
+          cityLabel: cityLabel,
+          pricePerNightSar: perNightSar,
+        ));
+      }
 
       return Success(hotels);
     } catch (e) {
       debugPrint('HOTEL SEARCH EXCEPTION: $e');
       return Failure(ErrorTranslator.translate(e));
-    }
-  }
-
-  /// يجيب صورة واحدة لكل كود فندق عبر `hotelbeds-hotel-images` (طلب
-  /// واحد مجمّع لكل أكواد البحث). بيرجّع map فاضي بهدوء لو الطلب فشل،
-  /// عشان صورة مفقودة متوقفش عرض نتائج البحث نفسها.
-  Future<Map<String, String>> _fetchHotelImages(List<dynamic> codes) async {
-    if (codes.isEmpty) return {};
-    try {
-      final response = await _client.functions.invoke(
-        'hotelbeds-hotel-images',
-        body: {'codes': codes},
-      );
-      final data = response.data;
-      if (data is Map && data['images'] is Map) {
-        return Map<String, String>.from(data['images'] as Map);
-      }
-      return {};
-    } catch (e) {
-      debugPrint('HOTEL IMAGES FETCH FAILED (non-fatal): $e');
-      return {};
     }
   }
 

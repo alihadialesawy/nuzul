@@ -60,10 +60,13 @@ class BookingRepository {
         return const Failure('يجب تسجيل الدخول أولاً');
       }
 
+      // نستبعد محاولات HotelBeds غير المكتملة (لم يُدفع أو فشل الحجز)
+      // حتى لا تظهر للعميل كحجوزات.
       final response = await _client
           .from('bookings')
           .select()
           .eq('user_id', userId)
+          .not('status', 'in', '(awaiting_payment,failed)')
           .order('check_in', ascending: false);
 
       final bookings = (response as List)
@@ -78,6 +81,18 @@ class BookingRepository {
 
   Future<Result<void>> cancelBooking(String bookingId) async {
     try {
+      // حجوزات HotelBeds يجب إلغاؤها عند الفندق واسترداد المال فعليًا؛
+      // تغيير الحالة هنا وحده يوهم العميل أن الحجز أُلغي. إلى أن تُبنى
+      // دالة الإلغاء على السيرفر، نمنع ذلك ونوجّه العميل للدعم.
+      final row = await _client
+          .from('bookings')
+          .select('supplier')
+          .eq('id', bookingId)
+          .maybeSingle();
+      if (row != null && row['supplier'] == 'hotelbeds') {
+        return const Failure('لإلغاء هذا الحجز تواصل مع الدعم: ali@flynoom.com');
+      }
+
       await _client
           .from('bookings')
           .update({'status': 'cancelled'}).eq('id', bookingId);
