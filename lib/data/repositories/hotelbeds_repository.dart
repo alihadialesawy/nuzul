@@ -351,10 +351,51 @@ class HotelBedsSearchCache {
 class HotelBedsRepository {
   final SupabaseClient _client = Supabase.instance.client;
 
-  /// السوق الافتراضي (جنسية/بلد إقامة العميل). نبيع داخل أمريكا حاليًا.
+  /// السوق (بلد إقامة العميل). عملاؤنا مقيمون في أمريكا، فيبقى US
+  /// حتى لو كان الفندق خارج أمريكا.
   static const String defaultSourceMarket = 'US';
 
+  /// أسماء عربية (وتهجئات شائعة) للوجهات الرئيسية → الاسم الإنجليزي في جدولنا.
+  /// أسماء جدول hotelbeds_destinations بالإنجليزية فقط، فبدون هذه القائمة
+  /// لن يجد العميل "مكة" أو "اسطنبول" إذا كتبها بالعربية.
+  static const Map<String, String> _aliases = {
+    // السعودية
+    'مكة': 'Makkah', 'مكه': 'Makkah', 'مكة المكرمة': 'Makkah', 'مكه المكرمه': 'Makkah',
+    'mecca': 'Makkah', 'makka': 'Makkah',
+    'المدينة': 'Madinah', 'المدينه': 'Madinah', 'المدينة المنورة': 'Madinah',
+    'المدينه المنوره': 'Madinah', 'medina': 'Madinah', 'madina': 'Madinah',
+    'جدة': 'Jeddah', 'جده': 'Jeddah', 'jedda': 'Jeddah', 'jidda': 'Jeddah',
+    'الرياض': 'Riyadh',
+    // تركيا
+    'اسطنبول': 'Istanbul', 'إسطنبول': 'Istanbul', 'استانبول': 'Istanbul',
+    'طرابزون': 'Trabzon', 'انطاليا': 'Antalya', 'أنطاليا': 'Antalya', 'بورصة': 'Bursa',
+    // الخليج
+    'دبي': 'Dubai', 'أبوظبي': 'Abu Dhabi', 'ابوظبي': 'Abu Dhabi', 'أبو ظبي': 'Abu Dhabi',
+    'ابو ظبي': 'Abu Dhabi', 'الدوحة': 'Doha', 'الدوحه': 'Doha',
+    // بلاد الشام ومصر والمغرب
+    'عمان': 'Amman', 'عمّان': 'Amman', 'البحر الميت': 'Dead Sea', 'العقبة': 'Aqaba',
+    'بيروت': 'Beirut', 'القاهرة': 'Cairo', 'القاهره': 'Cairo',
+    'الإسكندرية': 'Alexandria', 'الاسكندرية': 'Alexandria', 'شرم الشيخ': 'Sharm',
+    'الغردقة': 'Hurghada', 'مراكش': 'Marrakech', 'الدار البيضاء': 'Casablanca',
+    'فاس': 'Fes', 'طنجة': 'Tangier', 'أكادير': 'Agadir', 'اكادير': 'Agadir',
+    // أمريكا
+    'نيويورك': 'New York', 'ميامي': 'Miami', 'اورلاندو': 'Orlando', 'أورلاندو': 'Orlando',
+    'لاس فيغاس': 'Las Vegas', 'لاس فيجاس': 'Las Vegas', 'شيكاغو': 'Chicago',
+    'ديترويت': 'Detroit', 'ديربورن': 'Dearborn', 'هيوستن': 'Houston', 'دالاس': 'Dallas',
+    'واشنطن': 'Washington', 'بوسطن': 'Boston', 'لوس انجلوس': 'Los Angeles',
+    'لوس أنجلوس': 'Los Angeles', 'سان فرانسيسكو': 'San Francisco',
+  };
+
+  /// يحوّل الاسم المكتوب إلى الاسم الإنجليزي المستخدم في الجدول (إن وُجد بديل).
+  static String _resolveAlias(String input) {
+    final key = input.trim().toLowerCase();
+    return _aliases[key] ?? _aliases[input.trim()] ?? input.trim();
+  }
+
   /// يحوّل اسم مدينة إلى كود وجهة HotelBeds من جدولنا المتزامن.
+  ///
+  /// يبحث في كل الدول المتزامنة (أمريكا، تركيا، الخليج، السعودية، ...)،
+  /// ويقبل الأسماء العربية الشائعة عبر [_aliases].
   ///
   /// الترتيب (الأفضل أولًا):
   /// 1. الكود نفسه (لو المستخدم كتب NYC مثلًا).
@@ -364,12 +405,12 @@ class HotelBedsRepository {
   /// 5. أي تطابق جزئي.
   /// عند التعادل: الاسم الأقصر أولًا.
   ///
-  /// [countryCode] يقيّد البحث بدولة (افتراضيًا US). مرّر null للبحث في كل الدول.
+  /// [countryCode] يقيّد البحث بدولة واحدة عند الحاجة. null (الافتراضي) = كل الدول.
   Future<Result<String?>> lookupDestinationCode(
       String cityName, {
-        String? countryCode = defaultSourceMarket,
+        String? countryCode,
       }) async {
-    final query = cityName.trim();
+    final query = _resolveAlias(cityName);
     if (query.isEmpty) return const Success(null);
 
     try {
@@ -484,7 +525,7 @@ class HotelBedsRepository {
     List<HotelBedsRoomRequest>? roomsSpec,
     String sourceMarket = defaultSourceMarket,
     String? paymentType,
-    String? countryCode = defaultSourceMarket,
+    String? countryCode,
   }) async {
     final codeResult = await lookupDestinationCode(cityName, countryCode: countryCode);
 
@@ -492,8 +533,7 @@ class HotelBedsRepository {
       success: (code) {
         if (code == null) {
           return Future.value(Failure(
-            'لم نجد وجهة باسم "$cityName"${countryCode != null ? ' في $countryCode' : ''}. '
-                'تأكد من الاسم، أو أن دولتها متزامنة عبر hotelbeds-sync-destinations.',
+            'لم نجد وجهة باسم "$cityName". جرّب اسم المدينة بالإنجليزية، مثل Istanbul أو Makkah.',
           ));
         }
         return search(
