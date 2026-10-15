@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../app.dart';
 import '../constants/app_colors.dart';
 import 'app_bottom_nav_bar.dart' show navText;
-import 'sidebar_promo_flash.dart';
+// import 'sidebar_promo_flash.dart';
 
 /// ألوان مميزة لكل تبويب في شريط التنقل، بنفس فلسفة الألوان المستخدمة
 /// في أماكن تانية بالتطبيق (بروفايل، بيانات المسافرين) -- كل تبويب له
@@ -147,8 +147,11 @@ class AppNavRail extends StatelessWidget {
                   ),
                 ),
               ),
-            const Divider(height: 20, indent: 16, endIndent: 16),
-            const SidebarPromoFlash(),
+            // عنصر العروض (SidebarPromoFlash) مخفي: كان يعرض "خصم 30%" دون عرض
+            // حقيقي ولا يفتح أي صفحة. أعده فقط حين يوجد عرض فعلي، ومرّر له
+            // onTap إلى صفحة العرض، و messages تصف العرض بدقة.
+            // const Divider(height: 20, indent: 16, endIndent: 16),
+            // SidebarPromoFlash(onTap: ..., messages: [...]),
           ],
         ),
       ),

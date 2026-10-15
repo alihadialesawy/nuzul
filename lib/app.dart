@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/config/features.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/locale_provider.dart';
 import 'core/widgets/app_bottom_nav_bar.dart';
@@ -91,7 +92,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     // بالضغط على رابط أو بكتابة الرابط يدويًا). لو حاول، بيترجّع
     // للصفحة الرئيسية فورًا بدل ما تظهر له شاشة الأدمن أصلًا.
     redirect: (context, state) {
-      final goingToAdmin = state.matchedLocation.startsWith(AppRoutes.adminDashboard);
+      final location = state.matchedLocation;
+
+      // الأقسام المخفية (انظر core/config/features.dart): أي رابط مباشر
+      // لصفحات الطيران أو السيارات يعود للصفحة الرئيسية.
+      const flightRoutes = [
+        AppRoutes.flights,
+        AppRoutes.flightBooking,
+        AppRoutes.duffelFlightBooking,
+        AppRoutes.flightHotelBundleBooking,
+        AppRoutes.flightHotelDealDetails,
+      ];
+      if (!kFlightsEnabled && flightRoutes.contains(location)) return AppRoutes.home;
+      if (!kCarsEnabled && location == AppRoutes.carBooking) return AppRoutes.home;
+
+      final goingToAdmin = location.startsWith(AppRoutes.adminDashboard);
       if (!goingToAdmin) return null;
 
       final isAdmin = ref.read(isAdminProvider);

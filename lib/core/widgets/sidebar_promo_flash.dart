@@ -7,7 +7,10 @@ import 'package:flutter/material.dart';
 /// ثواني (تلاشي/ظهور). الضغط عليه (لو onTap مبعوت) بيوديك لمكان معيّن
 /// (زي صفحة العروض).
 ///
-/// لو [messages] مش مبعوتة، النصوص الافتراضية (عروض / خصم 30% / جديد)
+/// ⚠️ لا تضع نسبة خصم في النصوص إلا إذا كان العرض حقيقيًا ومتاحًا فعلًا
+/// (FTC وقواعد التسعير المضلل).
+///
+/// لو [messages] مش مبعوتة، النصوص الافتراضية (عروض / جديد)
 /// بتتعرض بلغة الواجهة الحالية بدل ما تكون عربي ثابت.
 class SidebarPromoFlash extends StatefulWidget {
   final List<String>? messages;
@@ -28,15 +31,15 @@ class SidebarPromoFlash extends StatefulWidget {
 
   static List<String> _defaultMessages(String languageCode) {
     return switch (languageCode) {
-      'ar' => const ['عروض', 'خصم 30%', 'جديد'],
-      'es' => const ['Ofertas', '30% DTO', 'Nuevo'],
-      'tr' => const ['Fırsatlar', '%30 İndirim', 'Yeni'],
-      'id' => const ['Promo', 'Diskon 30%', 'Baru'],
-      'hi' => const ['ऑफ़र', '30% छूट', 'नया'],
-      'ur' => const ['آفرز', '30% رعایت', 'نیا'],
-      'fr' => const ['Offres', '-30 %', 'Nouveau'],
-      'bn' => const ['অফার', '৩০% ছাড়', 'নতুন'],
-      _ => const ['Deals', '30% OFF', 'New'],
+      'ar' => const ['عروض', 'جديد', 'عروض'],
+      'es' => const ['Ofertas', 'Nuevo', 'Ofertas'],
+      'tr' => const ['Fırsatlar', 'Yeni', 'Fırsatlar'],
+      'id' => const ['Promo', 'Baru', 'Promo'],
+      'hi' => const ['ऑफ़र', 'नया', 'ऑफ़र'],
+      'ur' => const ['آفرز', 'نیا', 'آفرز'],
+      'fr' => const ['Offres', 'Nouveau', 'Offres'],
+      'bn' => const ['অফার', 'নতুন', 'অফার'],
+      _ => const ['Deals', 'New', 'Deals'],
     };
   }
 

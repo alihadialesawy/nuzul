@@ -16,6 +16,9 @@ import '../../data/repositories/hotelbeds_booking_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 import '../../core/services/payment_service.dart';
 import '../../localization/app_localizations.dart';
+import '../legal/dispute_resolution_page.dart';
+import '../legal/privacy_notice_page.dart';
+import '../legal/terms_of_service_page.dart';
 
 final bookingRepositoryProvider = Provider((ref) => BookingRepository());
 final paymentServiceProvider = Provider((ref) => PaymentService());
@@ -109,6 +112,10 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
 
+  // الموافقة على الشروط (التحكيم) + إقرار ولاية الإقامة (Seller of Travel).
+  bool _acceptedTerms = false;
+  bool _confirmedResidency = false;
+
   /// غرفة HotelBeds المختارة (null للفنادق المحلية).
   SelectedRoom? get _hbRoom {
     final rooms = widget.selectedRooms;
@@ -158,6 +165,20 @@ class _BookingPageState extends ConsumerState<BookingPage> {
 
   Future<void> _confirmHotelBedsBooking(SelectedRoom room) async {
     if (!(_holderFormKey.currentState?.validate() ?? false)) return;
+
+    if (!_acceptedTerms || !_confirmedResidency) {
+      setState(() => _errorMessage = _tb(context,
+          ar: 'يُرجى الموافقة على الشروط وتأكيد ولاية الإقامة للمتابعة.',
+          en: 'Please accept the terms and confirm your state of residence to continue.',
+          es: 'Acepta los términos y confirma tu estado de residencia para continuar.',
+          tr: 'Devam etmek için şartları kabul edin ve ikamet ettiğiniz eyaleti onaylayın.',
+          id: 'Harap setujui ketentuan dan konfirmasi negara bagian tempat tinggal Anda untuk melanjutkan.',
+          hi: 'जारी रखने के लिए कृपया शर्तें स्वीकार करें और अपने निवास राज्य की पुष्टि करें।',
+          ur: 'جاری رکھنے کے لیے براہ کرم شرائط قبول کریں اور اپنی رہائشی ریاست کی تصدیق کریں۔',
+          fr: 'Veuillez accepter les conditions et confirmer votre État de résidence pour continuer.',
+          bn: 'চালিয়ে যেতে অনুগ্রহ করে শর্তাবলি মেনে নিন এবং আপনার বসবাসের রাজ্য নিশ্চিত করুন।'));
+      return;
+    }
 
     if (!_isStripeSupportedPlatform) {
       setState(() => _errorMessage = _tb(context,
@@ -637,6 +658,113 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     );
   }
 
+  /// مربعا الموافقة قبل الدفع (حجوزات HotelBeds).
+  ///
+  /// ⚠️ لا تحذفهما ولا تجعلهما مُعلَّمين مسبقًا: الموافقة الصريحة هي ما يجعل
+  /// بند التحكيم في شروط الخدمة قابلًا للتنفيذ (clickwrap).
+  Widget _consentSection(BuildContext context) {
+    void open(Widget page) =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+
+    Widget link(String label, Widget page) => TextButton(
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        minimumSize: const Size(0, 32),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: () => open(page),
+      child: Text(label, style: const TextStyle(decoration: TextDecoration.underline)),
+    );
+
+    Widget check({
+      required bool value,
+      required ValueChanged<bool> onChanged,
+      required String text,
+    }) =>
+        CheckboxListTile(
+          value: value,
+          onChanged: _isSubmitting ? null : (v) => onChanged(v ?? false),
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          title: Text(text, style: const TextStyle(fontSize: 13, height: 1.4)),
+        );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: AppSizes.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            check(
+              value: _acceptedTerms,
+              onChanged: (v) => setState(() {
+                _acceptedTerms = v;
+                if (v && _confirmedResidency) _errorMessage = null;
+              }),
+              text: _tb(context,
+                  ar: 'قرأت شروط الخدمة وأوافق عليها، بما فيها اتفاقية التحكيم الملزم والتنازل عن الدعوى الجماعية، وأوافق على إشعار الخصوصية.',
+                  en: 'I have read and agree to the Terms of Service, including the binding arbitration agreement and class action waiver, and the Privacy Notice.',
+                  es: 'He leído y acepto los Términos del servicio, incluido el acuerdo de arbitraje vinculante y la renuncia a demandas colectivas, y el Aviso de privacidad.',
+                  tr: 'Bağlayıcı tahkim sözleşmesi ve toplu dava feragati dahil Hizmet Şartlarını ve Gizlilik Bildirimini okudum ve kabul ediyorum.',
+                  id: 'Saya telah membaca dan menyetujui Ketentuan Layanan, termasuk perjanjian arbitrase yang mengikat dan pengesampingan gugatan kelompok, serta Pemberitahuan Privasi.',
+                  hi: 'मैंने सेवा की शर्तें, जिनमें बाध्यकारी मध्यस्थता समझौता और सामूहिक मुकदमे का त्याग शामिल है, और गोपनीयता सूचना पढ़ ली है और उनसे सहमत हूं।',
+                  ur: 'میں نے سروس کی شرائط، بشمول لازمی ثالثی معاہدہ اور اجتماعی مقدمے سے دستبرداری، اور رازداری کا نوٹس پڑھ لیا ہے اور ان سے متفق ہوں۔',
+                  fr: 'J\'ai lu et j\'accepte les Conditions d\'utilisation, y compris la convention d\'arbitrage contraignant et la renonciation aux actions collectives, ainsi que l\'Avis de confidentialité.',
+                  bn: 'আমি পরিষেবার শর্তাবলি, বাধ্যতামূলক সালিশি চুক্তি ও সম্মিলিত মামলা পরিত্যাগসহ, এবং গোপনীয়তা বিজ্ঞপ্তি পড়েছি ও সম্মত হচ্ছি।'),
+            ),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: 40),
+              child: Wrap(
+                spacing: 4,
+                children: [
+                  link(
+                    _tb(context,
+                        ar: 'شروط الخدمة', en: 'Terms of Service', es: 'Términos del servicio',
+                        tr: 'Hizmet Şartları', id: 'Ketentuan Layanan', hi: 'सेवा की शर्तें',
+                        ur: 'سروس کی شرائط', fr: 'Conditions d\'utilisation', bn: 'পরিষেবার শর্তাবলি'),
+                    const TermsOfServicePage(),
+                  ),
+                  link(
+                    _tb(context,
+                        ar: 'حل النزاعات', en: 'Dispute Resolution', es: 'Resolución de disputas',
+                        tr: 'Uyuşmazlık Çözümü', id: 'Penyelesaian Sengketa', hi: 'विवाद समाधान',
+                        ur: 'تنازعات کا حل', fr: 'Règlement des litiges', bn: 'বিরোধ নিষ্পত্তি'),
+                    const DisputeResolutionPage(),
+                  ),
+                  link(
+                    _tb(context,
+                        ar: 'إشعار الخصوصية', en: 'Privacy Notice', es: 'Aviso de privacidad',
+                        tr: 'Gizlilik Bildirimi', id: 'Pemberitahuan Privasi', hi: 'गोपनीयता सूचना',
+                        ur: 'رازداری کا نوٹس', fr: 'Avis de confidentialité', bn: 'গোপনীয়তা বিজ্ঞপ্তি'),
+                    const PrivacyNoticePage(),
+                  ),
+                ],
+              ),
+            ),
+            check(
+              value: _confirmedResidency,
+              onChanged: (v) => setState(() {
+                _confirmedResidency = v;
+                if (v && _acceptedTerms) _errorMessage = null;
+              }),
+              text: _tb(context,
+                  ar: 'أؤكد أنني لست مقيمًا في كاليفورنيا أو فلوريدا أو هاواي أو آيوا أو واشنطن.',
+                  en: 'I confirm that I am not a resident of California, Florida, Hawaii, Iowa, or Washington.',
+                  es: 'Confirmo que no resido en California, Florida, Hawái, Iowa ni Washington.',
+                  tr: 'California, Florida, Hawaii, Iowa veya Washington\'da ikamet etmediğimi onaylıyorum.',
+                  id: 'Saya menyatakan bahwa saya bukan penduduk California, Florida, Hawaii, Iowa, atau Washington.',
+                  hi: 'मैं पुष्टि करता/करती हूं कि मैं कैलिफ़ोर्निया, फ़्लोरिडा, हवाई, आयोवा या वॉशिंगटन का निवासी नहीं हूं।',
+                  ur: 'میں تصدیق کرتا/کرتی ہوں کہ میں کیلیفورنیا، فلوریڈا، ہوائی، آئیووا یا واشنگٹن کا رہائشی نہیں ہوں۔',
+                  fr: 'Je confirme ne pas résider en Californie, en Floride, à Hawaï, dans l\'Iowa ou dans l\'État de Washington.',
+                  bn: 'আমি নিশ্চিত করছি যে আমি ক্যালিফোর্নিয়া, ফ্লোরিডা, হাওয়াই, আইওয়া বা ওয়াশিংটনের বাসিন্দা নই।'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _confirmBooking() async {
     final hbRoom = _hbRoom;
     if (hbRoom != null) {
@@ -907,6 +1035,8 @@ class _BookingPageState extends ConsumerState<BookingPage> {
             if (_hbRoom != null) ...[
               const SizedBox(height: AppSizes.md),
               _holderForm(context),
+              const SizedBox(height: AppSizes.md),
+              _consentSection(context),
             ],
 
             if (_errorMessage != null) ...[

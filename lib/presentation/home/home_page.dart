@@ -1,5 +1,6 @@
 import '../../fast_scroll_behavior.dart';
 import 'dart:async';
+import '../../core/config/features.dart';
 import 'widgets/us_destinations_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -3431,7 +3432,9 @@ class _TravelTabsBar extends StatelessWidget {
             fr: 'Séjours',
             bn: 'থাকার ব্যবস্থা'),
       ),
-      _TravelTab(
+      // الطيران و"طيران + فندق" مخفيان حتى يكتمل تسجيل Seller of Travel
+      // (انظر core/config/features.dart).
+      if (kFlightsEnabled) _TravelTab(
         id: 'flights',
         icon: Icons.flight_takeoff,
         label: _t3(context, ar: 'رحلات الطيران', en: 'Flights', es: 'Vuelos', tr: 'Uçuşlar', id: 'Penerbangan',
@@ -3440,7 +3443,7 @@ class _TravelTabsBar extends StatelessWidget {
             fr: 'Vols',
             bn: 'ফ্লাইট'),
       ),
-      _TravelTab(
+      if (kFlightsEnabled) _TravelTab(
         id: 'flightHotel',
         icon: Icons.airplane_ticket_outlined,
         label: _t3(context, ar: 'طيران + فندق', en: 'Flight + Hotel', es: 'Vuelo + Hotel', tr: 'Uçuş + Otel', id: 'Penerbangan + Hotel',

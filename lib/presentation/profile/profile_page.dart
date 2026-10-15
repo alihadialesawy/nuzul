@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app.dart';
+import '../../core/config/features.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/loading_view.dart';
@@ -974,7 +975,8 @@ class _ProfileSidebar extends StatelessWidget {
                 ur: 'تمام',
                 fr: 'Tout',
                 bn: 'সব'), color: nextColor(), onTap: () => context.push(AppRoutes.myBookings)),
-            _SidebarItem(label: _t3(context, ar: 'الطيران', en: 'Flights', es: 'Vuelos', tr: 'Uçuşlar',
+            // أقسام الطيران مخفية حتى يكتمل تسجيل Seller of Travel (core/config/features.dart).
+            if (kFlightsEnabled) _SidebarItem(label: _t3(context, ar: 'الطيران', en: 'Flights', es: 'Vuelos', tr: 'Uçuşlar',
                 id: 'Penerbangan',
                 hi: 'उड़ानें',
                 ur: 'پروازیں',
@@ -986,7 +988,7 @@ class _ProfileSidebar extends StatelessWidget {
                 ur: 'ہوٹلز',
                 fr: 'Hôtels',
                 bn: 'হোটেল'), color: nextColor(), onTap: () => context.push(AppRoutes.myBookings)),
-            _SidebarItem(label: _t3(context, ar: 'طيران + فندق', en: 'Flight + Hotel', es: 'Vuelo + Hotel', tr: 'Uçuş + Otel',
+            if (kFlightsEnabled) _SidebarItem(label: _t3(context, ar: 'طيران + فندق', en: 'Flight + Hotel', es: 'Vuelo + Hotel', tr: 'Uçuş + Otel',
                 id: 'Penerbangan + Hotel',
                 hi: 'उड़ान + होटल',
                 ur: 'پرواز + ہوٹل',
@@ -1005,7 +1007,8 @@ class _ProfileSidebar extends StatelessWidget {
                 ur: 'میری پوسٹس',
                 fr: 'Mes publications',
                 bn: 'আমার পোস্ট'), color: nextColor(), bold: true, onTap: () => _comingSoon(context)),
-            _SidebarItem(
+            // تنبيهات الأسعار تتابع أسعار الطيران عبر AI Travel — مخفية مع الطيران.
+            if (kFlightsEnabled) _SidebarItem(
               label: _t3(context, ar: 'تنبيهات الأسعار', en: 'Price alerts', es: 'Alertas de precio', tr: 'Fiyat uyarıları',
                   id: 'Peringatan harga',
                   hi: 'मूल्य अलर्ट',
@@ -1045,7 +1048,7 @@ class _ProfileSidebar extends StatelessWidget {
               selected: true,
               onTap: () {},
             ),
-            _SidebarItem(label: _t3(context, ar: 'بيانات المسافر المتكرر', en: 'Frequent traveler info', es: 'Viajero frecuente', tr: 'Sık seyahat eden bilgileri',
+            if (kFlightsEnabled) _SidebarItem(label: _t3(context, ar: 'بيانات المسافر المتكرر', en: 'Frequent traveler info', es: 'Viajero frecuente', tr: 'Sık seyahat eden bilgileri',
                 id: 'Info wisatawan tetap',
                 hi: 'बार-बार यात्रा करने वाले की जानकारी',
                 ur: 'بار بار سفر کرنے والے کی معلومات',
@@ -1534,7 +1537,8 @@ class _ProfileMainContent extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSizes.lg),
-                _CardContainer(
+                // جواز السفر مطلوب لحجز الطيران فقط؛ لا نجمعه للفنادق.
+                if (kFlightsEnabled) _CardContainer(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
