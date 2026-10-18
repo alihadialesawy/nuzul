@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/config/features.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/app_banner.dart';
@@ -92,8 +93,9 @@ String _statusLabel(BuildContext context, String status) {
 
 /// شاشة إدارة الحجوزات: تبويبات (الكل/فنادق/طيران/سيارات) + بحث + فلتر
 /// حالة، مع بيانات الزبون وتاريخ الحجز وتاريخ الخدمة (تشيك إن/آوت) لكل صف.
-/// ملاحظة: تبويبي "طيران" و"تأجير سيارات" لسه Coming soon لحد ما تتوفر
-/// موديلات/repositories الحجز الخاصة فيهم.
+/// ملاحظة: تبويبا "طيران" و"تأجير سيارات" يظهران فقط إذا كان
+/// kFlightsEnabled / kCarsEnabled = true. وإذا كانا مخفيين معًا يُخفى
+/// شريط التبويبات كله (لأن "الكل" و"الفنادق" سيكونان نفس القائمة).
 class AdminBookingsPage extends ConsumerStatefulWidget {
   const AdminBookingsPage({super.key});
 
@@ -107,10 +109,14 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
   String _searchQuery = '';
   String _statusFilter = 'all';
 
+  /// تبويبات الطيران والسيارات تظهر فقط إذا كان القسم مفعّلًا.
+  static bool get _showTabs => kFlightsEnabled || kCarsEnabled;
+  static int get _tabCount => 2 + (kFlightsEnabled ? 1 : 0) + (kCarsEnabled ? 1 : 0);
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: _tabCount, vsync: this);
   }
 
   @override
@@ -173,7 +179,10 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
         ),
         bannerHeight: 160,
       ),
-      body: Column(
+      // الفنادق فقط: لا داعي لشريط تبويبات.
+      body: !_showTabs
+          ? _buildHotelBookingsTab(context, bookingsAsync)
+          : Column(
         children: [
           TabBar(
             controller: _tabController,
@@ -194,20 +203,22 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
                   ur: 'ہوٹلز',
                   fr: 'Hôtels',
                   bn: 'হোটেল')),
-              Tab(text: _t3(context, ar: 'الطيران', en: 'Flights', es: 'Vuelos',
-                  tr: 'Uçuşlar',
-                  id: 'Penerbangan',
-                  hi: 'उड़ानें',
-                  ur: 'پروازیں',
-                  fr: 'Vols',
-                  bn: 'ফ্লাইট')),
-              Tab(text: _t3(context, ar: 'تأجير السيارات', en: 'Car Rentals', es: 'Alquiler de coches',
-                  tr: 'Araç Kiralama',
-                  id: 'Sewa Mobil',
-                  hi: 'कार किराए पर लें',
-                  ur: 'کار کرایہ پر لیں',
-                  fr: 'Location de voitures',
-                  bn: 'গাড়ি ভাড়া')),
+              if (kFlightsEnabled)
+                Tab(text: _t3(context, ar: 'الطيران', en: 'Flights', es: 'Vuelos',
+                    tr: 'Uçuşlar',
+                    id: 'Penerbangan',
+                    hi: 'उड़ानें',
+                    ur: 'پروازیں',
+                    fr: 'Vols',
+                    bn: 'ফ্লাইট')),
+              if (kCarsEnabled)
+                Tab(text: _t3(context, ar: 'تأجير السيارات', en: 'Car Rentals', es: 'Alquiler de coches',
+                    tr: 'Araç Kiralama',
+                    id: 'Sewa Mobil',
+                    hi: 'कार किराए पर लें',
+                    ur: 'کار کرایہ پر لیں',
+                    fr: 'Location de voitures',
+                    bn: 'গাড়ি ভাড়া')),
             ],
           ),
           const Divider(height: 1),
@@ -217,8 +228,8 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
               children: [
                 _buildHotelBookingsTab(context, bookingsAsync),
                 _buildHotelBookingsTab(context, bookingsAsync),
-                _buildComingSoonTab(context),
-                _buildComingSoonTab(context),
+                if (kFlightsEnabled) _buildComingSoonTab(context),
+                if (kCarsEnabled) _buildComingSoonTab(context),
               ],
             ),
           ),

@@ -11,6 +11,11 @@
 // نفس النسبة على ما دفعه العميل. قبل أول موعد رسوم → استرداد كامل.
 //
 // المدخلات: { bookingId, mode: 'quote' | 'confirm' }
+//
+// من يستطيع الإلغاء:
+//   • صاحب الحجز نفسه.
+//   • المدير (public.is_admin() = true) لأي حجز، "نيابة عن العميل" من لوحة الإدارة.
+//     نفس سياسة الرسوم تمامًا، ونفس بريد الإلغاء للعميل.
 
 import Stripe from 'npm:stripe@14.21.0';
 import {
@@ -33,6 +38,31 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
 });
 
 const CANCEL_TIMEOUT_MS = 65000;
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+/// هل صاحب الطلب مدير؟ نستدعي public.is_admin() بتوكن المستخدم نفسه
+/// (لا بمفتاح الخدمة)، فتعمل الدالة على auth.uid() الصحيح.
+async function isAdminRequest(req: Request): Promise<boolean> {
+  const auth = req.headers.get('Authorization') ?? '';
+  if (!auth || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/is_admin`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: auth,
+        'Content-Type': 'application/json',
+      },
+      body: '{}',
+    });
+    if (!res.ok) return false;
+    return (await res.json()) === true;
+  } catch {
+    return false;
+  }
+}
 
 /// رسوم الإلغاء على العميل الآن (USD) حسب السياسة المحفوظة.
 function computeFee(booking: any, now = new Date()) {
@@ -80,12 +110,12 @@ Deno.serve(async (req) => {
     const bookingId = String(body.bookingId ?? '');
     const mode = body.mode === 'confirm' ? 'confirm' : 'quote';
 
-    const { data: booking } = await admin
-      .from('bookings')
-      .select('*')
-      .eq('id', bookingId)
-      .eq('user_id', user.id)
-      .maybeSingle();
+    const actingAsAdmin = await isAdminRequest(req);
+
+    let bookingQuery = admin.from('bookings').select('*').eq('id', bookingId);
+    // العميل العادي لا يرى إلا حجوزاته.
+    if (!actingAsAdmin) bookingQuery = bookingQuery.eq('user_id', user.id);
+    const { data: booking } = await bookingQuery.maybeSingle();
 
     if (!booking || booking.supplier !== 'hotelbeds') return fail('not_found', 'Booking not found.');
     if (booking.status === 'cancelled') {
@@ -175,7 +205,8 @@ Deno.serve(async (req) => {
 
     console.log(
       `BOOKING CANCELLED ${booking.client_reference} ref=${booking.supplier_reference} ` +
-        `supplierFee=${supplierFee} fee=${fee} refund=${refund} USD`,
+        `supplierFee=${supplierFee} fee=${fee} refund=${refund} USD` +
+        (actingAsAdmin && booking.user_id !== user.id ? ` BY_ADMIN=${user.id}` : ''),
     );
 
     // بريد تأكيد الإلغاء (فشله لا يؤثر على الإلغاء).

@@ -127,8 +127,25 @@ class BookingRepository {
 
   /// يحدّث حالة حجز معيّن (pending/confirmed/cancelled) — يستخدمها الأدمن
   /// للتأكيد أو الإلغاء اليدوي من لوحة إدارة الحجوزات.
+  ///
+  /// ⚠️ ممنوع على حجوزات HotelBeds: تغيير الحالة هنا لا يلغي الحجز عند
+  /// الفندق ولا يرد المال عبر Stripe، ولا "يؤكد" شيئًا عند المزوّد.
+  /// حالة هذه الحجوزات يحددها السيرفر فقط (hotelbeds-book / hotelbeds-cancel).
   Future<Result<void>> updateBookingStatus(String bookingId, String status) async {
     try {
+      final row = await _client
+          .from('bookings')
+          .select('supplier')
+          .eq('id', bookingId)
+          .maybeSingle();
+      if (row != null && row['supplier'] == 'hotelbeds') {
+        return const Failure(
+          'لا يمكن تغيير حالة حجز HotelBeds يدويًا. الإلغاء يتم عبر hotelbeds-cancel '
+              'حتى يُلغى عند الفندق ويُسترد المبلغ. / '
+              'HotelBeds bookings cannot be changed manually here.',
+        );
+      }
+
       await _client.from('bookings').update({'status': status}).eq('id', bookingId);
       return const Success(null);
     } catch (e) {

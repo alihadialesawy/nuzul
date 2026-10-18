@@ -1,6 +1,7 @@
 import '../../fast_scroll_behavior.dart';
 import 'dart:async';
 import '../../core/config/features.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 import 'widgets/us_destinations_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -152,6 +153,15 @@ class _HomePageState extends ConsumerState<HomePage> {
   final _carDateFieldKey = GlobalKey();
 
   Map<String, dynamic>? _searchParams;
+
+  // ───── تبويب العمرة ─────
+  // مكة (QCA) أو المدينة (MED) — رموز HotelBeds. التواريخ وعدد الضيوف
+  // مشتركة مع تبويب Stays (_checkIn/_checkOut/_guests).
+  String _umrahCity = 'QCA';
+  final _umrahDateFieldKey = GlobalKey();
+  Map<String, dynamic>? _umrahParams;
+  bool _umrahFormExpanded = true;
+
   Map<String, dynamic>? _flightSearchParams;
   Map<String, dynamic>? _carSearchParams;
 
@@ -733,6 +743,10 @@ class _HomePageState extends ConsumerState<HomePage> {
             ? _carSearchParams != null
             : _activeTab == 'flightHotel'
             ? (_searchParams != null && _flightSearchParams != null)
+            : _activeTab == 'umrah'
+            ? (_umrahParams != null && _staysBannerCollapsed)
+            : _activeTab == 'groups'
+            ? false
             : (_searchParams != null && _staysBannerCollapsed),
         tabsBar: _TravelTabsBar(
           selectedTab: _activeTab,
@@ -754,6 +768,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ? _buildCollapsedFlightBar()
                   : (_activeTab == 'stays' && _searchParams != null && !_staysFormExpanded)
                   ? _buildCollapsedStaysBar()
+                  : (_activeTab == 'umrah' && _umrahParams != null && !_umrahFormExpanded)
+                  ? _buildCollapsedUmrahBar()
                   : Padding(
                 padding: const EdgeInsets.all(AppSizes.md),
                 child: SizedBox(
@@ -763,6 +779,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                       Offstage(
                         offstage: _activeTab != 'stays',
                         child: _buildStaysSearchBox(),
+                      ),
+                      Offstage(
+                        offstage: _activeTab != 'umrah',
+                        child: _buildUmrahSearchBox(),
+                      ),
+                      Offstage(
+                        offstage: _activeTab != 'groups',
+                        child: _buildGroupsHeader(),
                       ),
                       Offstage(
                         offstage: _activeTab != 'flights',
@@ -868,6 +892,34 @@ class _HomePageState extends ConsumerState<HomePage> {
                   children: const [_CarTrustSection(), AppFooter()],
                 )
                     : _CarSearchResults(params: _carSearchParams!))
+                    : _activeTab == 'umrah'
+                    ? (_umrahParams == null
+                    ? ListView(
+                  padding: const EdgeInsets.all(AppSizes.md),
+                  children: const [_UmrahIntro(), AppFooter()],
+                )
+                    : Column(
+                  children: [
+                    const _UmrahEntryNotice(),
+                    Expanded(
+                      child: _SearchResults(
+                        params: _umrahParams!,
+                        scrollController: _staysScrollController,
+                      ),
+                    ),
+                  ],
+                ))
+                    : _activeTab == 'groups'
+                    ? ListView(
+                  padding: const EdgeInsets.all(AppSizes.md),
+                  children: [
+                    _GroupStaysForm(
+                      initialCheckIn: _checkIn,
+                      initialCheckOut: _checkOut,
+                    ),
+                    const AppFooter(),
+                  ],
+                )
                     : _activeTab == 'flightHotel'
                     ? ((_searchParams == null || _flightSearchParams == null)
                     ? ListView(
@@ -1213,6 +1265,237 @@ class _HomePageState extends ConsumerState<HomePage> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  // ═══════════════════════ تبويب العمرة ═══════════════════════
+
+  void _runUmrahSearch() {
+    setState(() {
+      _umrahFormExpanded = false;
+      _umrahParams = {
+        'destinationCode': _umrahCity,
+        'cityLabel': _umrahCity == 'QCA' ? 'Makkah' : 'Madinah',
+        'checkIn': _checkIn,
+        'checkOut': _checkOut,
+        'guests': _guests,
+      };
+    });
+  }
+
+  Widget _buildCollapsedUmrahBar() {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final params = _umrahParams!;
+    final checkIn = params['checkIn'] as DateTime;
+    final checkOut = params['checkOut'] as DateTime;
+    final city = params['destinationCode'] == 'QCA'
+        ? _t3(context, ar: 'مكة المكرمة', en: 'Makkah', es: 'La Meca', tr: 'Mekke', id: 'Makkah',
+        hi: 'मक्का', ur: 'مکہ مکرمہ', fr: 'La Mecque', bn: 'মক্কা')
+        : _t3(context, ar: 'المدينة المنورة', en: 'Madinah', es: 'Medina', tr: 'Medine', id: 'Madinah',
+        hi: 'मदीना', ur: 'مدینہ منورہ', fr: 'Médine', bn: 'মদিনা');
+    final dateLabel =
+        '${months[checkIn.month - 1]} ${checkIn.day} - ${months[checkOut.month - 1]} ${checkOut.day}';
+
+    return Container(
+      margin: const EdgeInsets.all(AppSizes.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primaryDark,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.mosque_outlined, color: Colors.white70, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$city · $dateLabel · ${params['guests']}',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => setState(() => _umrahFormExpanded = true),
+            icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+            label: Text(
+              _t3(context, ar: 'تعديل', en: 'Edit', es: 'Editar', tr: 'Düzenle', id: 'Edit',
+                  hi: 'संपादित करें', ur: 'ترمیم کریں', fr: 'Modifier', bn: 'সম্পাদনা করুন'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUmrahSearchBox() {
+    final l10n = AppLocalizations.of(context)!;
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final datesLabel =
+        '${months[_checkIn.month - 1]} ${_checkIn.day} - ${months[_checkOut.month - 1]} ${_checkOut.day}';
+
+    Widget cityChip(String code, String label) {
+      final selected = _umrahCity == code;
+      return ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => setState(() => _umrahCity = code),
+        selectedColor: Colors.white,
+        backgroundColor: Colors.white.withOpacity(0.12),
+        labelStyle: TextStyle(
+          color: selected ? AppColors.primaryDark : Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
+        side: BorderSide(color: Colors.white.withOpacity(0.5)),
+        showCheckmark: false,
+      );
+    }
+
+    final cityChips = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        cityChip('QCA', _t3(context, ar: 'مكة المكرمة', en: 'Makkah', es: 'La Meca', tr: 'Mekke', id: 'Makkah',
+            hi: 'मक्का', ur: 'مکہ مکرمہ', fr: 'La Mecque', bn: 'মক্কা')),
+        cityChip('MED', _t3(context, ar: 'المدينة المنورة', en: 'Madinah', es: 'Medina', tr: 'Medine', id: 'Madinah',
+            hi: 'मदीना', ur: 'مدینہ منورہ', fr: 'Médine', bn: 'মদিনা')),
+      ],
+    );
+
+    final datesPill = GestureDetector(
+      key: _umrahDateFieldKey,
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _pickDateRange(_umrahDateFieldKey),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF87CEEB),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.calendar_today_outlined, size: 18, color: Colors.white70),
+            const SizedBox(width: 6),
+            Text(datesLabel, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+
+    final guestsPill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF87CEEB),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.remove, size: 18, color: Colors.white),
+            onPressed: _guests > 1 ? () => setState(() => _guests--) : null,
+          ),
+          const Icon(Icons.person_outline, size: 18, color: Colors.white70),
+          const SizedBox(width: 4),
+          Text('$_guests', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.add, size: 18, color: Colors.white),
+            onPressed: _guests < 8 ? () => setState(() => _guests++) : null,
+          ),
+        ],
+      ),
+    );
+
+    final searchButton = ElevatedButton.icon(
+      onPressed: _runUmrahSearch,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF87CEEB),
+        foregroundColor: Colors.white,
+        shape: const StadiumBorder(),
+        minimumSize: Size.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      ),
+      icon: const Icon(Icons.search, size: 18),
+      label: Text(l10n.search),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.sm),
+      decoration: BoxDecoration(
+        color: AppColors.primaryDark,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primaryDark, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+            child: Text(
+              _t3(context,
+                  ar: 'فنادق العمرة في مكة المكرمة والمدينة المنورة',
+                  en: 'Umrah hotels in Makkah and Madinah',
+                  es: 'Hoteles para la Umrah en La Meca y Medina',
+                  tr: 'Mekke ve Medine\'de umre otelleri',
+                  id: 'Hotel umrah di Makkah dan Madinah',
+                  hi: 'मक्का और मदीना में उमरा होटल',
+                  ur: 'مکہ مکرمہ اور مدینہ منورہ میں عمرہ ہوٹل',
+                  fr: 'Hôtels pour la Omra à La Mecque et Médine',
+                  bn: 'মক্কা ও মদিনায় উমরাহ হোটেল'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+          ),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [cityChips, datesPill, guestsPill, searchButton],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════ تبويب حجوزات المجموعات ═══════════════════════
+
+  Widget _buildGroupsHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSizes.md),
+      decoration: BoxDecoration(
+        color: AppColors.primaryDark,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.groups, color: Colors.white, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _t3(context,
+                  ar: 'حجز 5 غرف أو أكثر؟ أرسل طلبك ونرسل لك عرض سعر مخصص بالبريد.',
+                  en: 'Booking 5 or more rooms? Send a request and we will email you a custom quote.',
+                  es: '¿Reservas 5 habitaciones o más? Envía tu solicitud y te enviaremos un presupuesto por correo.',
+                  tr: '5 veya daha fazla oda mı? Talebinizi gönderin, size e-postayla özel teklif gönderelim.',
+                  id: 'Memesan 5 kamar atau lebih? Kirim permintaan dan kami akan mengirim penawaran khusus lewat email.',
+                  hi: '5 या अधिक कमरे बुक कर रहे हैं? अनुरोध भेजें, हम ईमेल से विशेष कोटेशन भेजेंगे।',
+                  ur: '5 یا زیادہ کمرے؟ درخواست بھیجیں، ہم ای میل پر خصوصی قیمت بھیجیں گے۔',
+                  fr: 'Vous réservez 5 chambres ou plus ? Envoyez votre demande et nous vous enverrons un devis par e-mail.',
+                  bn: '৫ বা তার বেশি রুম? অনুরোধ পাঠান, আমরা ইমেলে বিশেষ মূল্য পাঠাব।'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.4),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -3432,6 +3715,18 @@ class _TravelTabsBar extends StatelessWidget {
             fr: 'Séjours',
             bn: 'থাকার ব্যবস্থা'),
       ),
+      _TravelTab(
+        id: 'umrah',
+        icon: Icons.mosque_outlined,
+        label: _t3(context, ar: 'العمرة', en: 'Umrah', es: 'Umrah', tr: 'Umre', id: 'Umrah',
+            hi: 'उमरा', ur: 'عمرہ', fr: 'Omra', bn: 'উমরাহ'),
+      ),
+      _TravelTab(
+        id: 'groups',
+        icon: Icons.groups_outlined,
+        label: _t3(context, ar: 'حجوزات المجموعات', en: 'Group stays', es: 'Grupos', tr: 'Grup konaklama', id: 'Grup',
+            hi: 'समूह बुकिंग', ur: 'گروپ بکنگ', fr: 'Groupes', bn: 'গ্রুপ বুকিং'),
+      ),
       // الطيران و"طيران + فندق" مخفيان حتى يكتمل تسجيل Seller of Travel
       // (انظر core/config/features.dart).
       if (kFlightsEnabled) _TravelTab(
@@ -3468,7 +3763,7 @@ class _TravelTabsBar extends StatelessWidget {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
-                  if (tab.id == 'stays' || tab.id == 'flights' || tab.id == 'flightHotel' || tab.id == 'carRental') {
+                  if (tab.id == 'stays' || tab.id == 'umrah' || tab.id == 'groups' || tab.id == 'flights' || tab.id == 'flightHotel' || tab.id == 'carRental') {
                     onTabSelected(tab.id);
                     return;
                   }
@@ -3482,11 +3777,15 @@ class _TravelTabsBar extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isActive ? AppColors.primaryDark : Colors.transparent,
+                    // التبويب غير المختار بخلفية داكنة شفافة حتى يبقى مقروءًا
+                    // فوق صورة البانر الفاتحة (كان شفافًا تمامًا فيختفي).
+                    color: isActive
+                        ? AppColors.primaryDark
+                        : Colors.black.withOpacity(0.45),
                     borderRadius: BorderRadius.circular(20),
                     border: isActive
                         ? null
-                        : Border.all(color: Colors.white.withOpacity(0.4)),
+                        : Border.all(color: Colors.white.withOpacity(0.7)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -3526,4 +3825,428 @@ class _TravelTab {
     required this.icon,
     required this.label,
   });
+}
+/// تنبيه شروط الدخول لمكة والمدينة — يظهر فوق نتائج تبويب العمرة.
+/// الهدف: ألا يحجز عميل لا يحق له الدخول ثم يطالب بالمبلغ.
+class _UmrahEntryNotice extends StatelessWidget {
+  const _UmrahEntryNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(AppSizes.md, AppSizes.sm, AppSizes.md, 0),
+      padding: const EdgeInsets.all(AppSizes.sm),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.12),
+        border: Border.all(color: Colors.amber.shade700),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: Colors.amber.shade800, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _t3(context,
+                  ar: 'دخول مكة المكرمة مقتصر على المسلمين. تأكد قبل الحجز من حصولك على التأشيرة وتصاريح الدخول المطلوبة؛ الحجز لا يشمل التأشيرة.',
+                  en: 'Entry to Makkah is restricted to Muslims. Before booking, make sure you have the required visa and entry permits; your booking does not include a visa.',
+                  es: 'La entrada a La Meca está restringida a musulmanes. Antes de reservar, asegúrate de tener el visado y los permisos de entrada necesarios; la reserva no incluye visado.',
+                  tr: 'Mekke\'ye giriş Müslümanlarla sınırlıdır. Rezervasyondan önce gerekli vize ve giriş izinlerine sahip olduğunuzdan emin olun; rezervasyon vize içermez.',
+                  id: 'Masuk ke Makkah hanya untuk Muslim. Sebelum memesan, pastikan Anda memiliki visa dan izin masuk yang diperlukan; pemesanan tidak termasuk visa.',
+                  hi: 'मक्का में प्रवेश केवल मुसलमानों के लिए है। बुकिंग से पहले आवश्यक वीज़ा और प्रवेश अनुमति सुनिश्चित करें; बुकिंग में वीज़ा शामिल नहीं है।',
+                  ur: 'مکہ مکرمہ میں داخلہ صرف مسلمانوں کے لیے ہے۔ بکنگ سے پہلے مطلوبہ ویزا اور داخلے کے اجازت نامے یقینی بنائیں؛ بکنگ میں ویزا شامل نہیں۔',
+                  fr: 'L\'accès à La Mecque est réservé aux musulmans. Avant de réserver, assurez-vous d\'avoir le visa et les autorisations d\'entrée requis ; la réservation n\'inclut pas de visa.',
+                  bn: 'মক্কায় প্রবেশ শুধু মুসলমানদের জন্য। বুকিংয়ের আগে প্রয়োজনীয় ভিসা ও প্রবেশ অনুমতি নিশ্চিত করুন; বুকিংয়ে ভিসা অন্তর্ভুক্ত নয়।'),
+              style: const TextStyle(fontSize: 13, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// محتوى تبويب العمرة قبل البحث: لماذا تحجز عمرتك معنا + تنبيه الدخول.
+class _UmrahIntro extends StatelessWidget {
+  const _UmrahIntro();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget point(IconData icon, String text) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.primary, size: 22),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14, height: 1.4))),
+        ],
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _t3(context,
+              ar: 'احجز فندق عمرتك بثقة',
+              en: 'Book your Umrah hotel with confidence',
+              es: 'Reserva tu hotel para la Umrah con confianza',
+              tr: 'Umre otelinizi güvenle rezerve edin',
+              id: 'Pesan hotel umrah Anda dengan tenang',
+              hi: 'अपना उमरा होटल भरोसे के साथ बुक करें',
+              ur: 'اپنا عمرہ ہوٹل اعتماد کے ساتھ بک کریں',
+              fr: 'Réservez votre hôtel pour la Omra en toute confiance',
+              bn: 'আস্থার সাথে আপনার উমরাহ হোটেল বুক করুন'),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: AppSizes.sm),
+        point(Icons.attach_money, _t3(context,
+            ar: 'أسعار شاملة بالدولار، وأي رسوم تُدفع في الفندق تظهر قبل الدفع.',
+            en: 'All-in prices in U.S. dollars; any fees paid at the hotel are shown before you pay.',
+            es: 'Precios totales en dólares; cualquier cargo a pagar en el hotel se muestra antes de pagar.',
+            tr: 'ABD doları ile her şey dahil fiyatlar; otelde ödenecek ücretler ödeme öncesi gösterilir.',
+            id: 'Harga total dalam dolar AS; biaya yang dibayar di hotel ditampilkan sebelum membayar.',
+            hi: 'अमेरिकी डॉलर में कुल कीमतें; होटल में देय शुल्क भुगतान से पहले दिखाए जाते हैं।',
+            ur: 'امریکی ڈالر میں مکمل قیمتیں؛ ہوٹل میں قابلِ ادائیگی فیس ادائیگی سے پہلے دکھائی جاتی ہے۔',
+            fr: 'Prix tout compris en dollars ; les frais payables à l\'hôtel sont indiqués avant le paiement.',
+            bn: 'মার্কিন ডলারে সব-মিলিয়ে দাম; হোটেলে প্রদেয় ফি পেমেন্টের আগে দেখানো হয়।')),
+        point(Icons.event_available_outlined, _t3(context,
+            ar: 'سياسة الإلغاء واضحة لكل غرفة، بتوقيت مكة والمدينة.',
+            en: 'A clear cancellation policy for every room, in local Saudi time.',
+            es: 'Política de cancelación clara para cada habitación, en hora local saudí.',
+            tr: 'Her oda için Suudi yerel saatine göre net iptal politikası.',
+            id: 'Kebijakan pembatalan yang jelas untuk setiap kamar, dalam waktu setempat Saudi.',
+            hi: 'हर कमरे के लिए स्पष्ट रद्दीकरण नीति, सऊदी स्थानीय समय में।',
+            ur: 'ہر کمرے کے لیے واضح منسوخی پالیسی، سعودی مقامی وقت کے مطابق۔',
+            fr: 'Une politique d\'annulation claire pour chaque chambre, à l\'heure locale saoudienne.',
+            bn: 'প্রতিটি রুমের জন্য সৌদি স্থানীয় সময়ে স্পষ্ট বাতিল নীতি।')),
+        point(Icons.support_agent, _t3(context,
+            ar: 'مساعدة بالعربية والإنجليزية من فريق حقيقي.',
+            en: 'Help in Arabic and English from real people.',
+            es: 'Ayuda en árabe e inglés de personas reales.',
+            tr: 'Gerçek kişilerden Arapça ve İngilizce destek.',
+            id: 'Bantuan dalam bahasa Arab dan Inggris dari orang sungguhan.',
+            hi: 'असली लोगों से अरबी और अंग्रेज़ी में सहायता।',
+            ur: 'حقیقی لوگوں سے عربی اور انگریزی میں مدد۔',
+            fr: 'Une aide en arabe et en anglais par de vraies personnes.',
+            bn: 'সত্যিকারের মানুষের কাছ থেকে আরবি ও ইংরেজিতে সহায়তা।')),
+        const SizedBox(height: AppSizes.sm),
+        const _UmrahEntryNotice(),
+        const SizedBox(height: AppSizes.lg),
+      ],
+    );
+  }
+}
+
+/// نموذج طلب حجز مجموعة (5 غرف فأكثر). يُحفظ في جدول group_stay_requests
+/// ويُرد عليه يدويًا بعرض سعر. لا دفع ولا حجز هنا.
+class _GroupStaysForm extends StatefulWidget {
+  final DateTime initialCheckIn;
+  final DateTime initialCheckOut;
+  const _GroupStaysForm({required this.initialCheckIn, required this.initialCheckOut});
+
+  @override
+  State<_GroupStaysForm> createState() => _GroupStaysFormState();
+}
+
+class _GroupStaysFormState extends State<_GroupStaysForm> {
+  final _formKey = GlobalKey<FormState>();
+  final _city = TextEditingController();
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
+  final _notes = TextEditingController();
+  late DateTime _checkIn = widget.initialCheckIn;
+  late DateTime _checkOut = widget.initialCheckOut;
+  int _rooms = 5;
+  int _guests = 10;
+  String _occasion = 'umrah';
+  bool _sending = false;
+  bool _sent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _email.text = Supabase.instance.client.auth.currentUser?.email ?? '';
+  }
+
+  @override
+  void dispose() {
+    _city.dispose();
+    _name.dispose();
+    _email.dispose();
+    _phone.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  String _d(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _pickDates() async {
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 540)),
+      initialDateRange: DateTimeRange(start: _checkIn, end: _checkOut),
+    );
+    if (range != null) {
+      setState(() {
+        _checkIn = range.start;
+        _checkOut = range.end;
+      });
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _sending = true);
+    try {
+      await Supabase.instance.client.from('group_stay_requests').insert({
+        'user_id': Supabase.instance.client.auth.currentUser?.id,
+        'destination': _city.text.trim(),
+        'check_in': _d(_checkIn),
+        'check_out': _d(_checkOut),
+        'rooms': _rooms,
+        'guests': _guests,
+        'occasion': _occasion,
+        'contact_name': _name.text.trim(),
+        'contact_email': _email.text.trim(),
+        'contact_phone': _phone.text.trim(),
+        'notes': _notes.text.trim(),
+        'language': Localizations.localeOf(context).languageCode,
+      });
+      if (!mounted) return;
+      setState(() {
+        _sending = false;
+        _sent = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _sending = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_t3(context,
+            ar: 'تعذر إرسال الطلب. حاول مرة أخرى أو راسلنا على support@flynoom.com',
+            en: 'We could not send your request. Please try again or email support@flynoom.com',
+            es: 'No pudimos enviar tu solicitud. Inténtalo de nuevo o escribe a support@flynoom.com',
+            tr: 'Talebiniz gönderilemedi. Tekrar deneyin veya support@flynoom.com adresine yazın',
+            id: 'Permintaan gagal dikirim. Coba lagi atau email support@flynoom.com',
+            hi: 'अनुरोध नहीं भेजा जा सका। फिर कोशिश करें या support@flynoom.com पर ईमेल करें',
+            ur: 'درخواست نہیں بھیجی جا سکی۔ دوبارہ کوشش کریں یا support@flynoom.com پر ای میل کریں',
+            fr: 'Impossible d\'envoyer la demande. Réessayez ou écrivez à support@flynoom.com',
+            bn: 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন বা support@flynoom.com এ ইমেল করুন')),
+      ));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_sent) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.lg),
+          child: Column(
+            children: [
+              const Icon(Icons.check_circle, color: AppColors.success, size: 48),
+              const SizedBox(height: AppSizes.sm),
+              Text(
+                _t3(context,
+                    ar: 'استلمنا طلبك. سنرسل لك عرض السعر بالبريد خلال يومي عمل.',
+                    en: 'We received your request. We will email you a quote within two business days.',
+                    es: 'Recibimos tu solicitud. Te enviaremos un presupuesto por correo en dos días hábiles.',
+                    tr: 'Talebinizi aldık. İki iş günü içinde e-postayla teklif göndereceğiz.',
+                    id: 'Permintaan Anda diterima. Kami akan mengirim penawaran lewat email dalam dua hari kerja.',
+                    hi: 'आपका अनुरोध मिल गया। हम दो कार्यदिवसों में ईमेल से कोटेशन भेजेंगे।',
+                    ur: 'آپ کی درخواست موصول ہو گئی۔ ہم دو کاروباری دنوں میں ای میل پر قیمت بھیجیں گے۔',
+                    fr: 'Nous avons reçu votre demande. Nous vous enverrons un devis par e-mail sous deux jours ouvrés.',
+                    bn: 'আপনার অনুরোধ পেয়েছি। দুই কর্মদিবসের মধ্যে ইমেলে মূল্য পাঠাব।'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    String? req(String? v) => (v == null || v.trim().isEmpty)
+        ? _t3(context, ar: 'مطلوب', en: 'Required', es: 'Obligatorio', tr: 'Zorunlu', id: 'Wajib',
+        hi: 'आवश्यक', ur: 'ضروری', fr: 'Obligatoire', bn: 'আবশ্যক')
+        : null;
+
+    InputDecoration deco(String label, IconData icon) => InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      border: const OutlineInputBorder(),
+      isDense: true,
+    );
+
+    Widget counter(String label, int value, int min, int max, ValueChanged<int> onChanged) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        IconButton(
+          icon: const Icon(Icons.remove_circle_outline),
+          onPressed: value > min ? () => onChanged(value - 1) : null,
+        ),
+        Text('$value', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        IconButton(
+          icon: const Icon(Icons.add_circle_outline),
+          onPressed: value < max ? () => onChanged(value + 1) : null,
+        ),
+      ],
+    );
+
+    final occasions = <String, String>{
+      'umrah': _t3(context, ar: 'مجموعة عمرة', en: 'Umrah group', es: 'Grupo de Umrah', tr: 'Umre grubu', id: 'Grup umrah',
+          hi: 'उमरा समूह', ur: 'عمرہ گروپ', fr: 'Groupe Omra', bn: 'উমরাহ গ্রুপ'),
+      'wedding': _t3(context, ar: 'حفل زفاف', en: 'Wedding', es: 'Boda', tr: 'Düğün', id: 'Pernikahan',
+          hi: 'शादी', ur: 'شادی', fr: 'Mariage', bn: 'বিয়ে'),
+      'event': _t3(context, ar: 'مؤتمر أو فعالية', en: 'Conference or event', es: 'Congreso o evento', tr: 'Konferans veya etkinlik', id: 'Konferensi atau acara',
+          hi: 'सम्मेलन या कार्यक्रम', ur: 'کانفرنس یا تقریب', fr: 'Conférence ou événement', bn: 'সম্মেলন বা অনুষ্ঠান'),
+      'family': _t3(context, ar: 'عائلة كبيرة', en: 'Family gathering', es: 'Reunión familiar', tr: 'Aile toplantısı', id: 'Acara keluarga',
+          hi: 'पारिवारिक समारोह', ur: 'خاندانی اجتماع', fr: 'Réunion de famille', bn: 'পারিবারিক সমাবেশ'),
+      'other': _t3(context, ar: 'أخرى', en: 'Other', es: 'Otro', tr: 'Diğer', id: 'Lainnya',
+          hi: 'अन्य', ur: 'دیگر', fr: 'Autre', bn: 'অন্যান্য'),
+    };
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.md),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                _t3(context, ar: 'طلب عرض سعر لمجموعة', en: 'Request a group quote', es: 'Solicitar presupuesto de grupo',
+                    tr: 'Grup teklifi isteyin', id: 'Minta penawaran grup', hi: 'समूह कोटेशन का अनुरोध करें',
+                    ur: 'گروپ کی قیمت کی درخواست', fr: 'Demander un devis de groupe', bn: 'গ্রুপ মূল্যের অনুরোধ'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: AppSizes.md),
+              TextFormField(
+                controller: _city,
+                decoration: deco(
+                    _t3(context, ar: 'المدينة', en: 'Destination city', es: 'Ciudad de destino', tr: 'Varış şehri', id: 'Kota tujuan',
+                        hi: 'गंतव्य शहर', ur: 'منزل کا شہر', fr: 'Ville de destination', bn: 'গন্তব্য শহর'),
+                    Icons.location_on_outlined),
+                validator: req,
+              ),
+              const SizedBox(height: AppSizes.sm),
+              OutlinedButton.icon(
+                onPressed: _pickDates,
+                icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                label: Text('${_d(_checkIn)}  →  ${_d(_checkOut)}'),
+              ),
+              const SizedBox(height: AppSizes.sm),
+              Wrap(
+                spacing: AppSizes.md,
+                children: [
+                  counter(_t3(context, ar: 'الغرف', en: 'Rooms', es: 'Habitaciones', tr: 'Oda', id: 'Kamar',
+                      hi: 'कमरे', ur: 'کمرے', fr: 'Chambres', bn: 'রুম'), _rooms, 5, 200,
+                          (v) => setState(() => _rooms = v)),
+                  counter(_t3(context, ar: 'الضيوف', en: 'Guests', es: 'Huéspedes', tr: 'Misafir', id: 'Tamu',
+                      hi: 'मेहमान', ur: 'مہمان', fr: 'Personnes', bn: 'অতিথি'), _guests, 5, 600,
+                          (v) => setState(() => _guests = v)),
+                ],
+              ),
+              const SizedBox(height: AppSizes.sm),
+              DropdownButtonFormField<String>(
+                value: _occasion,
+                decoration: deco(
+                    _t3(context, ar: 'المناسبة', en: 'Occasion', es: 'Motivo', tr: 'Etkinlik', id: 'Acara',
+                        hi: 'अवसर', ur: 'موقع', fr: 'Occasion', bn: 'উপলক্ষ'),
+                    Icons.celebration_outlined),
+                items: occasions.entries
+                    .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                    .toList(),
+                onChanged: (v) => setState(() => _occasion = v ?? 'other'),
+              ),
+              const SizedBox(height: AppSizes.sm),
+              TextFormField(
+                controller: _name,
+                decoration: deco(
+                    _t3(context, ar: 'الاسم الكامل', en: 'Full name', es: 'Nombre completo', tr: 'Ad soyad', id: 'Nama lengkap',
+                        hi: 'पूरा नाम', ur: 'پورا نام', fr: 'Nom complet', bn: 'পূর্ণ নাম'),
+                    Icons.person_outline),
+                validator: req,
+              ),
+              const SizedBox(height: AppSizes.sm),
+              TextFormField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: deco(
+                    _t3(context, ar: 'البريد الإلكتروني', en: 'Email', es: 'Correo electrónico', tr: 'E-posta', id: 'Email',
+                        hi: 'ईमेल', ur: 'ای میل', fr: 'E-mail', bn: 'ইমেইল'),
+                    Icons.email_outlined),
+                validator: (v) {
+                  final r = req(v);
+                  if (r != null) return r;
+                  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v!.trim())
+                      ? null
+                      : _t3(context, ar: 'بريد غير صحيح', en: 'Invalid email', es: 'Correo no válido', tr: 'Geçersiz e-posta',
+                      id: 'Email tidak valid', hi: 'अमान्य ईमेल', ur: 'غلط ای میل', fr: 'E-mail invalide', bn: 'অবৈধ ইমেইল');
+                },
+              ),
+              const SizedBox(height: AppSizes.sm),
+              TextFormField(
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                decoration: deco(
+                    _t3(context, ar: 'رقم الهاتف', en: 'Phone number', es: 'Teléfono', tr: 'Telefon', id: 'Nomor telepon',
+                        hi: 'फ़ोन नंबर', ur: 'فون نمبر', fr: 'Téléphone', bn: 'ফোন নম্বর'),
+                    Icons.phone_outlined),
+                validator: req,
+              ),
+              const SizedBox(height: AppSizes.sm),
+              TextFormField(
+                controller: _notes,
+                maxLines: 3,
+                maxLength: 1000,
+                decoration: deco(
+                    _t3(context, ar: 'ملاحظات (اختياري): الميزانية، نوع الغرف، القرب من الحرم...',
+                        en: 'Notes (optional): budget, room types, location preferences...',
+                        es: 'Notas (opcional): presupuesto, tipos de habitación, ubicación...',
+                        tr: 'Notlar (isteğe bağlı): bütçe, oda tipleri, konum tercihleri...',
+                        id: 'Catatan (opsional): anggaran, tipe kamar, preferensi lokasi...',
+                        hi: 'नोट्स (वैकल्पिक): बजट, कमरे का प्रकार, स्थान...',
+                        ur: 'نوٹس (اختیاری): بجٹ، کمروں کی قسم، مقام...',
+                        fr: 'Remarques (facultatif) : budget, types de chambres, emplacement...',
+                        bn: 'নোট (ঐচ্ছিক): বাজেট, রুমের ধরন, অবস্থান...'),
+                    Icons.notes_outlined),
+              ),
+              const SizedBox(height: AppSizes.sm),
+              ElevatedButton.icon(
+                onPressed: _sending ? null : _submit,
+                icon: _sending
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.send),
+                label: Text(_t3(context, ar: 'إرسال الطلب', en: 'Send request', es: 'Enviar solicitud', tr: 'Talebi gönder',
+                    id: 'Kirim permintaan', hi: 'अनुरोध भेजें', ur: 'درخواست بھیجیں', fr: 'Envoyer la demande', bn: 'অনুরোধ পাঠান')),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _t3(context,
+                    ar: 'هذا طلب عرض سعر وليس حجزًا. لن يُخصم أي مبلغ الآن.',
+                    en: 'This is a quote request, not a booking. You will not be charged.',
+                    es: 'Esto es una solicitud de presupuesto, no una reserva. No se te cobrará nada.',
+                    tr: 'Bu bir teklif talebidir, rezervasyon değildir. Ücret alınmaz.',
+                    id: 'Ini permintaan penawaran, bukan pemesanan. Anda tidak akan ditagih.',
+                    hi: 'यह कोटेशन अनुरोध है, बुकिंग नहीं। कोई शुल्क नहीं लिया जाएगा।',
+                    ur: 'یہ قیمت کی درخواست ہے، بکنگ نہیں۔ کوئی رقم نہیں لی جائے گی۔',
+                    fr: 'Ceci est une demande de devis, pas une réservation. Aucun montant ne sera débité.',
+                    bn: 'এটি একটি মূল্যের অনুরোধ, বুকিং নয়। কোনো টাকা কাটা হবে না।'),
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

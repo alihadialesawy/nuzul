@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app.dart';
+import '../../core/config/features.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/app_banner.dart';
+import 'admin_booking_desk_page.dart';
+import 'admin_group_requests_page.dart';
 
 /// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني).
 String _t3(
@@ -24,26 +27,70 @@ String _t3(
 }
 
 /// نقطة الدخول الرئيسية للوحة تحكم الأدمن — بطاقات بسيطة تودّي لكل
-/// قسم إدارة (حجوزات، فنادق...). الوصول لهذي الشاشة محمي أصلًا على
-/// مستوى الـ router نفسه (redirect في app.dart)، فمفيش داعي لأي تحقق
-/// إضافي هنا.
+/// قسم إدارة (حجوزات، طلبات مجموعات، فنادق...). الوصول لهذي الشاشة محمي
+/// على مستوى الـ router (redirect في app.dart)، والبيانات نفسها محمية
+/// بسياسات RLS عبر public.is_admin().
 class AdminDashboardPage extends StatelessWidget {
   const AdminDashboardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final sections = [
+    // نص الحجوزات يتبع الأقسام المفعّلة فقط (الطيران والسيارات مخفيان حاليًا).
+    final bookingsDescription = (kFlightsEnabled || kCarsEnabled)
+        ? _t3(
+      context,
+      ar: 'مراجعة، تأكيد، أو إلغاء حجوزات الفنادق والرحلات والسيارات',
+      en: 'Review, confirm, or cancel hotel, flight, and car bookings',
+      es: 'Revisa, confirma o cancela reservas de hoteles, vuelos y coches',
+    )
+        : _t3(
+      context,
+      ar: 'مراجعة، تأكيد، أو إلغاء حجوزات الفنادق',
+      en: 'Review, confirm, or cancel hotel bookings',
+      es: 'Revisa, confirma o cancela reservas de hoteles',
+    );
+
+    final sections = <({
+    IconData icon,
+    Color color,
+    String title,
+    String description,
+    VoidCallback onTap,
+    })>[
       (
       icon: Icons.receipt_long_outlined,
       color: const Color(0xFF0984E3),
-      title: _t3(context, ar: 'إدارة الحجوزات', en: 'Manage Bookings', es: 'Gestionar Reservas'),
+      title: _t3(context, ar: 'مكتب الحجوزات', en: 'Booking Desk', es: 'Mesa de Reservas'),
       description: _t3(
         context,
-        ar: 'مراجعة، تأكيد، أو إلغاء حجوزات الفنادق والرحلات والسيارات',
-        en: 'Review, confirm, or cancel hotel, flight, and car bookings',
-        es: 'Revisa, confirma o cancela reservas de hoteles, vuelos y coches',
+        ar: 'حجوزات HotelBeds الحقيقية: التفاصيل، والإلغاء نيابة عن العميل مع الاسترداد',
+        en: 'Real HotelBeds bookings: details, and cancel on behalf of the guest with refund',
+        es: 'Reservas reales de HotelBeds: detalles y cancelación con reembolso',
       ),
-      route: AppRoutes.adminBookings,
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AdminBookingDeskPage()),
+      ),
+      ),
+      (
+      icon: Icons.history_outlined,
+      color: const Color(0xFF636E72),
+      title: _t3(context, ar: 'الحجوزات القديمة', en: 'Legacy Bookings', es: 'Reservas Antiguas'),
+      description: bookingsDescription,
+      onTap: () => context.push(AppRoutes.adminBookings),
+      ),
+      (
+      icon: Icons.groups_outlined,
+      color: const Color(0xFFE17055),
+      title: _t3(context, ar: 'طلبات المجموعات', en: 'Group Requests', es: 'Solicitudes de Grupos'),
+      description: _t3(
+        context,
+        ar: 'طلبات 5 غرف فأكثر: عرض الطلبات، تغيير الحالة، وإضافة ملاحظات',
+        en: 'Requests for 5+ rooms: view, update status, and add notes',
+        es: 'Solicitudes de 5+ habitaciones: ver, cambiar estado y añadir notas',
+      ),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AdminGroupRequestsPage()),
+      ),
       ),
       (
       icon: Icons.hotel_outlined,
@@ -55,7 +102,7 @@ class AdminDashboardPage extends StatelessWidget {
         en: 'Add, edit, or remove hotels and rooms shown in the app',
         es: 'Añade, edita o elimina hoteles y habitaciones en la app',
       ),
-      route: AppRoutes.adminHotels,
+      onTap: () => context.push(AppRoutes.adminHotels),
       ),
     ];
 
@@ -75,7 +122,7 @@ class AdminDashboardPage extends StatelessWidget {
               Card(
                 margin: const EdgeInsets.only(bottom: AppSizes.md),
                 child: InkWell(
-                  onTap: () => context.push(section.route),
+                  onTap: section.onTap,
                   child: Padding(
                     padding: const EdgeInsets.all(AppSizes.md),
                     child: Row(

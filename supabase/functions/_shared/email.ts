@@ -107,10 +107,14 @@ function cancellationHtml(b: any): string {
   let html = '';
   if (Number.isFinite(firstTime) && firstTime > now) {
     html += `<div>Free cancellation until <b>${hotelLocal(first.from)}</b> (hotel local time).</div>`;
+  } else if (Number.isFinite(firstTime)) {
+    // الموعد الأول للرسوم مرّ بالفعل: لا يوجد إلغاء مجاني الآن. نقولها صراحة
+    // بدل عرض تاريخ قد يفهمه العميل في أمريكا كموعد ما زال قادمًا.
+    html += `<div style="color:#b91c1c;font-weight:700">No free cancellation: a cancellation fee applies if you cancel now.</div>`;
   }
   for (const p of policies) {
     const fee = p.customerFee ?? p.amountUsd;
-    html += `<div style="color:#374151">From ${hotelLocal(p.from)}: cancellation fee ${usd(fee)}</div>`;
+    html += `<div style="color:#374151">From ${hotelLocal(p.from)} (hotel local time): cancellation fee ${usd(fee)}</div>`;
   }
   return html;
 }

@@ -142,7 +142,20 @@ class _BookingCard extends ConsumerStatefulWidget {
 class _BookingCardState extends ConsumerState<_BookingCard> {
   bool _isCancelling = false;
 
+  /// حجز فندق مؤكد انتهت إقامته (تاريخ الخروج قبل اليوم) → يُعرض "مكتمل".
+  /// عرض فقط؛ لا يغيّر الحالة في قاعدة البيانات.
+  bool get _isCompleted {
+    final b = widget.item.hotelBooking;
+    if (widget.item.type != InboxItemType.hotelBooking || b == null) return false;
+    if (widget.item.status != 'confirmed') return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final out = DateTime(b.checkOut.year, b.checkOut.month, b.checkOut.day);
+    return out.isBefore(today);
+  }
+
   Color get _statusColor {
+    if (_isCompleted) return AppColors.primary;
     switch (widget.item.status) {
       case 'confirmed':
         return AppColors.success;
@@ -154,6 +167,11 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
   }
 
   String _statusLabel(AppLocalizations l10n) {
+    if (_isCompleted) {
+      return _tm(context,
+          ar: 'مكتمل', en: 'Completed', es: 'Completada', tr: 'Tamamlandı', id: 'Selesai',
+          hi: 'पूर्ण', ur: 'مکمل', fr: 'Terminé', bn: 'সম্পন্ন');
+    }
     switch (widget.item.status) {
       case 'confirmed':
         return l10n.statusConfirmed;
@@ -166,8 +184,10 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
 
   /// إلغاء الحجز متاح حاليًا لحجوزات الفنادق فقط (نفس السلوك القديم) --
   /// إلغاء رحلات Duffel محتاج تدفق منفصل عبر Duffel API مش مبني لسه.
+  /// لا إلغاء لحجز انتهت إقامته.
   bool get _canCancel {
     if (widget.item.type != InboxItemType.hotelBooking) return false;
+    if (_isCompleted) return false;
     // حجوزات HotelBeds: الإلغاء فقط للمؤكدة (عبر الفندق + الاسترداد).
     if (widget.item.hotelBooking?.isHotelBeds == true) {
       return widget.item.status == 'confirmed';
@@ -268,7 +288,18 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
     result.when(
       success: (r) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_tm(context,
+          content: Text(r.refund <= 0
+              ? _tm(context,
+              ar: 'تم إلغاء الحجز. لا يوجد مبلغ مسترد حسب سياسة الإلغاء.',
+              en: 'Booking cancelled. No refund applies under the cancellation policy.',
+              es: 'Reserva cancelada. No corresponde reembolso según la política de cancelación.',
+              tr: 'Rezervasyon iptal edildi. İptal politikasına göre iade yapılmaz.',
+              id: 'Pemesanan dibatalkan. Tidak ada pengembalian dana sesuai kebijakan pembatalan.',
+              hi: 'बुकिंग रद्द हो गई। रद्दीकरण नीति के अनुसार कोई रिफ़ंड नहीं है।',
+              ur: 'بکنگ منسوخ ہو گئی۔ منسوخی کی پالیسی کے مطابق کوئی رقم واپس نہیں ہوگی۔',
+              fr: 'Réservation annulée. Aucun remboursement selon la politique d\'annulation.',
+              bn: 'বুকিং বাতিল হয়েছে। বাতিল নীতি অনুযায়ী কোনো ফেরত নেই।')
+              : _tm(context,
               ar: 'تم إلغاء الحجز. يصل المبلغ المسترد ${_usd(r.refund)} إلى بطاقتك خلال 5–10 أيام عمل.',
               en: 'Booking cancelled. Your refund of ${_usd(r.refund)} will reach your card in 5–10 business days.',
               es: 'Reserva cancelada. Tu reembolso de ${_usd(r.refund)} llegará a tu tarjeta en 5–10 días hábiles.',
@@ -548,7 +579,32 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                 style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
             ),
-          if (booking.status == 'cancelled' && booking.refundAmount != null)
+          // ملغى بدون استرداد: نص محايد بدل "Refunded: $0.00" بالأخضر.
+          if (booking.status == 'cancelled' &&
+              booking.refundAmount != null &&
+              booking.refundAmount! <= 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                    () {
+                  final fee = booking.chargeAmount ?? 0;
+                  return _tm(context,
+                      ar: 'لا يوجد استرداد (رسوم الإلغاء ${_usd(fee)})',
+                      en: 'No refund (cancellation fee ${_usd(fee)})',
+                      es: 'Sin reembolso (cargo por cancelación ${_usd(fee)})',
+                      tr: 'İade yok (iptal ücreti ${_usd(fee)})',
+                      id: 'Tidak ada pengembalian (biaya pembatalan ${_usd(fee)})',
+                      hi: 'कोई रिफ़ंड नहीं (रद्दीकरण शुल्क ${_usd(fee)})',
+                      ur: 'کوئی واپسی نہیں (منسوخی فیس ${_usd(fee)})',
+                      fr: 'Aucun remboursement (frais d\'annulation ${_usd(fee)})',
+                      bn: 'কোনো ফেরত নেই (বাতিল ফি ${_usd(fee)})');
+                }(),
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+            ),
+          if (booking.status == 'cancelled' &&
+              booking.refundAmount != null &&
+              booking.refundAmount! > 0)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
