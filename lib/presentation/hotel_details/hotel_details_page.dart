@@ -17,6 +17,39 @@ import '../../localization/app_localizations.dart';
 import '../auth/controllers/auth_controller.dart';
 import '../../data/repositories/hotelbeds_repository.dart';
 
+/// صور HotelBeds متوفرة بعدة مقاسات حسب المسار:
+///   giata/ ≈320px · giata/bigger/ ≈800px · giata/xl/ ≈1024px · giata/xxl/ ≈2048px
+/// يحوّل أي رابط صورة HotelBeds إلى المقاس المطلوب. الروابط الأخرى تبقى كما هي.
+final _hbPhotoRe = RegExp(
+    r'(photos\.hotelbeds\.com/giata/)(?:(?:small|medium|standard|bigger|xl|xxl|original)/)?');
+
+String _hbSized(String url, String size) => url.contains('photos.hotelbeds.com/giata/')
+    ? url.replaceFirstMapped(_hbPhotoRe, (m) => '${m[1]}$size/')
+    : url;
+
+/// صورة شبكية بمقاس محدد، وإن لم يوجد هذا المقاس عند HotelBeds نرجع للرابط الأصلي.
+Widget _sizedNetworkImage(
+    String url,
+    String size, {
+      BoxFit fit = BoxFit.cover,
+      required Widget Function() fallbackIcon,
+    }) {
+  final sized = _hbSized(url, size);
+  return Image.network(
+    sized,
+    fit: fit,
+    filterQuality: FilterQuality.high,
+    errorBuilder: (_, __, ___) => sized == url
+        ? fallbackIcon()
+        : Image.network(
+      url,
+      fit: fit,
+      filterQuality: FilterQuality.high,
+      errorBuilder: (_, __, ___) => fallbackIcon(),
+    ),
+  );
+}
+
 /// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني/تركي/إندونيسي/هندي/أوردو/فرنسي/بنغالي).
 String _t3(
     BuildContext context, {
@@ -384,10 +417,11 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
               itemCount: images.length,
               itemBuilder: (context, i) => GestureDetector(
                 onTap: () => _openGalleryViewer(images, i),
-                child: Image.network(
+                // الصورة الرئيسية كبيرة على الشاشة: مقاس xl بدل bigger/الافتراضي.
+                child: _sizedNetworkImage(
                   images[i],
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
+                  'xl',
+                  fallbackIcon: () =>
                   const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
                 ),
               ),
@@ -1887,11 +1921,10 @@ class _GalleryTile extends StatelessWidget {
         children: [
           Container(
             color: AppColors.divider,
-            child: Image.network(
+            child: _sizedNetworkImage(
               url,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-              const Icon(Icons.hotel, color: AppColors.textHint),
+              'bigger',
+              fallbackIcon: () => const Icon(Icons.hotel, color: AppColors.textHint),
             ),
           ),
           if (overlayText != null)
@@ -1960,10 +1993,12 @@ class _GalleryViewerState extends State<_GalleryViewer> {
                 itemCount: widget.images.length,
                 itemBuilder: (_, i) => InteractiveViewer(
                   child: Center(
-                    child: Image.network(
+                    // ملء الشاشة: أعلى مقاس متاح.
+                    child: _sizedNetworkImage(
                       widget.images[i],
+                      'xxl',
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) =>
+                      fallbackIcon: () =>
                       const Icon(Icons.hotel, size: 64, color: Colors.white54),
                     ),
                   ),

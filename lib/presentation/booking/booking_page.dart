@@ -68,6 +68,13 @@ String _titleCase(String s) => s
 
 String _usd(double v) => '\$${v.toStringAsFixed(2)} USD';
 
+/// ينظّف نصوص HotelBeds من الرموز التالفة (�) والمحارف غير المرئية/الخاصة
+/// التي تظهر كمربعات أو رموز غريبة، ويوحّد المسافات.
+String _cleanSupplierText(String s) => s
+    .replaceAll(RegExp(r'[�-\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]'), ' ')
+    .replaceAll(RegExp(r'[ \t]{2,}'), ' ')
+    .trim();
+
 /// Stripe غير مدعوم حاليًا إلا على Android/iOS (وWeb إن تم إعداده لاحقًا).
 /// على أنظمة سطح المكتب (Windows/macOS/Linux) نتخطى الدفع الفعلي مؤقتًا
 /// ونسجّل الحجز بحالة "قيد الانتظار" ليتم إتمام الدفع لاحقًا من جهاز مدعوم.
@@ -339,28 +346,33 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                 ),
                 const SizedBox(height: 4),
                 if (quote.isNonRefundable)
-                  Text(_tb(ctx,
-                      ar: 'غير قابل للاسترداد: يُخصم كامل المبلغ عند الإلغاء.',
-                      en: 'Non-refundable: the full amount is charged if you cancel.',
-                      es: 'No reembolsable: se cobra el importe total si cancelas.',
-                      tr: 'İade edilmez: iptal ederseniz tutarın tamamı tahsil edilir.',
-                      id: 'Tidak dapat dikembalikan: jumlah penuh dikenakan jika Anda membatalkan.',
-                      hi: 'नॉन-रिफ़ंडेबल: रद्द करने पर पूरी राशि ली जाएगी।',
-                      ur: 'ناقابلِ واپسی: منسوخی پر پوری رقم وصول کی جائے گی۔',
-                      fr: 'Non remboursable : le montant total est dû en cas d\'annulation.',
-                      bn: 'অফেরতযোগ্য: বাতিল করলে পুরো টাকা কাটা হবে।'))
+                  Text(
+                      style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+                      _tb(ctx,
+                          ar: 'غير قابل للاسترداد: يُخصم كامل المبلغ عند الإلغاء.',
+                          en: 'Non-refundable: the full amount is charged if you cancel.',
+                          es: 'No reembolsable: se cobra el importe total si cancelas.',
+                          tr: 'İade edilmez: iptal ederseniz tutarın tamamı tahsil edilir.',
+                          id: 'Tidak dapat dikembalikan: jumlah penuh dikenakan jika Anda membatalkan.',
+                          hi: 'नॉन-रिफ़ंडेबल: रद्द करने पर पूरी राशि ली जाएगी।',
+                          ur: 'ناقابلِ واپسی: منسوخی پر پوری رقم وصول کی جائے گی۔',
+                          fr: 'Non remboursable : le montant total est dû en cas d\'annulation.',
+                          bn: 'অফেরতযোগ্য: বাতিল করলে পুরো টাকা কাটা হবে।'))
                 else ...[
+                  // الرسوم سارية من لحظة الحجز: نُبرزها بالأحمر ونذكر المبلغ من الإجمالي،
+                  // حتى لا يظن العميل أن لديه إلغاءً مجانيًا.
                   if (currentFee > 0)
                     Text(_tb(ctx,
-                        ar: 'رسوم الإلغاء إذا ألغيت الآن: ${_usd(currentFee)}',
-                        en: 'Cancellation fee if you cancel now: ${_usd(currentFee)}',
-                        es: 'Cargo si cancelas ahora: ${_usd(currentFee)}',
-                        tr: 'Şimdi iptal ederseniz ücret: ${_usd(currentFee)}',
-                        id: 'Biaya jika membatalkan sekarang: ${_usd(currentFee)}',
-                        hi: 'अभी रद्द करने पर शुल्क: ${_usd(currentFee)}',
-                        ur: 'ابھی منسوخ کرنے پر فیس: ${_usd(currentFee)}',
-                        fr: 'Frais si vous annulez maintenant : ${_usd(currentFee)}',
-                        bn: 'এখন বাতিল করলে ফি: ${_usd(currentFee)}'))
+                        ar: 'غير قابل للاسترداد جزئيًا: إذا ألغيت تُخصم رسوم ${_usd(currentFee)} من ${_usd(quote.chargeAmount)}، ابتداءً من لحظة الحجز.',
+                        en: 'Partially non-refundable: if you cancel, a fee of ${_usd(currentFee)} of ${_usd(quote.chargeAmount)} applies from the moment you book.',
+                        es: 'Parcialmente no reembolsable: si cancelas, se cobra ${_usd(currentFee)} de ${_usd(quote.chargeAmount)} desde el momento de la reserva.',
+                        tr: 'Kısmen iade edilmez: iptal ederseniz, rezervasyon anından itibaren ${_usd(quote.chargeAmount)} tutarın ${_usd(currentFee)} kadarı ücret olarak alınır.',
+                        id: 'Sebagian tidak dapat dikembalikan: jika membatalkan, dikenakan biaya ${_usd(currentFee)} dari ${_usd(quote.chargeAmount)} sejak saat pemesanan.',
+                        hi: 'आंशिक रूप से नॉन-रिफ़ंडेबल: रद्द करने पर बुकिंग के समय से ${_usd(quote.chargeAmount)} में से ${_usd(currentFee)} शुल्क लगेगा।',
+                        ur: 'جزوی طور پر ناقابلِ واپسی: منسوخی پر بکنگ کے وقت سے ${_usd(quote.chargeAmount)} میں سے ${_usd(currentFee)} فیس لاگو ہوگی۔',
+                        fr: 'Partiellement non remboursable : en cas d\'annulation, des frais de ${_usd(currentFee)} sur ${_usd(quote.chargeAmount)} s\'appliquent dès la réservation.',
+                        bn: 'আংশিক অফেরতযোগ্য: বাতিল করলে বুকিংয়ের মুহূর্ত থেকে ${_usd(quote.chargeAmount)}-এর মধ্যে ${_usd(currentFee)} ফি কাটা হবে।'),
+                        style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold))
                   else if (upcoming.isNotEmpty)
                     Text(_tb(ctx,
                         ar: 'إلغاء مجاني حتى ${upcoming.first.localDateTimeText} (بتوقيت الفندق).',
@@ -406,7 +418,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    quote.rateComments!,
+                    _cleanSupplierText(quote.rateComments!),
                     style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                   ),
                 ],
@@ -749,15 +761,15 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                 if (v && _acceptedTerms) _errorMessage = null;
               }),
               text: _tb(context,
-                  ar: 'أؤكد أنني لست مقيمًا في كاليفورنيا أو فلوريدا أو هاواي أو آيوا أو واشنطن.',
-                  en: 'I confirm that I am not a resident of California, Florida, Hawaii, Iowa, or Washington.',
-                  es: 'Confirmo que no resido en California, Florida, Hawái, Iowa ni Washington.',
-                  tr: 'California, Florida, Hawaii, Iowa veya Washington\'da ikamet etmediğimi onaylıyorum.',
-                  id: 'Saya menyatakan bahwa saya bukan penduduk California, Florida, Hawaii, Iowa, atau Washington.',
-                  hi: 'मैं पुष्टि करता/करती हूं कि मैं कैलिफ़ोर्निया, फ़्लोरिडा, हवाई, आयोवा या वॉशिंगटन का निवासी नहीं हूं।',
-                  ur: 'میں تصدیق کرتا/کرتی ہوں کہ میں کیلیفورنیا، فلوریڈا، ہوائی، آئیووا یا واشنگٹن کا رہائشی نہیں ہوں۔',
-                  fr: 'Je confirme ne pas résider en Californie, en Floride, à Hawaï, dans l\'Iowa ou dans l\'État de Washington.',
-                  bn: 'আমি নিশ্চিত করছি যে আমি ক্যালিফোর্নিয়া, ফ্লোরিডা, হাওয়াই, আইওয়া বা ওয়াশিংটনের বাসিন্দা নই।'),
+                  ar: 'أؤكد أنني لست مقيمًا في كاليفورنيا أو فلوريدا أو هاواي أو واشنطن.',
+                  en: 'I confirm that I am not a resident of California, Florida, Hawaii, or Washington.',
+                  es: 'Confirmo que no resido en California, Florida, Hawái ni Washington.',
+                  tr: 'California, Florida, Hawaii veya Washington\'da ikamet etmediğimi onaylıyorum.',
+                  id: 'Saya menyatakan bahwa saya bukan penduduk California, Florida, Hawaii, atau Washington.',
+                  hi: 'मैं पुष्टि करता/करती हूं कि मैं कैलिफ़ोर्निया, फ़्लोरिडा, हवाई या वॉशिंगटन का निवासी नहीं हूं।',
+                  ur: 'میں تصدیق کرتا/کرتی ہوں کہ میں کیلیفورنیا، فلوریڈا، ہوائی یا واشنگٹن کا رہائشی نہیں ہوں۔',
+                  fr: 'Je confirme ne pas résider en Californie, en Floride, à Hawaï ou dans l\'État de Washington.',
+                  bn: 'আমি নিশ্চিত করছি যে আমি ক্যালিফোর্নিয়া, ফ্লোরিডা, হাওয়াই বা ওয়াশিংটনের বাসিন্দা নই।'),
             ),
           ],
         ),
