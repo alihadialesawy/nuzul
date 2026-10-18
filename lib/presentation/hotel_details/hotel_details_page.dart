@@ -23,17 +23,29 @@ import '../../data/repositories/hotelbeds_repository.dart';
 final _hbPhotoRe = RegExp(
     r'(photos\.hotelbeds\.com/giata/)(?:(?:small|medium|standard|bigger|xl|xxl|original)/)?');
 
-String _hbSized(String url, String size) => url.contains('photos.hotelbeds.com/giata/')
-    ? url.replaceFirstMapped(_hbPhotoRe, (m) => '${m[1]}$size/')
-    : url;
+/// نفس الرابط لكن مُرمَّزًا داخل رابط الوسيط (hotelbeds-image-proxy?url=...)،
+/// حيث تصبح "/" هي "%2F".
+final _hbPhotoEncodedRe = RegExp(
+    r'(photos\.hotelbeds\.com%2Fgiata%2F)(?:(?:small|medium|standard|bigger|xl|xxl|original)%2F)?',
+    caseSensitive: false);
+
+String _hbSized(String url, String size) {
+  if (url.contains('photos.hotelbeds.com/giata/')) {
+    return url.replaceFirstMapped(_hbPhotoRe, (m) => '${m[1]}$size/');
+  }
+  if (_hbPhotoEncodedRe.hasMatch(url)) {
+    return url.replaceFirstMapped(_hbPhotoEncodedRe, (m) => '${m[1]}$size%2F');
+  }
+  return url;
+}
 
 /// صورة شبكية بمقاس محدد، وإن لم يوجد هذا المقاس عند HotelBeds نرجع للرابط الأصلي.
 Widget _sizedNetworkImage(
-    String url,
-    String size, {
-      BoxFit fit = BoxFit.cover,
-      required Widget Function() fallbackIcon,
-    }) {
+  String url,
+  String size, {
+  BoxFit fit = BoxFit.cover,
+  required Widget Function() fallbackIcon,
+}) {
   final sized = _hbSized(url, size);
   return Image.network(
     sized,
@@ -42,11 +54,11 @@ Widget _sizedNetworkImage(
     errorBuilder: (_, __, ___) => sized == url
         ? fallbackIcon()
         : Image.network(
-      url,
-      fit: fit,
-      filterQuality: FilterQuality.high,
-      errorBuilder: (_, __, ___) => fallbackIcon(),
-    ),
+            url,
+            fit: fit,
+            filterQuality: FilterQuality.high,
+            errorBuilder: (_, __, ___) => fallbackIcon(),
+          ),
   );
 }
 
