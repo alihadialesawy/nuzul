@@ -2160,7 +2160,15 @@ class _SearchResults extends ConsumerWidget {
       ),
       data: (hotels) {
         final activeFilters = ref.watch(hotelFiltersProvider);
-        final filteredHotels = applyHotelFilters(hotels, activeFilters);
+        var filteredHotels = applyHotelFilters(hotels, activeFilters);
+
+        // مكة/المدينة: نعرض المسافة من الحرم ونرتب من الأقرب (الفنادق بلا
+        // إحداثيات صالحة تأتي في آخر القائمة).
+        final holySite = HolySite.forDestinationCode(params['destinationCode'] as String?);
+        if (holySite != null) {
+          double key(HotelModel h) => h.distanceMetersTo(holySite) ?? double.infinity;
+          filteredHotels = [...filteredHotels]..sort((a, b) => key(a).compareTo(key(b)));
+        }
 
         final resultsList = filteredHotels.isEmpty
             ? ListView(
@@ -2192,7 +2200,7 @@ class _SearchResults extends ConsumerWidget {
           itemCount: filteredHotels.length + 1,
           itemBuilder: (context, index) {
             if (index == filteredHotels.length) return const AppFooter();
-            return _HotelCard(hotel: filteredHotels[index], searchParams: params);
+            return _HotelCard(hotel: filteredHotels[index], searchParams: params, holySite: holySite);
           },
         );
 
@@ -2204,7 +2212,7 @@ class _SearchResults extends ConsumerWidget {
         return Row(
           children: [
             Expanded(child: resultsList),
-            const SearchFiltersSidebar(),
+            SearchFiltersSidebar(hotels: hotels),
           ],
         );
       },
@@ -2394,7 +2402,7 @@ class _FlightHotelSearchResults extends ConsumerWidget {
               children: [
                 if (flightOffers.isNotEmpty) FlightFiltersSidebar(allOffers: flightOffers),
                 if (flightOffers.isNotEmpty && hotels.isNotEmpty) const SizedBox(height: AppSizes.lg),
-                if (hotels.isNotEmpty) const SearchFiltersSidebar(),
+                if (hotels.isNotEmpty) SearchFiltersSidebar(hotels: hotels),
               ],
             ),
           ),
@@ -2412,12 +2420,75 @@ class _HotelCard extends ConsumerWidget {
   /// فندق واحد يحجزه مع الرحلة في خطوة واحدة.
   final bool? selected;
   final VoidCallback? onSelect;
+
+  /// لو اتبعت (نتائج مكة/المدينة)، الكارت يعرض المسافة التقريبية من الحرم.
+  final HolySite? holySite;
   const _HotelCard({
     required this.hotel,
     required this.searchParams,
     this.selected,
     this.onSelect,
+    this.holySite,
   });
+
+  /// "≈ 350 m" أو "≈ 1.2 km".
+  static String _formatDistance(double meters) {
+    if (meters < 1000) {
+      final rounded = ((meters / 10).round() * 10).clamp(10, 990);
+      return '$rounded m';
+    }
+    return '${(meters / 1000).toStringAsFixed(1)} km';
+  }
+
+  Widget _holyDistanceRow(BuildContext context) {
+    final site = holySite;
+    if (site == null) return const SizedBox.shrink();
+    final meters = hotel.distanceMetersTo(site);
+    if (meters == null) return const SizedBox.shrink();
+    final d = _formatDistance(meters);
+    final isMakkah = identical(site, HolySite.masjidAlHaram);
+    final text = isMakkah
+        ? _t3(context,
+        ar: 'تقريبًا $d من الكعبة المشرفة (بخط مستقيم)',
+        en: '≈ $d from the Kaaba (straight line)',
+        es: '≈ $d de la Kaaba (en línea recta)',
+        tr: 'Kâbe\'ye ≈ $d (kuş uçuşu)',
+        id: '≈ $d dari Ka\'bah (garis lurus)',
+        hi: 'काबा से ≈ $d (सीधी रेखा)',
+        ur: 'خانہ کعبہ سے تقریباً $d (سیدھی لکیر)',
+        fr: '≈ $d de la Kaaba (à vol d\'oiseau)',
+        bn: 'কাবা থেকে ≈ $d (সরলরেখায়)')
+        : _t3(context,
+        ar: 'تقريبًا $d من المسجد النبوي (بخط مستقيم)',
+        en: '≈ $d from the Prophet\'s Mosque (straight line)',
+        es: '≈ $d de la Mezquita del Profeta (en línea recta)',
+        tr: 'Mescid-i Nebevi\'ye ≈ $d (kuş uçuşu)',
+        id: '≈ $d dari Masjid Nabawi (garis lurus)',
+        hi: 'मस्जिद-ए-नबवी से ≈ $d (सीधी रेखा)',
+        ur: 'مسجد نبوی سے تقریباً $d (سیدھی لکیر)',
+        fr: '≈ $d de la Mosquée du Prophète (à vol d\'oiseau)',
+        bn: 'মসজিদে নববী থেকে ≈ $d (সরলরেখায়)');
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.mosque_outlined, size: 15, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _openHotelDetails(BuildContext context, Map<String, dynamic> searchParams) {
     context.push(
@@ -2598,6 +2669,7 @@ class _HotelCard extends ConsumerWidget {
                                     ),
                                   ],
                                 ),
+                                _holyDistanceRow(context),
                               ],
                             ),
                           ),
@@ -4148,9 +4220,13 @@ class _GroupStaysFormState extends State<_GroupStaysForm> {
                 children: [
                   counter(_t3(context, ar: 'الغرف', en: 'Rooms', es: 'Habitaciones', tr: 'Oda', id: 'Kamar',
                       hi: 'कमरे', ur: 'کمرے', fr: 'Chambres', bn: 'রুম'), _rooms, 5, 200,
-                          (v) => setState(() => _rooms = v)),
+                      // الضيوف لا يقلّون عن عدد الغرف (ضيف واحد على الأقل لكل غرفة).
+                          (v) => setState(() {
+                        _rooms = v;
+                        if (_guests < v) _guests = v;
+                      })),
                   counter(_t3(context, ar: 'الضيوف', en: 'Guests', es: 'Huéspedes', tr: 'Misafir', id: 'Tamu',
-                      hi: 'मेहमान', ur: 'مہمان', fr: 'Personnes', bn: 'অতিথি'), _guests, 5, 600,
+                      hi: 'मेहमान', ur: 'مہمان', fr: 'Personnes', bn: 'অতিথি'), _guests, _rooms, 600,
                           (v) => setState(() => _guests = v)),
                 ],
               ),

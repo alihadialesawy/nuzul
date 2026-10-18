@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/currency_service.dart';
 import '../../../data/models/hotel_model.dart';
 
 /// حالة كل فلاتر الفنادق مجتمعة، مشتركة بين الشريط الجانبي (اللي بيعدّلها)
 /// وقائمة النتائج (اللي بتطبّقها فعليًا على قائمة الفنادق).
 class HotelFilterState {
-  final RangeValues budgetRange;
+  /// نطاق الميزانية لليلة بالدولار. null = بلا فلتر (كل الأسعار).
+  ///
+  /// ⚠️ كان افتراضيًا 80–800 ويُقارن بسعر الليلة بالريال، فكانت كل الفنادق
+  /// فوق ~213\$ لليلة تختفي من النتائج بصمت. الآن لا فلتر إلا إذا حرّكه العميل.
+  final RangeValues? budgetRange;
   final Set<String> popularFilters;
   final Set<String> propertyTypes;
   final Set<String> meals;
@@ -16,7 +21,7 @@ class HotelFilterState {
   final Set<String> propertyRatings;
 
   const HotelFilterState({
-    this.budgetRange = const RangeValues(80, 800),
+    this.budgetRange,
     this.popularFilters = const {},
     this.propertyTypes = const {},
     this.meals = const {},
@@ -26,8 +31,19 @@ class HotelFilterState {
     this.propertyRatings = const {},
   });
 
+  bool get hasAnyFilter =>
+      budgetRange != null ||
+          popularFilters.isNotEmpty ||
+          propertyTypes.isNotEmpty ||
+          meals.isNotEmpty ||
+          amenities.isNotEmpty ||
+          roomAmenities.isNotEmpty ||
+          neighborhoods.isNotEmpty ||
+          propertyRatings.isNotEmpty;
+
   HotelFilterState copyWith({
     RangeValues? budgetRange,
+    bool clearBudget = false,
     Set<String>? popularFilters,
     Set<String>? propertyTypes,
     Set<String>? meals,
@@ -37,7 +53,7 @@ class HotelFilterState {
     Set<String>? propertyRatings,
   }) {
     return HotelFilterState(
-      budgetRange: budgetRange ?? this.budgetRange,
+      budgetRange: clearBudget ? null : (budgetRange ?? this.budgetRange),
       popularFilters: popularFilters ?? this.popularFilters,
       propertyTypes: propertyTypes ?? this.propertyTypes,
       meals: meals ?? this.meals,
@@ -65,6 +81,10 @@ class HotelFiltersNotifier extends StateNotifier<HotelFilterState> {
 
   void setBudgetRange(RangeValues range) {
     state = state.copyWith(budgetRange: range);
+  }
+
+  void clearBudget() {
+    state = state.copyWith(clearBudget: true);
   }
 
   /// يفتح/يقفل قيمة واحدة جوه مجموعة فلاتر معيّنة.
@@ -140,6 +160,9 @@ StateNotifierProvider<HotelFiltersNotifier, HotelFilterState>((ref) {
   return HotelFiltersNotifier();
 });
 
+/// سعر الليلة بالدولار (الشامل)، كما يظهر للعميل.
+double hotelNightlyUsd(HotelModel hotel) => hotel.pricePerNight / CurrencyService.sarPerUsd;
+
 /// يطبّع أي نص للمقارنة من غير حساسية لحالة الأحرف ومن غير مسافات
 /// زيادة في البداية/النهاية (زي "  Parking " أو "PARKING" أو "parking"،
 /// كلهم بيتطابقوا مع بعض).
@@ -168,9 +191,14 @@ bool _setContainsCaseInsensitive(Set<String> set, String? value) {
 ///   اللي متعلّم يتحقق في الفندق).
 List<HotelModel> applyHotelFilters(List<HotelModel> hotels, HotelFilterState f) {
   return hotels.where((hotel) {
-    if (hotel.pricePerNight < f.budgetRange.start ||
-        hotel.pricePerNight > f.budgetRange.end) {
-      return false;
+    final budget = f.budgetRange;
+    if (budget != null) {
+      // pricePerNight مخزّن بالريال (لأجل PriceText)؛ الميزانية بالدولار.
+      final usd = hotelNightlyUsd(hotel);
+      // مقارنة بالسنت المقرّب حتى لا يُستبعد الحدّان بسبب كسور التحويل.
+      if (usd < budget.start.floorToDouble() || usd > budget.end.ceilToDouble()) {
+        return false;
+      }
     }
 
     for (final label in f.popularFilters) {
@@ -215,8 +243,6 @@ bool _matchesPopularFilter(HotelModel hotel, String label) {
       return _normalize(hotel.propertyType) == 'hotels';
     case 'apartments':
       return _normalize(hotel.propertyType) == 'apartments';
-    case 'very good: 8+':
-      return hotel.rating * 2 >= 8;
     case '4 stars':
       return hotel.rating.round() == 4;
     default:

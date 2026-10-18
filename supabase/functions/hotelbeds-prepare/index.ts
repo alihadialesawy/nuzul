@@ -35,6 +35,7 @@ import {
   toUsd,
   toUsdRaw,
 } from '../_shared/hotelbeds.ts';
+import { sendEmail } from '../_shared/email.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16',
@@ -42,6 +43,21 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
 });
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/// سقف أمان لسعر الليلة (بالدولار، للحجز كله). أي سعر أعلى يُوقف الحجز قبل
+/// الدفع ويُرسل تنبيهًا للمدير، حتى لا يُحجز على بطاقة العميل مبلغ شاذ
+/// (خطأ بيانات من المورد أو خطأ تحويل عملة). يمكن تغييره بـ Secret:
+///   supabase secrets set MAX_NIGHTLY_USD=5000 --project-ref ...
+const MAX_NIGHTLY_USD = Number(Deno.env.get('MAX_NIGHTLY_USD') ?? '3000') || 3000;
+const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') ?? 'ali@flynoom.com';
+
+const h = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function nightsBetween(checkIn: string, checkOut: string): number {
+  const a = Date.parse(checkIn);
+  const b = Date.parse(checkOut);
+  return Number.isFinite(a) && Number.isFinite(b) ? Math.max(1, Math.round((b - a) / 86400000)) : 1;
+}
 const NAME_RE = /^[\p{L}][\p{L}\s'.-]{0,49}$/u;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -145,6 +161,34 @@ Deno.serve(async (req) => {
 
     const amountCents = Math.round(chargeUsd * 100);
     if (amountCents < 50) return fail('rate_unavailable', 'Invalid price for this rate.');
+
+    // ───── سقف الأمان ─────
+    // قبل إنشاء أي حجز أو PaymentIntent: سعر شاذ = لا دفع، ومراجعة يدوية.
+    const nights = nightsBetween(checkIn, checkOut);
+    const nightlyUsd = round2(chargeUsd / nights);
+    if (nightlyUsd > MAX_NIGHTLY_USD) {
+      console.log(
+        `PRICE GUARD BLOCKED hotel=${hotelCode} nightly=${nightlyUsd} USD total=${chargeUsd} USD ` +
+          `net=${net} ${supplierCurrency} price=${price} user=${user.id}`,
+      );
+      await sendEmail(ADMIN_EMAIL, {
+        subject: `Price guard: $${nightlyUsd}/night blocked (hotel ${hotelCode})`,
+        html: `<p>A booking attempt was blocked before payment because the nightly price exceeded the safety limit ($${MAX_NIGHTLY_USD}).</p>
+<ul>
+<li>Hotel: ${h(hotel.name)} (code ${hotelCode})</li>
+<li>Room: ${h(room.name)} · ${h(rate.boardName)}</li>
+<li>Dates: ${checkIn} → ${checkOut} (${nights} nights), guests: ${guests}</li>
+<li>Supplier price: ${price} ${supplierCurrency} (net ${net})</li>
+<li>Converted: $${chargeUsd} total · $${nightlyUsd}/night</li>
+<li>Customer: ${firstName} ${lastName} &lt;${email}&gt;</li>
+</ul>
+<p>Check the price with HotelBeds before contacting the customer. No card was charged or held.</p>`,
+      }).catch(() => false);
+      return fail(
+        'price_review',
+        'We could not confirm this price automatically. Nothing was charged. Our team will review it and contact you shortly.',
+      );
+    }
 
     // الرسوم الإلزامية التي تُدفع في الفندق (تُعرض للعميل قبل الدفع وفي القسيمة).
     const atHotel = await atHotelFees(rate);

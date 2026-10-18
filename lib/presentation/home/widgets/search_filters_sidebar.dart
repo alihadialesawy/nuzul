@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/models/hotel_model.dart';
 import '../controllers/hotel_filters_controller.dart';
 
 /// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني/تركي/إندونيسي/هندي/أوردو/فرنسي/بنغالي).
@@ -118,6 +119,9 @@ String _labelText(BuildContext context, String key) {
     case 'Kitchen/Kitchenette':
       return _t3(context, ar: 'مطبخ/مطبخ صغير', en: 'Kitchen/Kitchenette', es: 'Cocina/Cocineta', tr: 'Mutfak/Mini mutfak',
           id: 'Dapur/Dapur kecil', hi: 'रसोई/मिनी किचन', ur: 'باورچی خانہ/چھوٹا باورچی خانہ', fr: 'Cuisine/Kitchenette', bn: 'রান্নাঘর/মিনি রান্নাঘর');
+    case '1 stars':
+      return _t3(context, ar: 'نجمة واحدة', en: '1 star', es: '1 estrella', tr: '1 yıldız',
+          id: '1 bintang', hi: '1 सितारा', ur: '1 ستارہ', fr: '1 étoile', bn: '১ তারকা');
     case '2 stars':
       return _t3(context, ar: 'نجمتان', en: '2 stars', es: '2 estrellas', tr: '2 yıldız',
           id: '2 bintang', hi: '2 सितारे', ur: '2 ستارے', fr: '2 étoiles', bn: '২ তারকা');
@@ -134,169 +138,102 @@ String _labelText(BuildContext context, String key) {
   }
 }
 
-/// شريط فلاتر جانبي متصل فعليًا بحالة الفلاتر المشتركة (hotelFiltersProvider)،
-/// يظهر بجانب قائمة نتائج البحث، بنفس روح فلاتر Booking.com: نطاق سعري،
-/// فلاتر شائعة، نوع العقار، الوجبات والمرافق، الحي، وتصنيف العقار.
+/// شريط فلاتر جانبي متصل بحالة الفلاتر المشتركة (hotelFiltersProvider).
+///
+/// ⚠️ كل رقم وكل خيار هنا محسوب من نتائج البحث الفعلية [hotels] — لا أرقام
+/// ثابتة ولا فلاتر لبيانات لا نملكها (المرافق، الوجبات، تقييمات النزلاء).
+/// نتائج HotelBeds لا تحمل المرافق، فلا نعرض فلاترها حتى نجلب تلك البيانات.
+///
+/// الأقسام: الميزانية (حسب أرخص/أغلى نتيجة)، النجوم الرسمية، المنطقة (zoneName).
 class SearchFiltersSidebar extends ConsumerWidget {
-  const SearchFiltersSidebar({super.key});
+  final List<HotelModel> hotels;
+  const SearchFiltersSidebar({super.key, this.hotels = const []});
 
-  static const Map<String, int> _popularFilterCounts = {
-    'Hotels': 76,
-    'Private bathroom': 124,
-    'Breakfast included': 42,
-    'Very Good: 8+': 98,
-    'Parking': 97,
-    '4 stars': 70,
-    'Apartments': 58,
-    'Airport shuttle': 8,
-  };
-
-  static const Map<String, int> _propertyTypeCounts = {
-    'Hotels': 76,
-    'Condo Hotels': 5,
-    'Apartments': 58,
-    'Guesthouses': 3,
-    'Bed and Breakfasts': 2,
-    'Motels': 2,
-    'Hostels': 2,
-    'Homestays': 3,
-    'Entire homes & apartments': 67,
-  };
-
-  static const Map<String, int> _mealsCounts = {
-    'Breakfast included': 42,
-    'Kitchen amenities': 67,
-  };
-
-  static const Map<String, int> _amenitiesCounts = {
-    'Swimming pool': 35,
-    'Parking': 97,
-    'Free WiFi': 139,
-    'Hot tub/Jacuzzi': 7,
-    'Spa and wellness center': 7,
-  };
-
-  static const Map<String, int> _roomAmenitiesCounts = {
-    'Air conditioning': 127,
-    'Private bathroom': 124,
-    'Balcony': 9,
-    'Sea view': 5,
-    'Kitchen/Kitchenette': 67,
-  };
-
-  static const Map<String, int> _neighborhoodCounts = {
-    'Downtown Boston': 85,
-    "Guests' favorite area": 75,
-    'South End': 24,
-    'Back Bay': 20,
-    'Fenway Kenmore': 15,
-    'Theater District': 13,
-    'South Boston': 13,
-    'Waterfront': 12,
-    'Seaport': 11,
-    'Dorchester': 9,
-  };
-
-  static const Map<String, int> _propertyRatingCounts = {
-    '2 stars': 3,
-    '3 stars': 52,
-    '4 stars': 70,
-    '5 stars': 12,
-  };
+  /// عدد الفنادق لكل قيمة، مرتبة تنازليًا بالعدد.
+  static Map<String, int> _countBy(Iterable<String?> values) {
+    final counts = <String, int>{};
+    for (final v in values) {
+      final key = v?.trim();
+      if (key == null || key.isEmpty) continue;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    final sorted = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    return Map.fromEntries(sorted);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(hotelFiltersProvider);
     final notifier = ref.read(hotelFiltersProvider.notifier);
 
+    // النجوم: من 5 إلى 1، فقط ما يوجد فعلًا في النتائج.
+    final starCounts = _countBy(hotels.map((h) {
+      final n = h.rating.round();
+      return n >= 1 && n <= 5 ? '$n stars' : null;
+    }));
+    final starsOrdered = Map.fromEntries(
+      ['5 stars', '4 stars', '3 stars', '2 stars', '1 stars']
+          .where(starCounts.containsKey)
+          .map((k) => MapEntry(k, starCounts[k]!)),
+    );
+
+    // المناطق: أسماء حقيقية من HotelBeds، أكثر 12 منطقة + أي منطقة مختارة.
+    final zoneCounts = _countBy(hotels.map((h) => h.neighborhood));
+    final zones = Map.fromEntries(zoneCounts.entries.take(12));
+    for (final selected in filters.neighborhoods) {
+      zones.putIfAbsent(selected, () => zoneCounts[selected] ?? 0);
+    }
+
     return Container(
       width: 300,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(color: Colors.grey.shade300),
-        ),
+        border: Border(left: BorderSide(color: Colors.grey.shade300)),
       ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (filters.hasAnyFilter)
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton.icon(
+                  onPressed: notifier.reset,
+                  icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
+                  label: Text(_t3(context, ar: 'مسح الفلاتر', en: 'Clear filters', es: 'Borrar filtros',
+                      tr: 'Filtreleri temizle', id: 'Hapus filter', hi: 'फ़िल्टर हटाएं', ur: 'فلٹرز صاف کریں',
+                      fr: 'Effacer les filtres', bn: 'ফিল্টার মুছুন')),
+                ),
+              ),
             _buildBudgetSection(context, filters, notifier),
-            const Divider(height: 24),
-            _buildCheckboxSection(
-              context: context,
-              title: _t3(context, ar: 'الفلاتر الشائعة', en: 'Popular filters', es: 'Filtros populares', tr: 'Popüler filtreler',
-                  id: 'Filter populer', hi: 'लोकप्रिय फ़िल्टर', ur: 'مقبول فلٹرز', fr: 'Filtres populaires', bn: 'জনপ্রিয় ফিল্টার'),
-              group: HotelFilterGroup.popular,
-              counts: _popularFilterCounts,
-              filters: filters,
-              notifier: notifier,
-            ),
-            const Divider(height: 24),
-            _buildCheckboxSection(
-              context: context,
-              title: _t3(context, ar: 'نوع العقار', en: 'Property Type', es: 'Tipo de propiedad', tr: 'Mülk Tipi',
-                  id: 'Tipe Properti', hi: 'प्रॉपर्टी का प्रकार', ur: 'پراپرٹی کی قسم', fr: 'Type de propriété', bn: 'সম্পত্তির ধরন'),
-              group: HotelFilterGroup.propertyType,
-              counts: _propertyTypeCounts,
-              filters: filters,
-              notifier: notifier,
-            ),
-            const Divider(height: 24),
-            _buildCheckboxSection(
-              context: context,
-              title: _t3(context, ar: 'الوجبات', en: 'Meals', es: 'Comidas', tr: 'Yemekler',
-                  id: 'Makanan', hi: 'भोजन', ur: 'کھانا', fr: 'Repas', bn: 'খাবার'),
-              group: HotelFilterGroup.meals,
-              counts: _mealsCounts,
-              filters: filters,
-              notifier: notifier,
-            ),
-            const SizedBox(height: 16),
-            _buildCheckboxSection(
-              context: context,
-              title: _t3(context, ar: 'المرافق', en: 'Amenities', es: 'Comodidades', tr: 'Olanaklar',
-                  id: 'Fasilitas', hi: 'सुविधाएं', ur: 'سہولیات', fr: 'Équipements', bn: 'সুবিধা'),
-              group: HotelFilterGroup.amenities,
-              counts: _amenitiesCounts,
-              filters: filters,
-              notifier: notifier,
-            ),
-            const SizedBox(height: 16),
-            _buildCheckboxSection(
-              context: context,
-              title: _t3(context, ar: 'مرافق الغرفة', en: 'Room amenities', es: 'Comodidades de la habitación', tr: 'Oda olanakları',
-                  id: 'Fasilitas kamar', hi: 'कमरे की सुविधाएं', ur: 'کمرے کی سہولیات', fr: 'Équipements de la chambre', bn: 'রুমের সুবিধা'),
-              group: HotelFilterGroup.roomAmenities,
-              counts: _roomAmenitiesCounts,
-              filters: filters,
-              notifier: notifier,
-            ),
-            const Divider(height: 24),
-            _buildCheckboxSection(
-              context: context,
-              title: _t3(context, ar: 'الحي', en: 'Neighborhood', es: 'Barrio', tr: 'Semt',
-                  id: 'Lingkungan', hi: 'इलाका', ur: 'علاقہ', fr: 'Quartier', bn: 'এলাকা'),
-              group: HotelFilterGroup.neighborhood,
-              counts: _neighborhoodCounts,
-              filters: filters,
-              notifier: notifier,
-            ),
-            const Divider(height: 24),
-            _buildCheckboxSection(
-              context: context,
-              title: _t3(context, ar: 'تصنيف العقار', en: 'Property rating', es: 'Calificación de la propiedad', tr: 'Mülk puanı',
-                  id: 'Peringkat properti', hi: 'प्रॉपर्टी रेटिंग', ur: 'پراپرٹی ریٹنگ', fr: 'Évaluation de l\'établissement', bn: 'সম্পত্তির রেটিং'),
-              subtitle: _t3(context, ar: 'اكتشف فنادق ووحدات إجازات عالية الجودة', en: 'Find high-quality hotels and vacation rentals',
-                  es: 'Encuentra hoteles y alquileres vacacionales de alta calidad', tr: 'Yüksek kaliteli oteller ve tatil kiralıkları bulun',
-                  id: 'Temukan hotel dan sewa liburan berkualitas tinggi', hi: 'उच्च गुणवत्ता वाले होटल और छुट्टियों के किराये खोजें',
-                  ur: 'اعلیٰ معیار کے ہوٹلز اور تعطیلاتی کرایہ تلاش کریں', fr: 'Trouvez des hôtels et locations de vacances de qualité',
-                  bn: 'উচ্চমানের হোটেল ও ছুটির ভাড়া খুঁজুন'),
-              group: HotelFilterGroup.rating,
-              counts: _propertyRatingCounts,
-              filters: filters,
-              notifier: notifier,
-            ),
+            if (starsOrdered.isNotEmpty) ...[
+              const Divider(height: 24),
+              _buildCheckboxSection(
+                context: context,
+                title: _t3(context, ar: 'تصنيف النجوم الرسمي', en: 'Official star rating', es: 'Clasificación oficial por estrellas',
+                    tr: 'Resmi yıldız sınıfı', id: 'Peringkat bintang resmi', hi: 'आधिकारिक स्टार रेटिंग',
+                    ur: 'سرکاری اسٹار ریٹنگ', fr: 'Classement officiel en étoiles', bn: 'অফিসিয়াল তারকা রেটিং'),
+                subtitle: _t3(context, ar: 'فئة الفندق من المزوّد، وليست تقييم نزلاء', en: 'Hotel category from our supplier, not guest reviews',
+                    es: 'Categoría del proveedor, no opiniones de huéspedes', tr: 'Tedarikçi kategorisi, misafir yorumu değil',
+                    id: 'Kategori dari pemasok, bukan ulasan tamu', hi: 'आपूर्तिकर्ता की श्रेणी, अतिथि समीक्षा नहीं',
+                    ur: 'فراہم کنندہ کی درجہ بندی، مہمانوں کے جائزے نہیں', fr: 'Catégorie du fournisseur, pas des avis clients',
+                    bn: 'সরবরাহকারীর শ্রেণি, অতিথি রিভিউ নয়'),
+                group: HotelFilterGroup.rating,
+                counts: starsOrdered,
+                notifier: notifier,
+              ),
+            ],
+            if (zones.length > 1) ...[
+              const Divider(height: 24),
+              _buildCheckboxSection(
+                context: context,
+                title: _t3(context, ar: 'المنطقة', en: 'Area', es: 'Zona', tr: 'Bölge',
+                    id: 'Area', hi: 'क्षेत्र', ur: 'علاقہ', fr: 'Quartier', bn: 'এলাকা'),
+                group: HotelFilterGroup.neighborhood,
+                counts: zones,
+                notifier: notifier,
+              ),
+            ],
           ],
         ),
       ),
@@ -304,6 +241,21 @@ class SearchFiltersSidebar extends ConsumerWidget {
   }
 
   Widget _buildBudgetSection(BuildContext context, HotelFilterState filters, HotelFiltersNotifier notifier) {
+    final prices = hotels.map(hotelNightlyUsd).where((p) => p > 0).toList();
+    if (prices.length < 2) return const SizedBox.shrink();
+    final minP = prices.reduce((a, b) => a < b ? a : b).floorToDouble();
+    var maxP = prices.reduce((a, b) => a > b ? a : b).ceilToDouble();
+    if (maxP <= minP) maxP = minP + 1;
+
+    // النطاق الحالي مقيّد بحدود هذه النتائج (قد يكون من بحث سابق).
+    final current = filters.budgetRange;
+    final values = current == null
+        ? RangeValues(minP, maxP)
+        : RangeValues(
+      current.start.clamp(minP, maxP).toDouble(),
+      current.end.clamp(minP, maxP).toDouble(),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -314,15 +266,21 @@ class SearchFiltersSidebar extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          '\$${filters.budgetRange.start.round()} – \$${filters.budgetRange.end.round()}+',
+          '\$${values.start.round()} – \$${values.end.round()}',
           style: const TextStyle(fontSize: 14),
         ),
         RangeSlider(
-          values: filters.budgetRange,
-          min: 80,
-          max: 800,
-          divisions: 20,
-          onChanged: notifier.setBudgetRange,
+          values: values,
+          min: minP,
+          max: maxP,
+          onChanged: (r) {
+            // إرجاع المنزلقين للطرفين = إلغاء فلتر الميزانية.
+            if (r.start <= minP && r.end >= maxP) {
+              notifier.clearBudget();
+            } else {
+              notifier.setBudgetRange(r);
+            }
+          },
         ),
       ],
     );
@@ -333,23 +291,16 @@ class SearchFiltersSidebar extends ConsumerWidget {
     required String title,
     required HotelFilterGroup group,
     required Map<String, int> counts,
-    required HotelFilterState filters,
     required HotelFiltersNotifier notifier,
     String? subtitle,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         if (subtitle != null) ...[
           const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-          ),
+          Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
         ],
         const SizedBox(height: 4),
         ...counts.keys.map((label) {
@@ -368,7 +319,7 @@ class SearchFiltersSidebar extends ConsumerWidget {
                     child: Text(_labelText(context, label), style: const TextStyle(fontSize: 14)),
                   ),
                   Text(
-                    '${counts[label] ?? ''}',
+                    '${counts[label] ?? 0}',
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                   ),
                 ],
