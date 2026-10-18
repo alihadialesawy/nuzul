@@ -197,44 +197,51 @@ class _PromoBannerCarouselState extends State<PromoBannerCarousel> {
   }
 }
 
-/// السلايدات الافتراضية لبانر Stays -- عدّل النصوص أو أضف/احذف سلايدات
-/// بحرية، وسمّي صور assets/images/promos/ بنفس الأسماء دي.
+/// السلايدات الافتراضية لبانر Stays.
+///
+/// ⚠️ كل جملة هنا وعد إعلاني للعميل (FTC Act §5): لا تكتب خصمًا أو نسبة توفير
+/// أو "عرضًا حصريًا" أو "عرضًا لفترة محدودة" إلا إذا كان موجودًا فعلًا في
+/// النظام بشروط واضحة وتاريخ انتهاء حقيقي. النصوص الحالية تصف ميزات حقيقية فقط.
 List<PromoSlide> defaultStaysPromoSlides(BuildContext context) {
   return [
     PromoSlide(
       imageAsset: 'assets/images/promos/limited_offer.jpg',
-      title: _t3(context, ar: 'عرض محدود لفترة قصيرة', en: 'Limited-time offer', es: 'Oferta por tiempo limitado', tr: 'Sınırlı süreli teklif', id: 'Penawaran waktu terbatas',
-          hi: 'सीमित समय का ऑफर',
-          ur: 'محدود وقت کی پیشکش',
-          fr: 'Offre à durée limitée',
-          bn: 'সীমিত সময়ের অফার'),
-      subtitle: _t3(context, ar: 'وفّر حتى 30% على حجزك القادم', en: 'Save up to 30% on your next stay', es: 'Ahorra hasta un 30% en tu próxima estancia', tr: 'Bir sonraki konaklamanızda %30\'a varan tasarruf edin', id: 'Hemat hingga 30% untuk menginap berikutnya',
-          hi: 'अपने अगले प्रवास पर 30% तक बचाएं',
-          ur: 'اپنے اگلے قیام پر 30% تک بچائیں',
-          fr: 'Économisez jusqu\'à 30% sur votre prochain séjour',
-          bn: 'আপনার পরবর্তী থাকার উপর ৩০% পর্যন্ত সাশ্রয় করুন'),
+      title: _t3(context, ar: 'أسعار شاملة بلا رسوم خفية', en: 'All-in prices, no hidden fees', es: 'Precios finales, sin cargos ocultos', tr: 'Her şey dahil fiyatlar, gizli ücret yok', id: 'Harga lengkap, tanpa biaya tersembunyi',
+          hi: 'पूरी कीमत, कोई छिपा शुल्क नहीं',
+          ur: 'مکمل قیمت، کوئی پوشیدہ فیس نہیں',
+          fr: 'Prix tout compris, sans frais cachés',
+          bn: 'সব মিলিয়ে দাম, কোনো লুকানো ফি নেই'),
+      subtitle: _t3(context, ar: 'ترى الضرائب والرسوم الإلزامية قبل أن تدفع', en: 'See taxes and mandatory fees before you pay', es: 'Ve impuestos y tasas obligatorias antes de pagar', tr: 'Ödemeden önce vergileri ve zorunlu ücretleri görün', id: 'Lihat pajak dan biaya wajib sebelum membayar',
+          hi: 'भुगतान से पहले टैक्स और अनिवार्य शुल्क देखें',
+          ur: 'ادائیگی سے پہلے ٹیکس اور لازمی فیس دیکھیں',
+          fr: 'Voyez les taxes et frais obligatoires avant de payer',
+          bn: 'পেমেন্টের আগে ট্যাক্স ও বাধ্যতামূলক ফি দেখুন'),
     ),
     PromoSlide(
       imageAsset: 'assets/images/promos/free_cancellation.jpg',
-      title: _t3(context, ar: 'إلغاء مجاني', en: 'Free cancellation', es: 'Cancelación gratuita', tr: 'Ücretsiz iptal', id: 'Pembatalan gratis',
-          hi: 'मुफ़्त रद्दीकरण',
-          ur: 'مفت منسوخی',
-          fr: 'Annulation gratuite',
-          bn: 'বিনামূল্যে বাতিলকরণ'),
-      subtitle: _t3(context, ar: 'احجز الآن وادفع لاحقًا بدون التزام', en: 'Book now, pay later — no commitment', es: 'Reserva ahora, paga después', tr: 'Şimdi rezervasyon yapın, sonra ödeyin', id: 'Pesan sekarang, bayar nanti',
-          hi: 'अभी बुक करें, बाद में भुगतान करें',
-          ur: 'ابھی بک کریں، بعد میں ادائیگی کریں',
-          fr: 'Réservez maintenant, payez plus tard',
-          bn: 'এখন বুক করুন, পরে পেমেন্ট করুন'),
+      title: _t3(context, ar: 'إلغاء مجاني في غرف كثيرة', en: 'Free cancellation on many rooms', es: 'Cancelación gratuita en muchas habitaciones', tr: 'Birçok odada ücretsiz iptal', id: 'Pembatalan gratis untuk banyak kamar',
+          hi: 'कई कमरों पर मुफ़्त रद्दीकरण',
+          ur: 'بہت سے کمروں پر مفت منسوخی',
+          fr: 'Annulation gratuite sur de nombreuses chambres',
+          bn: 'অনেক রুমে বিনামূল্যে বাতিল'),
+      subtitle: _t3(context, ar: 'سياسة الإلغاء معروضة بوضوح قبل الحجز', en: 'Each room shows its cancellation policy before you book', es: 'Cada habitación muestra su política de cancelación antes de reservar', tr: 'Her oda, rezervasyondan önce iptal politikasını gösterir', id: 'Setiap kamar menampilkan kebijakan pembatalan sebelum Anda memesan',
+          hi: 'हर कमरे की रद्दीकरण नीति बुकिंग से पहले दिखती है',
+          ur: 'ہر کمرے کی منسوخی کی پالیسی بکنگ سے پہلے دکھائی جاتی ہے',
+          fr: 'Chaque chambre affiche sa politique d\'annulation avant la réservation',
+          bn: 'বুকিংয়ের আগে প্রতিটি রুমের বাতিল নীতি দেখানো হয়'),
     ),
     PromoSlide(
       imageAsset: 'assets/images/promos/family_deals.jpg',
-      title: _t3(context, ar: 'عروض حصرية للعائلات', en: 'Exclusive family deals', es: 'Ofertas exclusivas para familias', tr: 'Ailelere özel fırsatlar', id: 'Penawaran eksklusif untuk keluarga',
-          hi: 'परिवारों के लिए विशेष ऑफ़र',
-          ur: 'خاندانوں کے لیے خصوصی آفرز',
-          fr: 'Offres exclusives pour les familles',
-          bn: 'পরিবারের জন্য এক্সক্লুসিভ অফার'),
-      subtitle: null,
+      title: _t3(context, ar: 'حجوزات المجموعات والعائلات', en: 'Group and family stays', es: 'Estancias para grupos y familias', tr: 'Grup ve aile konaklamaları', id: 'Menginap untuk grup dan keluarga',
+          hi: 'समूह और परिवार के ठहराव',
+          ur: 'گروپ اور خاندانی قیام',
+          fr: 'Séjours en groupe et en famille',
+          bn: 'গ্রুপ ও পারিবারিক থাকা'),
+      subtitle: _t3(context, ar: '5 غرف فأكثر؟ اطلب عرض سعر من تبويب Group stays', en: '5 or more rooms? Request a quote in Group stays', es: '¿5 habitaciones o más? Pide un presupuesto en Group stays', tr: '5 veya daha fazla oda mı? Group stays bölümünden teklif isteyin', id: '5 kamar atau lebih? Minta penawaran di Group stays',
+          hi: '5 या अधिक कमरे? Group stays में कोटेशन मांगें',
+          ur: '5 یا زیادہ کمرے؟ Group stays میں قیمت کی درخواست کریں',
+          fr: '5 chambres ou plus ? Demandez un devis dans Group stays',
+          bn: '৫ বা তার বেশি রুম? Group stays-এ কোটেশন চান'),
     ),
     PromoSlide(
       imageAsset: 'assets/images/promos/weekend_getaway.jpg',

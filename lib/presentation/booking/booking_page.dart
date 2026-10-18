@@ -123,6 +123,9 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   bool _acceptedTerms = false;
   bool _confirmedResidency = false;
 
+  /// هل مُلئت بيانات صاحب الحجز تلقائيًا من حجز سابق/الملف الشخصي؟
+  bool _prefilled = false;
+
   /// غرفة HotelBeds المختارة (null للفنادق المحلية).
   SelectedRoom? get _hbRoom {
     final rooms = widget.selectedRooms;
@@ -134,6 +137,66 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   void initState() {
     super.initState();
     _emailController.text = Supabase.instance.client.auth.currentUser?.email ?? '';
+    _prefillHolder();
+  }
+
+  /// يملأ بيانات صاحب الحجز تلقائيًا من آخر حجز للعميل (ثم من ملفه الشخصي)،
+  /// فلا يكتبها كل مرة. تبقى الحقول قابلة للتعديل (قد يحجز لشخص آخر).
+  /// لا نملأ إلا الحقول الفارغة، وأي خطأ هنا يُتجاهل بصمت.
+  Future<void> _prefillHolder() async {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    String? first, last, phone, email;
+    try {
+      final rows = await client
+          .from('bookings')
+          .select()
+          .eq('user_id', userId)
+          .eq('supplier', 'hotelbeds')
+          .not('holder_first_name', 'is', null)
+          .order('created_at', ascending: false)
+          .limit(1);
+      if (rows.isNotEmpty) {
+        final r = rows.first;
+        first = r['holder_first_name'] as String?;
+        last = r['holder_last_name'] as String?;
+        phone = (r['holder_phone'] ?? r['phone']) as String?;
+        email = r['holder_email'] as String?;
+      }
+    } catch (_) {}
+
+    if (phone == null || first == null) {
+      try {
+        final p = await client
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('id', userId)
+            .maybeSingle();
+        if (p != null) {
+          phone ??= p['phone'] as String?;
+          final full = (p['full_name'] as String?)?.trim() ?? '';
+          if (first == null && full.isNotEmpty) {
+            final parts = full.split(RegExp(r'\s+'));
+            first = parts.first;
+            if (parts.length > 1) last ??= parts.sublist(1).join(' ');
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    void fill(TextEditingController c, String? v) {
+      if (c.text.trim().isEmpty && v != null && v.trim().isNotEmpty) c.text = v.trim();
+    }
+    setState(() {
+      _prefilled = first != null && first!.trim().isNotEmpty;
+      fill(_firstNameController, first);
+      fill(_lastNameController, last);
+      fill(_phoneController, phone);
+      fill(_emailController, email);
+    });
   }
 
   @override
@@ -616,6 +679,21 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                     bn: 'প্রধান অতিথির তথ্য (পরিচয়পত্র অনুযায়ী)'),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
+              if (_prefilled) const SizedBox(height: 2),
+              if (_prefilled)
+                Text(
+                  _tb(context,
+                      ar: 'تُملأ تلقائيًا من حجزك السابق. إذا كنت تحجز لشخص آخر، اكتب اسمه كما في هويته.',
+                      en: 'Filled in from your last booking. Booking for someone else? Enter their name as on their ID.',
+                      es: 'Completado con tu última reserva. ¿Reservas para otra persona? Escribe su nombre como en su documento.',
+                      tr: 'Son rezervasyonunuzdan dolduruldu. Başkası için mi rezervasyon yapıyorsunuz? Kimliğindeki adını yazın.',
+                      id: 'Diisi dari pemesanan terakhir Anda. Memesan untuk orang lain? Tulis namanya sesuai identitasnya.',
+                      hi: 'आपकी पिछली बुकिंग से भरा गया। किसी और के लिए बुक कर रहे हैं? उनका नाम पहचान पत्र के अनुसार लिखें।',
+                      ur: 'آپ کی پچھلی بکنگ سے بھرا گیا۔ کسی اور کے لیے بک کر رہے ہیں؟ ان کا نام شناختی کارڈ کے مطابق لکھیں۔',
+                      fr: 'Rempli à partir de votre dernière réservation. Vous réservez pour quelqu\'un d\'autre ? Saisissez son nom comme sur sa pièce d\'identité.',
+                      bn: 'আপনার আগের বুকিং থেকে পূরণ করা হয়েছে। অন্য কারও জন্য বুক করছেন? তার পরিচয়পত্র অনুযায়ী নাম লিখুন।'),
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
               const SizedBox(height: AppSizes.sm),
               Row(
                 children: [
