@@ -165,6 +165,31 @@ class BookingHolder {
   };
 }
 
+/// موافقة العميل في صفحة الحجز (تُرسل لـ hotelbeds-prepare وتُسجَّل في booking_consents).
+class BookingConsent {
+  final bool acceptedTerms;
+  final bool confirmedResidency;
+  final String termsVersion;
+  final String privacyVersion;
+  final String locale;
+
+  const BookingConsent({
+    required this.acceptedTerms,
+    required this.confirmedResidency,
+    required this.termsVersion,
+    required this.privacyVersion,
+    required this.locale,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'acceptedTerms': acceptedTerms,
+    'confirmedResidency': confirmedResidency,
+    'termsVersion': termsVersion,
+    'privacyVersion': privacyVersion,
+    'locale': locale,
+  };
+}
+
 /// خطوتا حجز HotelBeds عبر السيرفر:
 /// 1) [prepare]: CheckRate + حساب المبلغ + PaymentIntent (حجز المبلغ فقط).
 /// 2) [book]: بعد إدخال البطاقة، يحجز عند HotelBeds ثم يسحب المبلغ أو يلغيه.
@@ -191,6 +216,7 @@ class HotelBedsBookingRepository {
     double? expectedPrice,
     double? expectedPriceUsd,
     required BookingHolder holder,
+    required BookingConsent consent,
   }) async {
     try {
       final data = await _invoke('hotelbeds-prepare', {
@@ -206,6 +232,7 @@ class HotelBedsBookingRepository {
         'expectedPrice': expectedPrice,
         'expectedPriceUsd': expectedPriceUsd,
         'holder': holder.toJson(),
+        'consent': consent.toJson(),
       });
       if (data['ok'] != true) {
         return Failure(data['error']?.toString() ?? 'Could not start the booking.');
@@ -216,9 +243,14 @@ class HotelBedsBookingRepository {
     }
   }
 
-  Future<Result<HotelBedsBookingOutcome>> book(String bookingId) async {
+  /// [reviewAccepted]: العميل وافق على شاشة المراجعة (السعر النهائي وسياسة
+  /// الإلغاء)؛ يُسجَّل على السيرفر في booking_consents.
+  Future<Result<HotelBedsBookingOutcome>> book(String bookingId, {bool reviewAccepted = true}) async {
     try {
-      final data = await _invoke('hotelbeds-book', {'bookingId': bookingId});
+      final data = await _invoke('hotelbeds-book', {
+        'bookingId': bookingId,
+        'reviewAccepted': reviewAccepted,
+      });
       if (data['ok'] != true) {
         return Failure(data['error']?.toString() ?? 'The booking could not be completed.');
       }

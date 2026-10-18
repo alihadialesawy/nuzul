@@ -11,7 +11,10 @@
 //    مهلة/خطأ شبكة (حالة غير معروفة) → needs_attention، ولا نلغي المبلغ
 //    تلقائيًا؛ يُراجَع يدويًا عبر clientReference (الحجز ربما تم عند HotelBeds).
 //
-// المدخلات: { bookingId }
+// المدخلات: { bookingId, reviewAccepted }
+//
+// الموافقة: يسجّل في booking_consents أن العميل راجع السعر النهائي وسياسة
+// الإلغاء ووافق عليهما قبل حجز المبلغ (الوقت، IP، المتصفح، المبلغ، السياسة).
 
 import Stripe from 'npm:stripe@14.21.0';
 import {
@@ -38,6 +41,16 @@ const BOOKING_TIMEOUT_MS = 65000;
 // نسبة الزيادة المسموحة في السعر بين CheckRate والحجز (٪). بدونها ترفض
 // HotelBeds الحجز عند أي فرق ولو سنتًا ("Price has changed"). هامش الصرف
 // (FX_BUFFER_PERCENT) يغطي هذا الفرق. تُضبط من Secrets: HOTELBEDS_BOOKING_TOLERANCE.
+/// عنوان IP الحقيقي للعميل (أول عنوان في x-forwarded-for).
+function clientIp(req: Request): string | null {
+  const fwd = req.headers.get('x-forwarded-for');
+  if (fwd) return fwd.split(',')[0].trim() || null;
+  return req.headers.get('cf-connecting-ip') ?? req.headers.get('x-real-ip') ?? null;
+}
+
+const REVIEW_CONSENT_TEXT =
+  'Customer reviewed the final price, cancellation policy and hotel notes, and tapped "Agree and pay" before authorizing the card.';
+
 const BOOKING_TOLERANCE = Number(Deno.env.get('HOTELBEDS_BOOKING_TOLERANCE') ?? '2') || 0;
 
 Deno.serve(async (req) => {
@@ -96,6 +109,21 @@ Deno.serve(async (req) => {
       return fail('payment_incomplete', 'Your card was not authorized. Please try again.', {
         paymentStatus: intent.status,
       });
+    }
+
+    // ───── تسجيل موافقة المراجعة النهائية ─────
+    if (body.reviewAccepted === true) {
+      const { error: consentError } = await admin.from('booking_consents').insert({
+        booking_id: bookingId,
+        user_id: user.id,
+        kind: 'final_review',
+        consent_text: REVIEW_CONSENT_TEXT,
+        amount_usd: Number(booking.charge_amount),
+        cancellation_policies: booking.cancellation_policies ?? null,
+        ip: clientIp(req),
+        user_agent: (req.headers.get('user-agent') ?? '').slice(0, 500) || null,
+      });
+      if (consentError) console.log('CONSENT LOG FAILED', bookingId, consentError.message);
     }
 
     // ───── قفل الحجز ─────

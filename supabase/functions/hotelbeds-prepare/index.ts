@@ -14,7 +14,12 @@
 //
 // المدخلات: { rateKey, hotelCode, hotelName, hotelCity, hotelImage?, roomName?,
 //            checkIn: 'YYYY-MM-DD', checkOut: 'YYYY-MM-DD', guests,
-//            expectedPrice?, holder: { firstName, lastName, email, phone } }
+//            expectedPrice?, holder: { firstName, lastName, email, phone },
+//            consent: { acceptedTerms, confirmedResidency, termsVersion, privacyVersion, locale } }
+//
+// الموافقة: يرفض الحجز إن لم يوافق العميل على الشروط ويؤكد ولاية الإقامة،
+// ويسجّل الموافقة في booking_consents (الوقت، نسخة الشروط، IP، المتصفح)،
+// ويضع نسخة الشروط في بيانات Stripe — دليل عند أي اعتراض على الدفع.
 
 import Stripe from 'npm:stripe@14.21.0';
 import {
@@ -58,6 +63,25 @@ function nightsBetween(checkIn: string, checkOut: string): number {
   const b = Date.parse(checkOut);
   return Number.isFinite(a) && Number.isFinite(b) ? Math.max(1, Math.round((b - a) / 86400000)) : 1;
 }
+/// النص الإنجليزي لمربعي الموافقة كما يظهران في صفحة الحجز (يُحفظ مع كل موافقة).
+/// ⚠️ إذا غيّرت نص المربعين في booking_page.dart فغيّره هنا أيضًا.
+const TERMS_CONSENT_TEXT =
+  'I have read and agree to the Terms of Service, including the binding arbitration agreement and class action waiver, and the Privacy Notice.';
+const RESIDENCY_CONSENT_TEXT =
+  'I confirm that I am not a resident of California, Florida, Hawaii, or Washington.';
+
+/// عنوان IP الحقيقي للعميل (أول عنوان في x-forwarded-for).
+function clientIp(req: Request): string | null {
+  const fwd = req.headers.get('x-forwarded-for');
+  if (fwd) return fwd.split(',')[0].trim() || null;
+  return req.headers.get('cf-connecting-ip') ?? req.headers.get('x-real-ip') ?? null;
+}
+
+function shortText(v: unknown, max: number): string | null {
+  const t = typeof v === 'string' ? v.trim() : '';
+  return t ? t.slice(0, max) : null;
+}
+
 const NAME_RE = /^[\p{L}][\p{L}\s'.-]{0,49}$/u;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -98,6 +122,17 @@ Deno.serve(async (req) => {
     }
     if (!EMAIL_RE.test(email)) return fail('invalid_holder', 'Please enter a valid email.');
     if (phone.replace(/\D/g, '').length < 7) return fail('invalid_holder', 'Please enter a valid phone number.');
+
+    // ───── الموافقة على الشروط ─────
+    const consent = body.consent ?? {};
+    if (consent.acceptedTerms !== true || consent.confirmedResidency !== true) {
+      return fail(
+        'consent_required',
+        'Please accept the terms and confirm your state of residence to continue.',
+      );
+    }
+    const termsVersion = shortText(consent.termsVersion, 20) ?? 'unknown';
+    const privacyVersion = shortText(consent.privacyVersion, 20) ?? 'unknown';
 
     // ───── CheckRate ─────
     let checkRes: Response;
@@ -263,6 +298,26 @@ Deno.serve(async (req) => {
       return fail('server_error', 'Could not start the booking. Please try again.');
     }
 
+    // ───── تسجيل الموافقة ─────
+    // لا نوقف الحجز إن فشل التسجيل (نسجّل الخطأ فقط)، حتى لا يخسر العميل الغرفة.
+    {
+      const { error: consentError } = await admin.from('booking_consents').insert({
+        booking_id: booking.id,
+        user_id: user.id,
+        kind: 'checkout_terms',
+        terms_version: termsVersion,
+        privacy_version: privacyVersion,
+        accepted_terms: true,
+        confirmed_residency: true,
+        consent_text: `${TERMS_CONSENT_TEXT}\n${RESIDENCY_CONSENT_TEXT}`,
+        locale: shortText(consent.locale, 10),
+        amount_usd: chargeUsd,
+        ip: clientIp(req),
+        user_agent: shortText(req.headers.get('user-agent'), 500),
+      });
+      if (consentError) console.log('CONSENT LOG FAILED', booking.id, consentError.message);
+    }
+
     // ───── Stripe: حجز المبلغ فقط (manual capture) ─────
     const intent = await stripe.paymentIntents.create({
       amount: amountCents,
@@ -276,6 +331,8 @@ Deno.serve(async (req) => {
         client_reference: clientReference,
         user_id: user.id,
         supplier: 'hotelbeds',
+        terms_version: termsVersion,
+        privacy_version: privacyVersion,
       },
     });
 

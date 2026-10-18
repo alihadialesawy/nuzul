@@ -24,7 +24,8 @@ class _LegalSection {
 /// تحقق قبل النشر:
 ///   • البند 4: لا توجد أي أدوات إعلانية أو تتبع (Meta Pixel، Google Ads...).
 ///     إن أضفتها لاحقًا يجب تعديل البند 4 والبند 7.
-///   • البند 11: بريد حذف الحساب هو نفسه المسجّل في Google Play Console
+///   • البند 11: الحذف من داخل التطبيق (أمان الحساب ← حذف الحساب، دالة delete-account)،
+///     والبريد بديل. بريد حذف الحساب هو نفسه المسجّل في Google Play Console
 ///     (Data safety → Delete account URL)، ويجب أن يصل فعلًا (تحويل في Namecheap).
 class PrivacyNoticePage extends StatelessWidget {
   const PrivacyNoticePage({super.key});
@@ -138,9 +139,9 @@ class PrivacyNoticePage extends StatelessWidget {
       titleEn: '11. How to Delete Your Account',
       titleAr: '11. كيف تحذف حسابك',
       bodyEn:
-      'To delete your Flynoom account and associated personal data, email $_contactEmail from your registered email address with the subject "Account Deletion Request", and include the email or phone number linked to your account. We will delete your account and personal data within 30 days, except records we must keep by law (such as transaction and tax records), as described in Section 5. Deleting your account does not cancel upcoming bookings; please cancel them first if needed. To delete specific data without closing your account, use the same address with the subject "Data Deletion Request".',
+      'You can delete your Flynoom account at any time from within the app: go to Account, then Account security, and choose "Delete account". This immediately closes your account and deletes your saved travelers, favorites, price alerts, community posts, and the name and phone number on your profile. If you have an upcoming or in-progress booking, please cancel it or wait until your stay ends first. If you cannot use the app, you can instead email $_contactEmail from your registered email address with the subject "Account Deletion Request"; we will complete the request within 30 days. In both cases, we keep booking and payment records that we must retain by law (such as transaction and tax records), as described in Section 5. To delete specific data without closing your account, email the same address with the subject "Data Deletion Request".',
       bodyAr:
-      'لحذف حسابك في Flynoom وبياناتك الشخصية المرتبطة به، أرسل بريدًا إلى $_contactEmail من بريدك المسجّل مع كتابة "Account Deletion Request" في عنوان الرسالة، واذكر البريد أو رقم الهاتف المرتبط بحسابك. سنحذف حسابك وبياناتك الشخصية خلال 30 يومًا، باستثناء السجلات التي يُلزمنا القانون بالاحتفاظ بها (مثل سجلات المعاملات والسجلات الضريبية) كما في البند 5. حذف الحساب لا يلغي الحجوزات القادمة، فيُرجى إلغاؤها أولًا عند الحاجة. ولحذف بيانات معينة دون إغلاق حسابك، استخدم البريد نفسه مع كتابة "Data Deletion Request" في العنوان.',
+      'يمكنك حذف حسابك في Flynoom في أي وقت من داخل التطبيق: افتح "الحساب" ثم "أمان الحساب" واختر "حذف الحساب". يُغلق ذلك حسابك فورًا، ويحذف المسافرين المحفوظين والمفضلة وتنبيهات الأسعار ومنشورات المجتمع والاسم ورقم الهاتف في ملفك. إن كان لديك حجز قادم أو قيد التنفيذ، فيُرجى إلغاؤه أو الانتظار حتى انتهاء إقامتك أولًا. وإن لم تتمكن من استخدام التطبيق، فأرسل بريدًا إلى $_contactEmail من بريدك المسجّل مع كتابة "Account Deletion Request" في العنوان، وسننفّذ الطلب خلال 30 يومًا. وفي الحالتين نحتفظ بسجلات الحجز والدفع التي يُلزمنا القانون بالاحتفاظ بها (مثل سجلات المعاملات والسجلات الضريبية) كما في البند 5. ولحذف بيانات معينة دون إغلاق حسابك، راسل البريد نفسه مع كتابة "Data Deletion Request" في العنوان.',
     ),
     _LegalSection(
       titleEn: '12. Changes to This Notice',

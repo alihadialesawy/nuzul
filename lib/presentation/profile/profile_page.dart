@@ -1331,6 +1331,35 @@ class _ProfileMainContent extends ConsumerWidget {
                             bn: 'দেখুন'),
                         onAction: () => _comingSoon(context),
                       ),
+                      const SizedBox(height: AppSizes.md),
+                      // حذف الحساب من داخل التطبيق (شرط Apple 5.1.1(v) وGoogle Play).
+                      _SecurityTile(
+                        icon: Icons.delete_forever_outlined,
+                        color: Colors.red.shade700,
+                        label: _t3(context, ar: 'حذف الحساب', en: 'Delete account', es: 'Eliminar cuenta', tr: 'Hesabı sil',
+                            id: 'Hapus akun',
+                            hi: 'खाता हटाएं',
+                            ur: 'اکاؤنٹ حذف کریں',
+                            fr: 'Supprimer le compte',
+                            bn: 'অ্যাকাউন্ট মুছুন'),
+                        value: _t3(context,
+                            ar: 'احذف حسابك وبياناتك الشخصية نهائيًا',
+                            en: 'Permanently delete your account and personal data',
+                            es: 'Elimina tu cuenta y tus datos personales de forma permanente',
+                            tr: 'Hesabınızı ve kişisel verilerinizi kalıcı olarak silin',
+                            id: 'Hapus akun dan data pribadi Anda secara permanen',
+                            hi: 'अपना खाता और व्यक्तिगत डेटा स्थायी रूप से हटाएं',
+                            ur: 'اپنا اکاؤنٹ اور ذاتی ڈیٹا مستقل طور پر حذف کریں',
+                            fr: 'Supprimez définitivement votre compte et vos données personnelles',
+                            bn: 'আপনার অ্যাকাউন্ট ও ব্যক্তিগত তথ্য স্থায়ীভাবে মুছুন'),
+                        actionLabel: _t3(context, ar: 'حذف', en: 'Delete', es: 'Eliminar', tr: 'Sil',
+                            id: 'Hapus',
+                            hi: 'हटाएं',
+                            ur: 'حذف کریں',
+                            fr: 'Supprimer',
+                            bn: 'মুছুন'),
+                        onAction: () => _deleteAccount(context, ref),
+                      ),
                     ],
                   ),
                 ),
@@ -1633,6 +1662,112 @@ class _ProfileMainContent extends ConsumerWidget {
         );
       },
     );
+  }
+
+  /// حذف الحساب: تأكيد بكتابة DELETE، ثم دالة delete-account على السيرفر،
+  /// ثم تسجيل الخروج والعودة للرئيسية.
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text(_t3(ctx, ar: 'حذف حسابك نهائيًا؟', en: 'Delete your account permanently?',
+              es: '¿Eliminar tu cuenta de forma permanente?', tr: 'Hesabınız kalıcı olarak silinsin mi?',
+              id: 'Hapus akun Anda secara permanen?', hi: 'अपना खाता स्थायी रूप से हटाएं?',
+              ur: 'اپنا اکاؤنٹ مستقل طور پر حذف کریں؟', fr: 'Supprimer définitivement votre compte ?',
+              bn: 'আপনার অ্যাকাউন্ট স্থায়ীভাবে মুছবেন?')),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_t3(ctx,
+                    ar: 'سيُحذف حسابك ومسافروك المحفوظون والمفضلة وتنبيهات الأسعار ومنشوراتك في المجتمع. لا يمكن التراجع عن ذلك.\n\nنحتفظ بسجلات الحجز والدفع للمدة التي يفرضها القانون (غالبًا حتى 7 سنوات). إن كان لديك حجز قادم، ألغِه أولًا.',
+                    en: 'Your account, saved travelers, favorites, price alerts, and community posts will be deleted. This cannot be undone.\n\nWe keep booking and payment records for as long as the law requires (generally up to 7 years). If you have an upcoming booking, cancel it first.',
+                    es: 'Se eliminarán tu cuenta, viajeros guardados, favoritos, alertas de precio y publicaciones. No se puede deshacer.\n\nConservamos los registros de reservas y pagos el tiempo que exige la ley (normalmente hasta 7 años). Si tienes una reserva próxima, cancélala primero.',
+                    tr: 'Hesabınız, kayıtlı yolcularınız, favorileriniz, fiyat uyarılarınız ve topluluk gönderileriniz silinecek. Bu işlem geri alınamaz.\n\nRezervasyon ve ödeme kayıtlarını yasanın gerektirdiği süre boyunca (genellikle 7 yıla kadar) saklarız. Yaklaşan bir rezervasyonunuz varsa önce iptal edin.',
+                    id: 'Akun, pelancong tersimpan, favorit, peringatan harga, dan postingan komunitas Anda akan dihapus. Ini tidak dapat dibatalkan.\n\nKami menyimpan catatan pemesanan dan pembayaran selama diwajibkan hukum (umumnya hingga 7 tahun). Jika Anda punya pemesanan mendatang, batalkan dulu.',
+                    hi: 'आपका खाता, सहेजे गए यात्री, पसंदीदा, मूल्य अलर्ट और कम्युनिटी पोस्ट हटा दिए जाएंगे। इसे वापस नहीं किया जा सकता।\n\nहम बुकिंग और भुगतान रिकॉर्ड कानून द्वारा आवश्यक अवधि (आमतौर पर 7 वर्ष तक) रखते हैं। यदि आपकी कोई आगामी बुकिंग है, तो पहले उसे रद्द करें।',
+                    ur: 'آپ کا اکاؤنٹ، محفوظ مسافر، پسندیدہ، قیمت کے الرٹس اور کمیونٹی پوسٹس حذف ہو جائیں گی۔ اسے واپس نہیں کیا جا سکتا۔\n\nہم بکنگ اور ادائیگی کے ریکارڈ قانون کے مطابق (عموماً 7 سال تک) رکھتے ہیں۔ اگر آپ کی کوئی آنے والی بکنگ ہے تو پہلے اسے منسوخ کریں۔',
+                    fr: 'Votre compte, vos voyageurs enregistrés, favoris, alertes de prix et publications seront supprimés. Action irréversible.\n\nNous conservons les données de réservation et de paiement aussi longtemps que la loi l\'exige (généralement jusqu\'à 7 ans). Si vous avez une réservation à venir, annulez-la d\'abord.',
+                    bn: 'আপনার অ্যাকাউন্ট, সংরক্ষিত যাত্রী, পছন্দ, মূল্য সতর্কতা ও কমিউনিটি পোস্ট মুছে যাবে। এটি ফেরানো যাবে না।\n\nআমরা বুকিং ও পেমেন্টের রেকর্ড আইন অনুযায়ী (সাধারণত ৭ বছর পর্যন্ত) রাখি। আসন্ন বুকিং থাকলে আগে বাতিল করুন।'),
+                    style: const TextStyle(fontSize: 13, height: 1.4)),
+                const SizedBox(height: AppSizes.md),
+                Text(_t3(ctx, ar: 'للتأكيد اكتب DELETE', en: 'Type DELETE to confirm', es: 'Escribe DELETE para confirmar',
+                    tr: 'Onaylamak için DELETE yazın', id: 'Ketik DELETE untuk konfirmasi', hi: 'पुष्टि के लिए DELETE लिखें',
+                    ur: 'تصدیق کے لیے DELETE لکھیں', fr: 'Tapez DELETE pour confirmer', bn: 'নিশ্চিত করতে DELETE লিখুন'),
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.characters,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true, hintText: 'DELETE'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(_t3(ctx, ar: 'رجوع', en: 'Back', es: 'Volver', tr: 'Geri', id: 'Kembali', hi: 'वापस',
+                  ur: 'واپس', fr: 'Retour', bn: 'ফিরে যান')),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+              onPressed: controller.text.trim().toUpperCase() == 'DELETE' ? () => Navigator.pop(ctx, true) : null,
+              child: Text(_t3(ctx, ar: 'حذف حسابي', en: 'Delete my account', es: 'Eliminar mi cuenta', tr: 'Hesabımı sil',
+                  id: 'Hapus akun saya', hi: 'मेरा खाता हटाएं', ur: 'میرا اکاؤنٹ حذف کریں', fr: 'Supprimer mon compte',
+                  bn: 'আমার অ্যাকাউন্ট মুছুন')),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    String? errorMessage;
+    try {
+      final res = await Supabase.instance.client.functions.invoke('delete-account', body: {'confirm': 'DELETE'});
+      final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : <String, dynamic>{};
+      if (data['ok'] != true) {
+        errorMessage = '${data['error'] ?? data['message'] ?? 'Something went wrong.'}';
+      }
+    } on FunctionException catch (e) {
+      final d = e.details;
+      errorMessage = d is Map ? '${d['error'] ?? d['message'] ?? e.reasonPhrase}' : '${e.reasonPhrase ?? e.status}';
+    } catch (e) {
+      errorMessage = '$e';
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // إغلاق مؤشر التحميل
+
+    if (errorMessage != null) {
+      messenger.showSnackBar(SnackBar(content: Text(errorMessage), duration: const Duration(seconds: 8)));
+      return;
+    }
+
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {}
+    messenger.showSnackBar(SnackBar(
+      content: Text(_t3(context, ar: 'تم حذف حسابك.', en: 'Your account has been deleted.', es: 'Tu cuenta ha sido eliminada.',
+          tr: 'Hesabınız silindi.', id: 'Akun Anda telah dihapus.', hi: 'आपका खाता हटा दिया गया है।',
+          ur: 'آپ کا اکاؤنٹ حذف کر دیا گیا ہے۔', fr: 'Votre compte a été supprimé.', bn: 'আপনার অ্যাকাউন্ট মুছে ফেলা হয়েছে।')),
+    ));
+    if (context.mounted) context.go(AppRoutes.home);
   }
 
   Future<void> _setPassword(BuildContext context, WidgetRef ref) async {

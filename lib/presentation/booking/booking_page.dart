@@ -19,6 +19,7 @@ import '../../localization/app_localizations.dart';
 import '../legal/dispute_resolution_page.dart';
 import '../legal/privacy_notice_page.dart';
 import '../legal/terms_of_service_page.dart';
+import '../../core/constants/legal_versions.dart';
 
 final bookingRepositoryProvider = Provider((ref) => BookingRepository());
 final paymentServiceProvider = Provider((ref) => PaymentService());
@@ -290,6 +291,13 @@ class _BookingPageState extends ConsumerState<BookingPage> {
         email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
       ),
+      consent: BookingConsent(
+        acceptedTerms: _acceptedTerms,
+        confirmedResidency: _confirmedResidency,
+        termsVersion: kTermsVersion,
+        privacyVersion: kPrivacyVersion,
+        locale: Localizations.localeOf(context).languageCode,
+      ),
     );
     if (!mounted) return;
 
@@ -336,7 +344,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     if (!authorized) return;
 
     // 4) الحجز عند الفندق
-    final bookResult = await repo.book(quote!.bookingId);
+    final bookResult = await repo.book(quote!.bookingId, reviewAccepted: true);
     if (!mounted) return;
 
     bookResult.when(
