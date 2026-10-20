@@ -158,6 +158,10 @@ class _HomePageState extends ConsumerState<HomePage> {
   // مكة (QCA) أو المدينة (MED) — رموز HotelBeds. التواريخ وعدد الضيوف
   // مشتركة مع تبويب Stays (_checkIn/_checkOut/_guests).
   String _umrahCity = 'QCA';
+  /// صورة بانر العمرة: null = الصورة العامة للعمرة (banner_umrah_*)، وبعد
+  /// أن يختار العميل مدينة أو يبحث تتغير لصورة مكة أو المدينة
+  /// (banner_makkah_* / banner_madinah_*).
+  String? _umrahBannerCity;
   final _umrahDateFieldKey = GlobalKey();
   Map<String, dynamic>? _umrahParams;
   bool _umrahFormExpanded = true;
@@ -736,6 +740,14 @@ class _HomePageState extends ConsumerState<HomePage> {
             ? 'car_rental'
             : _activeTab == 'flightHotel'
             ? 'flight_hotel'
+            : _activeTab == 'umrah'
+            ? (_umrahBannerCity == 'QCA'
+            ? 'makkah'
+            : _umrahBannerCity == 'MED'
+            ? 'madinah'
+            : 'umrah')
+            : _activeTab == 'groups'
+            ? 'groups'
             : null,
         collapsed: _activeTab == 'flights'
             ? _flightSearchParams != null
@@ -896,11 +908,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ? (_umrahParams == null
                     ? ListView(
                   padding: const EdgeInsets.all(AppSizes.md),
-                  children: const [_UmrahIntro(), AppFooter()],
+                  children: [_UmrahIntro(onGroupStays: () => setState(() => _activeTab = 'groups')), const AppFooter()],
                 )
                     : Column(
                   children: [
-                    const _UmrahEntryNotice(),
+                    _UmrahEntryNotice(onGroupStays: () => setState(() => _activeTab = 'groups')),
                     Expanded(
                       child: _SearchResults(
                         params: _umrahParams!,
@@ -1274,6 +1286,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   void _runUmrahSearch() {
     setState(() {
       _umrahFormExpanded = false;
+      _umrahBannerCity = _umrahCity;
       _umrahParams = {
         'destinationCode': _umrahCity,
         'cityLabel': _umrahCity == 'QCA' ? 'Makkah' : 'Madinah',
@@ -1346,9 +1359,17 @@ class _HomePageState extends ConsumerState<HomePage> {
       return ChoiceChip(
         label: Text(label),
         selected: selected,
-        onSelected: (_) => setState(() => _umrahCity = code),
-        selectedColor: Colors.white,
-        backgroundColor: Colors.white.withOpacity(0.12),
+        onSelected: (_) => setState(() {
+          _umrahCity = code;
+          _umrahBannerCity = code;
+        }),
+        // لون صريح للحالتين: في Material 3 كان لون الشريحة غير المختارة
+        // يظهر أبيض فيختفي النص الأبيض ("Madinah" لا يُقرأ).
+        color: MaterialStateProperty.resolveWith(
+              (states) => states.contains(MaterialState.selected)
+              ? Colors.white
+              : Colors.white.withOpacity(0.12),
+        ),
         labelStyle: TextStyle(
           color: selected ? AppColors.primaryDark : Colors.white,
           fontWeight: FontWeight.w600,
@@ -3109,26 +3130,28 @@ class _TrustSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ⚠️ كل بطاقة هنا وعد للعميل؛ لا تكتب إلا ما هو صحيح الآن.
+    // (حُذفت سابقًا: "آلاف المسافرين يختاروننا" و"دعم 24/7" لأنهما غير صحيحين بعد.)
     final items = [
       (
-      icon: Icons.emoji_events_outlined,
+      icon: Icons.lock_outline,
       color: const Color(0xFFF39C12),
-      title: _t3(context, ar: 'المفضّل لدى المسافرين', en: "Travelers' favorite", es: 'Favorito de viajeros', tr: 'Gezginlerin favorisi', id: 'Favorit para wisatawan',
-          hi: 'यात्रियों की पसंद',
-          ur: 'مسافروں کی پسندیدہ',
-          fr: 'Préféré des voyageurs',
-          bn: 'ভ্রমণকারীদের পছন্দ'),
+      title: _t3(context, ar: 'دفع آمن', en: 'Secure payment', es: 'Pago seguro', tr: 'Güvenli ödeme', id: 'Pembayaran aman',
+          hi: 'सुरक्षित भुगतान',
+          ur: 'محفوظ ادائیگی',
+          fr: 'Paiement sécurisé',
+          bn: 'নিরাপদ পেমেন্ট'),
       description: _t3(
         context,
-        ar: 'يختار آلاف المسافرين Safr-AI لحجز رحلاتهم وفنادقهم بثقة ورضا تامّ',
-        en: 'Thousands of travelers choose Safr-AI to book their trips and hotels with confidence',
-        es: 'Miles de viajeros eligen Safr-AI para reservar sus viajes y hoteles con confianza',
-        tr: 'Binlerce gezgin, seyahatlerini ve otellerini güvenle rezerve etmek için Safr-AI\'yi tercih ediyor',
-        id: 'Ribuan wisatawan memilih Safr-AI untuk memesan perjalanan dan hotel mereka dengan percaya diri',
-        hi: 'हज़ारों यात्री अपनी यात्राएं और होटल भरोसे के साथ बुक करने के लिए Safr-AI चुनते हैं',
-        ur: 'ہزاروں مسافر اپنی سفری منصوبہ بندی اور ہوٹل اعتماد کے ساتھ بک کرنے کے لیے Safr-AI کا انتخاب کرتے ہیں',
-        fr: 'Des milliers de voyageurs choisissent Safr-AI pour réserver leurs voyages et hôtels en toute confiance',
-        bn: 'হাজার হাজার ভ্রমণকারী নিশ্চিন্তে তাদের ভ্রমণ ও হোটেল বুক করতে Safr-AI বেছে নেন',
+        ar: 'يُحجز المبلغ على بطاقتك أولًا، ولا يُسحب إلا بعد أن يؤكد الفندق حجزك',
+        en: 'The amount is only held on your card, and is charged only after the hotel confirms your booking',
+        es: 'El importe solo se retiene en tu tarjeta y se cobra únicamente cuando el hotel confirma tu reserva',
+        tr: 'Tutar önce kartınızda bloke edilir ve yalnızca otel rezervasyonunuzu onayladıktan sonra tahsil edilir',
+        id: 'Dana hanya ditahan di kartu Anda, dan baru ditagih setelah hotel mengonfirmasi pemesanan Anda',
+        hi: 'राशि पहले केवल आपके कार्ड पर रोकी जाती है, और होटल की पुष्टि के बाद ही काटी जाती है',
+        ur: 'رقم پہلے صرف آپ کے کارڈ پر روکی جاتی ہے، اور ہوٹل کی تصدیق کے بعد ہی وصول کی جاتی ہے',
+        fr: 'Le montant est seulement bloqué sur votre carte et n\'est débité qu\'après la confirmation de l\'hôtel',
+        bn: 'অর্থ প্রথমে শুধু আপনার কার্ডে আটকে রাখা হয়, এবং হোটেল নিশ্চিত করার পরেই কাটা হয়',
       ),
       ),
       (
@@ -3136,27 +3159,27 @@ class _TrustSection extends StatelessWidget {
       color: const Color(0xFF00B894),
       title: _t3(
         context,
-        ar: 'دعم العملاء متاح ٢٤/٧',
-        en: 'Customer support available 24/7',
-        es: 'Atención al cliente 24/7',
-        tr: '7/24 müşteri desteği',
-        id: 'Dukungan pelanggan tersedia 24/7',
-        hi: '24/7 ग्राहक सहायता उपलब्ध है',
-        ur: '24/7 کسٹمر سپورٹ دستیاب',
-        fr: 'Assistance client disponible 24h/24 et 7j/7',
-        bn: 'গ্রাহক সহায়তা ২৪/৭ উপলব্ধ',
+        ar: 'مساعدة بلغتك',
+        en: 'Help in your language',
+        es: 'Ayuda en tu idioma',
+        tr: 'Kendi dilinizde destek',
+        id: 'Bantuan dalam bahasa Anda',
+        hi: 'आपकी भाषा में सहायता',
+        ur: 'آپ کی زبان میں مدد',
+        fr: 'De l\'aide dans votre langue',
+        bn: 'আপনার ভাষায় সহায়তা',
       ),
       description: _t3(
         context,
-        ar: 'فريق الدعم لدينا جاهز لمساعدتك في أي وقت طوال أيام الأسبوع دون توقف',
-        en: 'Our support team is ready to help you anytime, any day of the week, without stopping',
-        es: 'Nuestro equipo de soporte está listo para ayudarte a cualquier hora, todos los días',
-        tr: 'Destek ekibimiz haftanın her günü, her an size yardımcı olmaya hazır',
-        id: 'Tim dukungan kami siap membantu Anda kapan saja, setiap hari, tanpa henti',
-        hi: 'हमारी सहायता टीम बिना रुके, हफ़्ते के किसी भी दिन, किसी भी समय आपकी मदद के लिए तैयार है',
-        ur: 'ہماری سپورٹ ٹیم ہفتے کے کسی بھی دن، کسی بھی وقت، بغیر رکے آپ کی مدد کے لیے تیار ہے',
-        fr: 'Notre équipe d\'assistance est prête à vous aider à tout moment, tous les jours de la semaine, sans interruption',
-        bn: 'আমাদের সহায়তা দল সপ্তাহের যেকোনো দিন, যেকোনো সময় আপনাকে সাহায্য করতে প্রস্তুত',
+        ar: 'فريق حقيقي يرد على رسائلك بالعربية والإنجليزية عبر support@flynoom.com',
+        en: 'Real people reply to your messages in Arabic and English at support@flynoom.com',
+        es: 'Personas reales responden tus mensajes en árabe e inglés en support@flynoom.com',
+        tr: 'Gerçek kişiler mesajlarınızı support@flynoom.com üzerinden Arapça ve İngilizce yanıtlar',
+        id: 'Orang sungguhan membalas pesan Anda dalam bahasa Arab dan Inggris di support@flynoom.com',
+        hi: 'असली लोग support@flynoom.com पर अरबी और अंग्रेज़ी में आपके संदेशों का जवाब देते हैं',
+        ur: 'حقیقی لوگ support@flynoom.com پر عربی اور انگریزی میں آپ کے پیغامات کا جواب دیتے ہیں',
+        fr: 'De vraies personnes répondent à vos messages en arabe et en anglais à support@flynoom.com',
+        bn: 'সত্যিকারের মানুষ support@flynoom.com-এ আরবি ও ইংরেজিতে আপনার বার্তার উত্তর দেন',
       ),
       ),
       (
@@ -3180,7 +3203,8 @@ class _TrustSection extends StatelessWidget {
         bn: 'সব মূল্য স্পষ্ট, কোনো লুকানো ফি নেই, এবং নিশ্চিত করার আগে আপনি সম্পূর্ণ বিবরণ দেখতে পারেন',
       ),
       ),
-      (
+      // بطاقة "اكسب مكافآت مضاعفة" مخفية مع برنامج المكافآت (features.dart).
+      if (kRewardsEnabled) (
       icon: Icons.card_giftcard_outlined,
       color: const Color(0xFFE67E22),
       title: _t3(context, ar: 'اكسب مكافآت مضاعفة', en: 'Earn double rewards', es: 'Gana recompensas dobles', tr: 'İki kat ödül kazanın', id: 'Dapatkan reward berlipat',
@@ -3190,15 +3214,15 @@ class _TrustSection extends StatelessWidget {
           bn: 'দ্বিগুণ পুরস্কার অর্জন করুন'),
       description: _t3(
         context,
-        ar: 'كل حجز تقوم به عبر Safr-AI يقرّبك أكثر من مكافآت ونقاط إضافية حصرية',
-        en: 'Every booking you make through Safr-AI brings you closer to extra exclusive rewards and points',
-        es: 'Cada reserva que hagas en Safr-AI te acerca a recompensas y puntos exclusivos adicionales',
-        tr: 'Safr-AI üzerinden yaptığınız her rezervasyon, sizi ekstra özel ödül ve puanlara yaklaştırır',
-        id: 'Setiap pemesanan melalui Safr-AI membawa Anda lebih dekat ke reward dan poin eksklusif tambahan',
-        hi: 'Safr-AI के ज़रिए की गई हर बुकिंग आपको अतिरिक्त खास रिवॉर्ड और पॉइंट्स के करीब लाती है',
-        ur: 'Safr-AI کے ذریعے کی گئی ہر بکنگ آپ کو اضافی خصوصی ریوارڈز اور پوائنٹس کے قریب لاتی ہے',
-        fr: 'Chaque réservation effectuée via Safr-AI vous rapproche de récompenses et de points exclusifs supplémentaires',
-        bn: 'Safr-AI এর মাধ্যমে করা প্রতিটি বুকিং আপনাকে অতিরিক্ত এক্সক্লুসিভ পুরস্কার ও পয়েন্টের কাছাকাছি নিয়ে যায়',
+        ar: 'كل حجز تقوم به عبر Flynoom يقرّبك أكثر من مكافآت ونقاط إضافية حصرية',
+        en: 'Every booking you make through Flynoom brings you closer to extra exclusive rewards and points',
+        es: 'Cada reserva que hagas en Flynoom te acerca a recompensas y puntos exclusivos adicionales',
+        tr: 'Flynoom üzerinden yaptığınız her rezervasyon, sizi ekstra özel ödül ve puanlara yaklaştırır',
+        id: 'Setiap pemesanan melalui Flynoom membawa Anda lebih dekat ke reward dan poin eksklusif tambahan',
+        hi: 'Flynoom के ज़रिए की गई हर बुकिंग आपको अतिरिक्त खास रिवॉर्ड और पॉइंट्स के करीब लाती है',
+        ur: 'Flynoom کے ذریعے کی گئی ہر بکنگ آپ کو اضافی خصوصی ریوارڈز اور پوائنٹس کے قریب لاتی ہے',
+        fr: 'Chaque réservation effectuée via Flynoom vous rapproche de récompenses et de points exclusifs supplémentaires',
+        bn: 'Flynoom এর মাধ্যমে করা প্রতিটি বুকিং আপনাকে অতিরিক্ত এক্সক্লুসিভ পুরস্কার ও পয়েন্টের কাছাকাছি নিয়ে যায়',
       ),
       ),
     ];
@@ -3901,7 +3925,56 @@ class _TravelTab {
 /// تنبيه شروط الدخول لمكة والمدينة — يظهر فوق نتائج تبويب العمرة.
 /// الهدف: ألا يحجز عميل لا يحق له الدخول ثم يطالب بالمبلغ.
 class _UmrahEntryNotice extends StatelessWidget {
-  const _UmrahEntryNotice();
+  /// يفتح تبويب Group stays (زر "عمرة لمجموعة").
+  final VoidCallback? onGroupStays;
+  const _UmrahEntryNotice({this.onGroupStays});
+
+  /// روابط رسمية سعودية (تحقق منها أكتوبر 2026):
+  ///  - التأشيرة السياحية الإلكترونية (تسمح بالعمرة خارج موسم الحج).
+  ///  - منصة نسك عمرة: تصاريح العمرة ودخول المسجد الحرام (إلزامية حتى مع التأشيرة).
+  static const _visaUrl = 'https://visa.visitsaudi.com/';
+  static const _nusukUrl = 'https://umrah.nusuk.sa/';
+
+  Future<void> _open(BuildContext context, String url) async {
+    final ok = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+      webOnlyWindowName: '_blank',
+    );
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(url)));
+    }
+  }
+
+  Widget _button({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    bool external = false,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          if (external) ...[
+            const SizedBox(width: 4),
+            const Icon(Icons.open_in_new, size: 14),
+          ],
+        ],
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.amber.shade900,
+        backgroundColor: Colors.white,
+        side: BorderSide(color: Colors.amber.shade700),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3914,35 +3987,100 @@ class _UmrahEntryNotice extends StatelessWidget {
         border: Border.all(color: Colors.amber.shade700),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, color: Colors.amber.shade800, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _t3(context,
-                  ar: 'دخول مكة المكرمة مقتصر على المسلمين. تأكد قبل الحجز من حصولك على التأشيرة وتصاريح الدخول المطلوبة؛ الحجز لا يشمل التأشيرة.',
-                  en: 'Entry to Makkah is restricted to Muslims. Before booking, make sure you have the required visa and entry permits; your booking does not include a visa.',
-                  es: 'La entrada a La Meca está restringida a musulmanes. Antes de reservar, asegúrate de tener el visado y los permisos de entrada necesarios; la reserva no incluye visado.',
-                  tr: 'Mekke\'ye giriş Müslümanlarla sınırlıdır. Rezervasyondan önce gerekli vize ve giriş izinlerine sahip olduğunuzdan emin olun; rezervasyon vize içermez.',
-                  id: 'Masuk ke Makkah hanya untuk Muslim. Sebelum memesan, pastikan Anda memiliki visa dan izin masuk yang diperlukan; pemesanan tidak termasuk visa.',
-                  hi: 'मक्का में प्रवेश केवल मुसलमानों के लिए है। बुकिंग से पहले आवश्यक वीज़ा और प्रवेश अनुमति सुनिश्चित करें; बुकिंग में वीज़ा शामिल नहीं है।',
-                  ur: 'مکہ مکرمہ میں داخلہ صرف مسلمانوں کے لیے ہے۔ بکنگ سے پہلے مطلوبہ ویزا اور داخلے کے اجازت نامے یقینی بنائیں؛ بکنگ میں ویزا شامل نہیں۔',
-                  fr: 'L\'accès à La Mecque est réservé aux musulmans. Avant de réserver, assurez-vous d\'avoir le visa et les autorisations d\'entrée requis ; la réservation n\'inclut pas de visa.',
-                  bn: 'মক্কায় প্রবেশ শুধু মুসলমানদের জন্য। বুকিংয়ের আগে প্রয়োজনীয় ভিসা ও প্রবেশ অনুমতি নিশ্চিত করুন; বুকিংয়ে ভিসা অন্তর্ভুক্ত নয়।'),
-              style: const TextStyle(fontSize: 13, height: 1.4),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, color: Colors.amber.shade800, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _t3(context,
+                      ar: 'دخول مكة المكرمة مقتصر على المسلمين. تأكد قبل الحجز من حصولك على التأشيرة وتصاريح الدخول المطلوبة؛ الحجز لا يشمل التأشيرة.',
+                      en: 'Entry to Makkah is restricted to Muslims. Before booking, make sure you have the required visa and entry permits; your booking does not include a visa.',
+                      es: 'La entrada a La Meca está restringida a musulmanes. Antes de reservar, asegúrate de tener el visado y los permisos de entrada necesarios; la reserva no incluye visado.',
+                      tr: 'Mekke\'ye giriş Müslümanlarla sınırlıdır. Rezervasyondan önce gerekli vize ve giriş izinlerine sahip olduğunuzdan emin olun; rezervasyon vize içermez.',
+                      id: 'Masuk ke Makkah hanya untuk Muslim. Sebelum memesan, pastikan Anda memiliki visa dan izin masuk yang diperlukan; pemesanan tidak termasuk visa.',
+                      hi: 'मक्का में प्रवेश केवल मुसलमानों के लिए है। बुकिंग से पहले आवश्यक वीज़ा और प्रवेश अनुमति सुनिश्चित करें; बुकिंग में वीज़ा शामिल नहीं है।',
+                      ur: 'مکہ مکرمہ میں داخلہ صرف مسلمانوں کے لیے ہے۔ بکنگ سے پہلے مطلوبہ ویزا اور داخلے کے اجازت نامے یقینی بنائیں؛ بکنگ میں ویزا شامل نہیں۔',
+                      fr: 'L\'accès à La Mecque est réservé aux musulmans. Avant de réserver, assurez-vous d\'avoir le visa et les autorisations d\'entrée requis ; la réservation n\'inclut pas de visa.',
+                      bn: 'মক্কায় প্রবেশ শুধু মুসলমানদের জন্য। বুকিংয়ের আগে প্রয়োজনীয় ভিসা ও প্রবেশ অনুমতি নিশ্চিত করুন; বুকিংয়ে ভিসা অন্তর্ভুক্ত নয়।'),
+                  style: const TextStyle(fontSize: 13, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 28),
+            child: _buttons(context),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buttons(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _button(
+          icon: Icons.badge_outlined,
+          external: true,
+          label: _t3(context,
+              ar: 'التأشيرة السعودية (الموقع الرسمي)',
+              en: 'Saudi eVisa (official site)',
+              es: 'eVisa saudí (sitio oficial)',
+              tr: 'Suudi e-Vize (resmi site)',
+              id: 'eVisa Saudi (situs resmi)',
+              hi: 'सऊदी ई-वीज़ा (आधिकारिक साइट)',
+              ur: 'سعودی ای ویزا (سرکاری ویب سائٹ)',
+              fr: 'eVisa saoudien (site officiel)',
+              bn: 'সৌদি ই-ভিসা (অফিসিয়াল সাইট)'),
+          onPressed: () => _open(context, _visaUrl),
+        ),
+        _button(
+          icon: Icons.verified_outlined,
+          external: true,
+          label: _t3(context,
+              ar: 'تصاريح العمرة عبر نسك',
+              en: 'Umrah permits on Nusuk',
+              es: 'Permisos de Umrah en Nusuk',
+              tr: 'Nusuk\'ta Umre izinleri',
+              id: 'Izin umrah di Nusuk',
+              hi: 'नुसुक पर उमरा परमिट',
+              ur: 'نسک پر عمرہ اجازت نامے',
+              fr: 'Permis de Omra sur Nusuk',
+              bn: 'নুসুকে উমরাহ পারমিট'),
+          onPressed: () => _open(context, _nusukUrl),
+        ),
+        if (onGroupStays != null)
+          _button(
+            icon: Icons.groups_outlined,
+            label: _t3(context,
+                ar: 'عمرة لمجموعة (5 غرف فأكثر)',
+                en: 'Group Umrah (5+ rooms)',
+                es: 'Umrah en grupo (5+ habitaciones)',
+                tr: 'Grup Umresi (5+ oda)',
+                id: 'Umrah grup (5+ kamar)',
+                hi: 'समूह उमरा (5+ कमरे)',
+                ur: 'گروپ عمرہ (5+ کمرے)',
+                fr: 'Omra en groupe (5+ chambres)',
+                bn: 'গ্রুপ উমরাহ (৫+ রুম)'),
+            onPressed: onGroupStays!,
+          ),
+      ],
     );
   }
 }
 
 /// محتوى تبويب العمرة قبل البحث: لماذا تحجز عمرتك معنا + تنبيه الدخول.
 class _UmrahIntro extends StatelessWidget {
-  const _UmrahIntro();
+  final VoidCallback? onGroupStays;
+  const _UmrahIntro({this.onGroupStays});
 
   @override
   Widget build(BuildContext context) {
@@ -4006,7 +4144,7 @@ class _UmrahIntro extends StatelessWidget {
             fr: 'Une aide en arabe et en anglais par de vraies personnes.',
             bn: 'সত্যিকারের মানুষের কাছ থেকে আরবি ও ইংরেজিতে সহায়তা।')),
         const SizedBox(height: AppSizes.sm),
-        const _UmrahEntryNotice(),
+        _UmrahEntryNotice(onGroupStays: onGroupStays),
         const SizedBox(height: AppSizes.lg),
       ],
     );
@@ -4038,6 +4176,149 @@ class _GroupStaysFormState extends State<_GroupStaysForm> {
   String _occasion = 'umrah';
   bool _sending = false;
   bool _sent = false;
+
+  /// أشهر وجهات المجموعات: الضغط على البطاقة يملأ حقل المدينة ونوع المجموعة.
+  /// (الاسم الإنجليزي يُكتب في الحقل والبريد، الاسم العربي للعرض، نوع المجموعة، اسم ملف الصورة)
+  ///
+  /// الصور: assets/images/destinations/group_<الاسم>.jpg (مثل group_istanbul.jpg).
+  /// إن لم توجد الصورة تظهر البطاقة بخلفية ملونة وأيقونة، فلا يتعطل شيء.
+  static const _popularGroupDestinations = <(String, String, String, String)>[
+    ('Makkah', 'مكة المكرمة', 'umrah', 'makkah'),
+    ('Madinah', 'المدينة المنورة', 'umrah', 'madinah'),
+    ('Istanbul', 'إسطنبول', 'tour', 'istanbul'),
+    ('Trabzon', 'طرابزون', 'tour', 'trabzon'),
+    ('Antalya', 'أنطاليا', 'tour', 'antalya'),
+    ('Dubai', 'دبي', 'tour', 'dubai'),
+    ('Cairo', 'القاهرة', 'tour', 'cairo'),
+    ('Sharm El Sheikh', 'شرم الشيخ', 'tour', 'sharm'),
+    ('Amman', 'عمّان', 'tour', 'amman'),
+    ('Marrakech', 'مراكش', 'tour', 'marrakech'),
+    ('Kuala Lumpur', 'كوالالمبور', 'tour', 'kuala_lumpur'),
+    ('Orlando', 'أورلاندو', 'family', 'orlando'),
+  ];
+
+  Widget _destinationCard(BuildContext context, (String, String, String, String) d, bool isArabic) {
+    final selected = _city.text == d.$1;
+    final fallback = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryDark],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Icon(
+        d.$3 == 'umrah' ? Icons.mosque_outlined : Icons.place_outlined,
+        color: Colors.white.withOpacity(0.5),
+        size: 40,
+      ),
+    );
+
+    return SizedBox(
+      width: 150,
+      height: 110,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => setState(() {
+            _city.text = d.$1;
+            _occasion = d.$3;
+          }),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset(
+                'assets/images/destinations/group_${d.$4}.jpg',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => fallback,
+              ),
+              // تدرّج داكن أسفل الصورة حتى يُقرأ الاسم.
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black87],
+                    stops: [0.45, 1.0],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 8,
+                right: 8,
+                bottom: 8,
+                child: Text(
+                  isArabic ? d.$2 : d.$1,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              if (selected)
+                PositionedDirectional(
+                  top: 6,
+                  end: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    child: const Icon(Icons.check_circle, color: AppColors.primary, size: 22),
+                  ),
+                ),
+              // إطار البطاقة المختارة.
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: selected ? AppColors.primary : Colors.black12,
+                      width: selected ? 3 : 1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _popularDestinations(BuildContext context) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _t3(context,
+              ar: 'وجهات شائعة للمجموعات',
+              en: 'Popular group destinations',
+              es: 'Destinos populares para grupos',
+              tr: 'Gruplar için popüler yerler',
+              id: 'Tujuan grup populer',
+              hi: 'समूहों के लिए लोकप्रिय गंतव्य',
+              ur: 'گروپس کے لیے مقبول مقامات',
+              fr: 'Destinations populaires pour les groupes',
+              bn: 'গ্রুপের জন্য জনপ্রিয় গন্তব্য'),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final d in _popularGroupDestinations) _destinationCard(context, d, isArabic),
+          ],
+        ),
+      ],
+    );
+  }
 
   @override
   void initState() {
@@ -4179,6 +4460,8 @@ class _GroupStaysFormState extends State<_GroupStaysForm> {
           hi: 'शादी', ur: 'شادی', fr: 'Mariage', bn: 'বিয়ে'),
       'event': _t3(context, ar: 'مؤتمر أو فعالية', en: 'Conference or event', es: 'Congreso o evento', tr: 'Konferans veya etkinlik', id: 'Konferensi atau acara',
           hi: 'सम्मेलन या कार्यक्रम', ur: 'کانفرنس یا تقریب', fr: 'Conférence ou événement', bn: 'সম্মেলন বা অনুষ্ঠান'),
+      'tour': _t3(context, ar: 'رحلة سياحية', en: 'Tour group', es: 'Grupo turístico', tr: 'Tur grubu', id: 'Grup wisata',
+          hi: 'पर्यटन समूह', ur: 'سیاحتی گروپ', fr: 'Groupe touristique', bn: 'ভ্রমণ গ্রুপ'),
       'family': _t3(context, ar: 'عائلة كبيرة', en: 'Family gathering', es: 'Reunión familiar', tr: 'Aile toplantısı', id: 'Acara keluarga',
           hi: 'पारिवारिक समारोह', ur: 'خاندانی اجتماع', fr: 'Réunion de famille', bn: 'পারিবারিক সমাবেশ'),
       'other': _t3(context, ar: 'أخرى', en: 'Other', es: 'Otro', tr: 'Diğer', id: 'Lainnya',
@@ -4200,8 +4483,11 @@ class _GroupStaysFormState extends State<_GroupStaysForm> {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSizes.md),
+              _popularDestinations(context),
+              const SizedBox(height: AppSizes.md),
               TextFormField(
                 controller: _city,
+                onChanged: (_) => setState(() {}),
                 decoration: deco(
                     _t3(context, ar: 'المدينة', en: 'Destination city', es: 'Ciudad de destino', tr: 'Varış şehri', id: 'Kota tujuan',
                         hi: 'गंतव्य शहर', ur: 'منزل کا شہر', fr: 'Ville de destination', bn: 'গন্তব্য শহর'),

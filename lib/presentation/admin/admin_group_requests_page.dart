@@ -64,6 +64,8 @@ String _occasionLabel(BuildContext context, String? o) {
       return _t(context, ar: 'فعالية', en: 'Event');
     case 'family':
       return _t(context, ar: 'عائلة', en: 'Family');
+    case 'tour':
+      return _t(context, ar: 'رحلة سياحية', en: 'Tour group');
     default:
       return _t(context, ar: 'أخرى', en: 'Other');
   }

@@ -105,6 +105,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ];
       if (!kFlightsEnabled && flightRoutes.contains(location)) return AppRoutes.home;
       if (!kCarsEnabled && location == AppRoutes.carBooking) return AppRoutes.home;
+      if (!kRewardsEnabled && location == AppRoutes.myCoins) return AppRoutes.home;
 
       final goingToAdmin = location.startsWith(AppRoutes.adminDashboard);
       if (!goingToAdmin) return null;

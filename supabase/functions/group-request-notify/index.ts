@@ -26,6 +26,7 @@ const OCCASIONS: Record<string, string> = {
   umrah: 'Umrah / عمرة',
   wedding: 'Wedding / زفاف',
   event: 'Event / فعالية',
+  tour: 'Tour group / رحلة سياحية',
   family: 'Family / عائلة',
   other: 'Other / أخرى',
 };

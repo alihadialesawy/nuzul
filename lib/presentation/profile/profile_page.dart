@@ -53,6 +53,10 @@ String _t3(
   }
 }
 
+/// أقسام في صفحة الحساب كانت فارغة ("قريبًا"): المحفوظات، منشوراتي، سجل الدخول.
+/// مخفية حتى تُبنى فعلًا؛ غيّرها إلى true عند جاهزيتها.
+const bool _kProfileStubsEnabled = false;
+
 void _comingSoon(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -293,7 +297,7 @@ Future<void> _editPhone(BuildContext context, WidgetRef ref, ProfileModel? profi
 /// بيعرض الإيميل والهاتف الحاليين، وبيعيد استخدام نفس منطق التعديل
 /// الموجود بالفعل (_updateEmailDialog و _editPhone) من غير تكرار كود.
 Future<void> _openContactInfoSheet(BuildContext context, WidgetRef ref) async {
-  final user = ref.read(currentUserProvider);
+  final user = ref.read(currentUserProvider) ?? Supabase.instance.client.auth.currentUser;
   final profile = ref.read(myProfileProvider).valueOrNull;
 
   await showModalBottomSheet(
@@ -841,7 +845,9 @@ class ProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(myProfileProvider);
-    final user = ref.watch(currentUserProvider);
+    // currentUserProvider قد يبقى null بعد تسجيل الدخول (فيظهر البريد "-")،
+    // فنرجع لجلسة Supabase الحالية مباشرة.
+    final user = ref.watch(currentUserProvider) ?? Supabase.instance.client.auth.currentUser;
 
     final title = Text(_t3(context, ar: 'حسابي', en: 'My Account', es: 'Mi cuenta', tr: 'Hesabım',
         id: 'Akun Saya',
@@ -850,8 +856,10 @@ class ProfilePage extends ConsumerWidget {
         fr: 'Mon compte',
         bn: 'আমার অ্যাকাউন্ট'));
 
+    if (user == null) return const _SignedOutView();
+
     final sidebar = _ProfileSidebar(
-      displayName: user?.email?.split('@').first ?? '',
+      displayName: user.email?.split('@').first ?? '',
       onLogout: () => _logout(context, ref),
       onAddTraveler: () => _addTraveler(context, ref),
       onContactInfo: () => _openContactInfoSheet(context, ref),
@@ -969,7 +977,8 @@ class _ProfileSidebar extends StatelessWidget {
                 ur: 'میری بکنگز',
                 fr: 'Mes réservations',
                 bn: 'আমার বুকিং')),
-            _SidebarItem(label: _t3(context, ar: 'الكل', en: 'All', es: 'Todo', tr: 'Tümü',
+            // مع الطيران: "الكل" + أقسام لكل نوع. بدونه: زر واحد "حجوزاتي".
+            if (kFlightsEnabled) _SidebarItem(label: _t3(context, ar: 'الكل', en: 'All', es: 'Todo', tr: 'Tümü',
                 id: 'Semua',
                 hi: 'सभी',
                 ur: 'تمام',
@@ -982,12 +991,18 @@ class _ProfileSidebar extends StatelessWidget {
                 ur: 'پروازیں',
                 fr: 'Vols',
                 bn: 'ফ্লাইট'), color: nextColor(), onTap: () => context.push(AppRoutes.myBookings)),
-            _SidebarItem(label: _t3(context, ar: 'الفنادق', en: 'Hotels', es: 'Hoteles', tr: 'Oteller',
+            if (kFlightsEnabled) _SidebarItem(label: _t3(context, ar: 'الفنادق', en: 'Hotels', es: 'Hoteles', tr: 'Oteller',
                 id: 'Hotel',
                 hi: 'होटल',
                 ur: 'ہوٹلز',
                 fr: 'Hôtels',
                 bn: 'হোটেল'), color: nextColor(), onTap: () => context.push(AppRoutes.myBookings)),
+            if (!kFlightsEnabled) _SidebarItem(label: _t3(context, ar: 'حجوزاتي', en: 'My bookings', es: 'Mis reservas', tr: 'Rezervasyonlarım',
+                id: 'Pesanan saya',
+                hi: 'मेरी बुकिंग',
+                ur: 'میری بکنگز',
+                fr: 'Mes réservations',
+                bn: 'আমার বুকিং'), color: nextColor(), onTap: () => context.push(AppRoutes.myBookings)),
             if (kFlightsEnabled) _SidebarItem(label: _t3(context, ar: 'طيران + فندق', en: 'Flight + Hotel', es: 'Vuelo + Hotel', tr: 'Uçuş + Otel',
                 id: 'Penerbangan + Hotel',
                 hi: 'उड़ान + होटल',
@@ -995,13 +1010,15 @@ class _ProfileSidebar extends StatelessWidget {
                 fr: 'Vol + Hôtel',
                 bn: 'ফ্লাইট + হোটেল'), color: nextColor(), onTap: () => context.push(AppRoutes.home)),
             const SizedBox(height: AppSizes.sm),
-            _SidebarItem(label: _t3(context, ar: 'المحفوظات', en: 'Saved', es: 'Guardado', tr: 'Kaydedilenler',
+            // "المحفوظات" و"منشوراتي" كانتا صفحتين فارغتين ("قريبًا") — مخفيتان
+            // حتى تُبنيا فعلًا. غيّر false إلى true عند جاهزيتهما.
+            if (_kProfileStubsEnabled) _SidebarItem(label: _t3(context, ar: 'المحفوظات', en: 'Saved', es: 'Guardado', tr: 'Kaydedilenler',
                 id: 'Tersimpan',
                 hi: 'सहेजा गया',
                 ur: 'محفوظ شدہ',
                 fr: 'Enregistré',
                 bn: 'সংরক্ষিত'), color: nextColor(), bold: true, onTap: () => _comingSoon(context)),
-            _SidebarItem(label: _t3(context, ar: 'منشوراتي', en: 'My posts', es: 'Mis publicaciones', tr: 'Gönderilerim',
+            if (_kProfileStubsEnabled) _SidebarItem(label: _t3(context, ar: 'منشوراتي', en: 'My posts', es: 'Mis publicaciones', tr: 'Gönderilerim',
                 id: 'Postingan saya',
                 hi: 'मेरी पोस्ट',
                 ur: 'میری پوسٹس',
@@ -1019,7 +1036,8 @@ class _ProfileSidebar extends StatelessWidget {
               bold: true,
               onTap: () => context.push(AppRoutes.aiTravel),
             ),
-            _SidebarItem(
+            // برنامج المكافآت مخفي حتى يصبح حقيقيًا (features.dart).
+            if (kRewardsEnabled) _SidebarItem(
               label: _t3(context, ar: 'عملاتي', en: 'My Coins', es: 'Mis monedas', tr: 'Puanlarım',
                   id: 'Koin Saya',
                   hi: 'मेरे कॉइन',
@@ -1054,7 +1072,8 @@ class _ProfileSidebar extends StatelessWidget {
                 ur: 'بار بار سفر کرنے والے کی معلومات',
                 fr: 'Informations voyageur fréquent',
                 bn: 'ঘন ঘন ভ্রমণকারীর তথ্য'), color: nextColor(), onTap: () => _comingSoon(context)),
-            _SidebarItem(
+            // المسافرون المحفوظون (بجوازاتهم) للطيران فقط؛ لا نجمعها للفنادق.
+            if (kFlightsEnabled) _SidebarItem(
               label: _t3(context, ar: 'إضافة مسافرين', en: 'Add Travelers', es: 'Añadir viajeros', tr: 'Yolcu ekle',
                   id: 'Tambah wisatawan',
                   hi: 'यात्री जोड़ें',
@@ -1227,19 +1246,18 @@ class _ProfileMainContent extends ConsumerWidget {
                         second: _SecurityTile(
                           icon: Icons.phone_outlined,
                           color: _FieldColors.phone,
-                          label: _t3(context, ar: 'ربط رقم الهاتف', en: 'Link Phone Number', es: 'Vincular teléfono', tr: 'Telefon numarasını bağla',
-                              id: 'Tautkan nomor telepon',
-                              hi: 'फ़ोन नंबर लिंक करें',
-                              ur: 'فون نمبر لنک کریں',
-                              fr: 'Lier un numéro de téléphone',
-                              bn: 'ফোন নম্বর লিঙ্ক করুন'),
+                          label: _t3(context, ar: 'رقم الهاتف', en: 'Phone number', es: 'Número de teléfono', tr: 'Telefon numarası',
+                              id: 'Nomor telepon',
+                              hi: 'फ़ोन नंबर',
+                              ur: 'فون نمبر',
+                              fr: 'Numéro de téléphone',
+                              bn: 'ফোন নম্বর'),
                           value: (profile?.phone?.isNotEmpty ?? false) ? profile!.phone! : '-',
-                          actionLabel: _t3(context, ar: 'ربط', en: 'Link', es: 'Vincular', tr: 'Bağla',
-                              id: 'Tautkan',
-                              hi: 'लिंक करें',
-                              ur: 'لنک کریں',
-                              fr: 'Lier',
-                              bn: 'লিঙ্ক করুন'),
+                          actionLabel: (profile?.phone?.isNotEmpty ?? false)
+                              ? _t3(context, ar: 'تعديل', en: 'Edit', es: 'Editar', tr: 'Düzenle',
+                              id: 'Edit', hi: 'संपादित करें', ur: 'ترمیم کریں', fr: 'Modifier', bn: 'সম্পাদনা করুন')
+                              : _t3(context, ar: 'إضافة', en: 'Add', es: 'Añadir', tr: 'Ekle',
+                              id: 'Tambah', hi: 'जोड़ें', ur: 'شامل کریں', fr: 'Ajouter', bn: 'যোগ করুন'),
                           filled: true,
                           onAction: () => _editPhone(context, ref, profile, user?.id),
                         ),
@@ -1258,46 +1276,73 @@ class _ProfileMainContent extends ConsumerWidget {
                               bn: 'পাসওয়ার্ড'),
                           value: _t3(
                             context,
-                            ar: 'اضبط كلمة مرور لحماية حسابك',
-                            en: 'Set a password to protect your account',
-                            es: 'Configura una contraseña para proteger tu cuenta',
-                            tr: 'Hesabınızı korumak için bir şifre belirleyin',
-                            id: 'Atur kata sandi untuk melindungi akun Anda',
-                            hi: 'अपने खाते की सुरक्षा के लिए पासवर्ड सेट करें',
-                            ur: 'اپنے اکاؤنٹ کی حفاظت کے لیے پاس ورڈ سیٹ کریں',
-                            fr: 'Définissez un mot de passe pour protéger votre compte',
-                            bn: 'আপনার অ্যাকাউন্ট সুরক্ষিত করতে একটি পাসওয়ার্ড সেট করুন',
+                            ar: 'غيّر كلمة المرور، أو أنشئ واحدة إن سجّلت بطريقة أخرى',
+                            en: 'Change your password, or create one if you signed up another way',
+                            es: 'Cambia tu contraseña o crea una si te registraste de otra forma',
+                            tr: 'Şifrenizi değiştirin veya başka yolla kaydolduysanız bir şifre oluşturun',
+                            id: 'Ubah kata sandi, atau buat jika Anda mendaftar dengan cara lain',
+                            hi: 'अपना पासवर्ड बदलें, या किसी और तरीके से साइन अप किया हो तो एक बनाएं',
+                            ur: 'اپنا پاس ورڈ تبدیل کریں، یا کسی اور طریقے سے سائن اپ کیا ہو تو نیا بنائیں',
+                            fr: 'Changez votre mot de passe, ou créez-en un si vous vous êtes inscrit autrement',
+                            bn: 'পাসওয়ার্ড পরিবর্তন করুন, অথবা অন্যভাবে সাইন আপ করলে একটি তৈরি করুন',
                           ),
-                          actionLabel: _t3(context, ar: 'ضبط', en: 'Set', es: 'Configurar', tr: 'Ayarla',
-                              id: 'Atur',
-                              hi: 'सेट करें',
-                              ur: 'سیٹ کریں',
-                              fr: 'Définir',
-                              bn: 'সেট করুন'),
+                          actionLabel: _t3(context, ar: 'تغيير', en: 'Change', es: 'Cambiar', tr: 'Değiştir',
+                              id: 'Ubah',
+                              hi: 'बदलें',
+                              ur: 'تبدیل کریں',
+                              fr: 'Modifier',
+                              bn: 'পরিবর্তন করুন'),
                           filled: true,
                           onAction: () => _setPassword(context, ref),
                         ),
                         second: _SecurityTile(
                           icon: Icons.devices_outlined,
                           color: _FieldColors.devices,
-                          label: _t3(context, ar: 'إدارة الأجهزة', en: 'Manage devices', es: 'Gestionar dispositivos', tr: 'Cihazları yönet',
-                              id: 'Kelola perangkat',
-                              hi: 'डिवाइस प्रबंधित करें',
-                              ur: 'ڈیوائسز کا انتظام کریں',
-                              fr: 'Gérer les appareils',
-                              bn: 'ডিভাইস পরিচালনা করুন'),
+                          label: _t3(context, ar: 'الأجهزة الأخرى', en: 'Other devices', es: 'Otros dispositivos', tr: 'Diğer cihazlar',
+                              id: 'Perangkat lain',
+                              hi: 'अन्य डिवाइस',
+                              ur: 'دیگر ڈیوائسز',
+                              fr: 'Autres appareils',
+                              bn: 'অন্যান্য ডিভাইস'),
                           value: _t3(
                             context,
-                            ar: 'اطّلع على الأجهزة التي سجّلت الدخول منها',
-                            en: "View devices that you're currently signed in",
-                            es: 'Ver dispositivos donde has iniciado sesión',
-                            tr: 'Oturum açtığınız cihazları görüntüleyin',
-                            id: 'Lihat perangkat yang sedang Anda gunakan untuk masuk',
-                            hi: 'उन डिवाइसों को देखें जिनमें आप वर्तमान में साइन इन हैं',
-                            ur: 'وہ ڈیوائسز دیکھیں جن میں آپ اس وقت سائن ان ہیں',
-                            fr: 'Voir les appareils actuellement connectés',
-                            bn: 'আপনি বর্তমানে যেসব ডিভাইসে সাইন ইন আছেন তা দেখুন',
+                            ar: 'سجّل الخروج من كل الأجهزة الأخرى، وابقَ مسجّلًا هنا',
+                            en: 'Sign out of all other devices and stay signed in here',
+                            es: 'Cierra sesión en los demás dispositivos y sigue conectado aquí',
+                            tr: 'Diğer tüm cihazlardan çıkış yapın, burada oturumunuz açık kalsın',
+                            id: 'Keluar dari semua perangkat lain dan tetap masuk di sini',
+                            hi: 'अन्य सभी डिवाइस से साइन आउट करें और यहाँ साइन इन रहें',
+                            ur: 'دیگر تمام ڈیوائسز سے سائن آؤٹ کریں اور یہاں سائن ان رہیں',
+                            fr: 'Déconnectez-vous des autres appareils et restez connecté ici',
+                            bn: 'অন্য সব ডিভাইস থেকে সাইন আউট করুন এবং এখানে সাইন ইন থাকুন',
                           ),
+                          actionLabel: _t3(context, ar: 'تسجيل الخروج', en: 'Sign out', es: 'Cerrar sesión', tr: 'Çıkış yap',
+                              id: 'Keluar',
+                              hi: 'साइन आउट',
+                              ur: 'سائن آؤٹ',
+                              fr: 'Déconnecter',
+                              bn: 'সাইন আউট'),
+                          onAction: () => _signOutOtherDevices(context),
+                        ),
+                      ),
+                      // "سجل الدخول" كان صفحة فارغة ("قريبًا") — مخفي حتى يُبنى فعلًا.
+                      if (_kProfileStubsEnabled) ...[
+                        const SizedBox(height: AppSizes.md),
+                        _SecurityTile(
+                          icon: Icons.history,
+                          color: _FieldColors.signInHistory,
+                          label: _t3(context, ar: 'سجل الدخول', en: 'Sign-in history', es: 'Historial de acceso', tr: 'Oturum açma geçmişi',
+                              id: 'Riwayat masuk',
+                              hi: 'साइन-इन इतिहास',
+                              ur: 'سائن ان کی تاریخ',
+                              fr: 'Historique de connexion',
+                              bn: 'সাইন-ইন ইতিহাস'),
+                          value: _t3(context, ar: 'اطّلع على سجل تسجيل الدخول الخاص بك', en: 'View your sign-in history', es: 'Ver tu historial de acceso', tr: 'Oturum açma geçmişinizi görüntüleyin',
+                              id: 'Lihat riwayat masuk Anda',
+                              hi: 'अपना साइन-इन इतिहास देखें',
+                              ur: 'اپنی سائن ان کی تاریخ دیکھیں',
+                              fr: 'Consultez votre historique de connexion',
+                              bn: 'আপনার সাইন-ইন ইতিহাস দেখুন'),
                           actionLabel: _t3(context, ar: 'عرض', en: 'View', es: 'Ver', tr: 'Görüntüle',
                               id: 'Lihat',
                               hi: 'देखें',
@@ -1306,31 +1351,7 @@ class _ProfileMainContent extends ConsumerWidget {
                               bn: 'দেখুন'),
                           onAction: () => _comingSoon(context),
                         ),
-                      ),
-                      const SizedBox(height: AppSizes.md),
-                      _SecurityTile(
-                        icon: Icons.history,
-                        color: _FieldColors.signInHistory,
-                        label: _t3(context, ar: 'سجل الدخول', en: 'Sign-in history', es: 'Historial de acceso', tr: 'Oturum açma geçmişi',
-                            id: 'Riwayat masuk',
-                            hi: 'साइन-इन इतिहास',
-                            ur: 'سائن ان کی تاریخ',
-                            fr: 'Historique de connexion',
-                            bn: 'সাইন-ইন ইতিহাস'),
-                        value: _t3(context, ar: 'اطّلع على سجل تسجيل الدخول الخاص بك', en: 'View your sign-in history', es: 'Ver tu historial de acceso', tr: 'Oturum açma geçmişinizi görüntüleyin',
-                            id: 'Lihat riwayat masuk Anda',
-                            hi: 'अपना साइन-इन इतिहास देखें',
-                            ur: 'اپنی سائن ان کی تاریخ دیکھیں',
-                            fr: 'Consultez votre historique de connexion',
-                            bn: 'আপনার সাইন-ইন ইতিহাস দেখুন'),
-                        actionLabel: _t3(context, ar: 'عرض', en: 'View', es: 'Ver', tr: 'Görüntüle',
-                            id: 'Lihat',
-                            hi: 'देखें',
-                            ur: 'دیکھیں',
-                            fr: 'Voir',
-                            bn: 'দেখুন'),
-                        onAction: () => _comingSoon(context),
-                      ),
+                      ],
                       const SizedBox(height: AppSizes.md),
                       // حذف الحساب من داخل التطبيق (شرط Apple 5.1.1(v) وGoogle Play).
                       _SecurityTile(
@@ -1363,8 +1384,9 @@ class _ProfileMainContent extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSizes.lg),
-                _CardContainer(
+                // الاسم القانوني وتاريخ الميلاد مطلوبان للطيران فقط؛ لا نجمعهما للفنادق.
+                if (kFlightsEnabled) const SizedBox(height: AppSizes.lg),
+                if (kFlightsEnabled) _CardContainer(
                   color: AppColors.primary.withOpacity(0.06),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1454,6 +1476,9 @@ class _ProfileMainContent extends ConsumerWidget {
                     ],
                   ),
                 ),
+                // كان هنا قسم "المعلومات الشخصية" (الجنس، الجنسية، مدينة الإقامة،
+                // المدينة الأكثر زيارة) لـ"عروض قريبة منك" غير موجودة. لا نجمع ما
+                // لا نستخدمه؛ بقي اسم العرض فقط لأنه يظهر في منشورات المجتمع.
                 const SizedBox(height: AppSizes.lg),
                 _CardContainer(
                   child: Column(
@@ -1463,17 +1488,17 @@ class _ProfileMainContent extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              _t3(context, ar: 'المعلومات الشخصية', en: 'Personal info', es: 'Información personal', tr: 'Kişisel bilgiler',
-                                  id: 'Info pribadi',
-                                  hi: 'व्यक्तिगत जानकारी',
-                                  ur: 'ذاتی معلومات',
-                                  fr: 'Informations personnelles',
-                                  bn: 'ব্যক্তিগত তথ্য'),
+                              _t3(context, ar: 'اسم العرض', en: 'Display name', es: 'Nombre visible', tr: 'Görünen ad',
+                                  id: 'Nama tampilan',
+                                  hi: 'प्रदर्शन नाम',
+                                  ur: 'ڈسپلے نام',
+                                  fr: 'Nom d\'affichage',
+                                  bn: 'প্রদর্শন নাম'),
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                             ),
                           ),
                           TextButton(
-                            onPressed: () => _editPersonalInfo(context, ref, profile, user?.id),
+                            onPressed: () => _editDisplayName(context, ref, profile, user?.id),
                             child: Text(_t3(context, ar: 'تعديل', en: 'Edit', es: 'Editar', tr: 'Düzenle',
                                 id: 'Edit',
                                 hi: 'संपादित करें',
@@ -1486,81 +1511,29 @@ class _ProfileMainContent extends ConsumerWidget {
                       Text(
                         _t3(
                           context,
-                          ar: 'أدخل معلوماتك الشخصية لمساعدتنا على تخصيص رحلاتك واكتشاف العروض القريبة منك',
-                          en: 'Enter your personal info to help us tailor your trips and discover nearby deals for you',
-                          es: 'Ingresa tu información personal para adaptar tus viajes y ofertas cercanas',
-                          tr: 'Seyahatlerinizi size özel hale getirmemiz ve yakın fırsatları keşfetmeniz için kişisel bilgilerinizi girin',
-                          id: 'Masukkan info pribadi Anda agar kami bisa menyesuaikan perjalanan dan menemukan penawaran terdekat untuk Anda',
-                          hi: 'अपनी यात्राओं को आपके अनुसार बनाने और आस-पास के ऑफ़र खोजने में मदद के लिए अपनी व्यक्तिगत जानकारी दर्ज करें',
-                          ur: 'اپنی سفری معلومات کو آپ کے مطابق بنانے اور قریبی آفرز تلاش کرنے میں مدد کے لیے اپنی ذاتی معلومات درج کریں',
-                          fr: 'Saisissez vos informations personnelles pour nous aider à adapter vos voyages et découvrir des offres à proximité',
-                          bn: 'আপনার ভ্রমণ উপযোগী করতে এবং কাছাকাছি অফার খুঁজে পেতে আপনার ব্যক্তিগত তথ্য লিখুন',
+                          ar: 'الاسم الذي يظهر مع منشوراتك في المجتمع.',
+                          en: 'The name shown with your posts in the Community.',
+                          es: 'El nombre que aparece con tus publicaciones en la Comunidad.',
+                          tr: 'Topluluktaki gönderilerinizle birlikte görünen ad.',
+                          id: 'Nama yang ditampilkan bersama postingan Anda di Komunitas.',
+                          hi: 'समुदाय में आपकी पोस्ट के साथ दिखने वाला नाम।',
+                          ur: 'وہ نام جو کمیونٹی میں آپ کی پوسٹس کے ساتھ دکھائی دیتا ہے۔',
+                          fr: 'Le nom affiché avec vos publications dans la Communauté.',
+                          bn: 'কমিউনিটিতে আপনার পোস্টের সাথে যে নাম দেখানো হয়।',
                         ),
                         style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                       ),
-                      const SizedBox(height: AppSizes.md),
-                      _ResponsiveTilePair(
-                        isNarrow: isNarrow,
-                        first: _InfoTile(
-                          icon: Icons.wc_outlined,
-                          color: _FieldColors.gender,
-                          label: _t3(context, ar: 'الجنس', en: 'Gender', es: 'Género', tr: 'Cinsiyet',
-                              id: 'Jenis kelamin',
-                              hi: 'लिंग',
-                              ur: 'جنس',
-                              fr: 'Genre',
-                              bn: 'লিঙ্গ'),
-                          value: (profile?.gender?.isNotEmpty ?? false) ? profile!.gender! : '-',
-                        ),
-                        second: _InfoTile(
-                          icon: Icons.badge_outlined,
-                          color: _FieldColors.displayName,
-                          label: _t3(context, ar: 'اسم العرض', en: 'Display name', es: 'Nombre visible', tr: 'Görünen ad',
-                              id: 'Nama tampilan',
-                              hi: 'प्रदर्शन नाम',
-                              ur: 'ڈسپلے نام',
-                              fr: 'Nom d\'affichage',
-                              bn: 'প্রদর্শন নাম'),
-                          value: (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : '-',
-                        ),
-                      ),
                       const SizedBox(height: AppSizes.sm),
-                      _ResponsiveTilePair(
-                        isNarrow: isNarrow,
-                        first: _InfoTile(
-                          icon: Icons.public,
-                          color: _FieldColors.nationality,
-                          label: _t3(context, ar: 'الجنسية', en: 'Nationality (country or region)', es: 'Nacionalidad', tr: 'Uyruk (ülke veya bölge)',
-                              id: 'Kewarganegaraan (negara atau wilayah)',
-                              hi: 'राष्ट्रीयता (देश या क्षेत्र)',
-                              ur: 'شہریت (ملک یا خطہ)',
-                              fr: 'Nationalité (pays ou région)',
-                              bn: 'জাতীয়তা (দেশ বা অঞ্চল)'),
-                          value: (profile?.nationality?.isNotEmpty ?? false) ? profile!.nationality! : '-',
+                      Text(
+                        (profile?.displayName?.isNotEmpty ?? false)
+                            ? profile!.displayName!
+                            : _t3(context, ar: 'لم تضف اسمًا بعد', en: 'Not set yet', es: 'Aún no definido', tr: 'Henüz ayarlanmadı',
+                            id: 'Belum diatur', hi: 'अभी सेट नहीं है', ur: 'ابھی سیٹ نہیں', fr: 'Pas encore défini', bn: 'এখনও সেট করা হয়নি'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: (profile?.displayName?.isNotEmpty ?? false) ? null : AppColors.textSecondary,
                         ),
-                        second: _InfoTile(
-                          icon: Icons.location_city_outlined,
-                          color: _FieldColors.cityOfResidence,
-                          label: _t3(context, ar: 'مدينة الإقامة', en: 'City of residence', es: 'Ciudad de residencia', tr: 'İkamet şehri',
-                              id: 'Kota domisili',
-                              hi: 'निवास का शहर',
-                              ur: 'رہائشی شہر',
-                              fr: 'Ville de résidence',
-                              bn: 'বসবাসের শহর'),
-                          value: (profile?.cityOfResidence?.isNotEmpty ?? false) ? profile!.cityOfResidence! : '-',
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.sm),
-                      _InfoTile(
-                        icon: Icons.map_outlined,
-                        color: _FieldColors.frequentCity,
-                        label: _t3(context, ar: 'المدينة الأكثر زيارة', en: 'Frequently visited city', es: 'Ciudad más visitada', tr: 'En sık ziyaret edilen şehir',
-                            id: 'Kota yang sering dikunjungi',
-                            hi: 'अक्सर जाया जाने वाला शहर',
-                            ur: 'اکثر جانے والا شہر',
-                            fr: 'Ville fréquemment visitée',
-                            bn: 'প্রায়ই ভ্রমণ করা শহর'),
-                        value: (profile?.frequentlyVisitedCity?.isNotEmpty ?? false) ? profile!.frequentlyVisitedCity! : '-',
                       ),
                     ],
                   ),
@@ -1776,12 +1749,12 @@ class _ProfileMainContent extends ConsumerWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(_t3(dialogContext, ar: 'ضبط كلمة مرور', en: 'Set password', es: 'Configurar contraseña', tr: 'Şifre belirle',
-              id: 'Atur kata sandi',
-              hi: 'पासवर्ड सेट करें',
-              ur: 'پاس ورڈ سیٹ کریں',
-              fr: 'Définir le mot de passe',
-              bn: 'পাসওয়ার্ড সেট করুন')),
+          title: Text(_t3(dialogContext, ar: 'كلمة مرور جديدة', en: 'New password', es: 'Nueva contraseña', tr: 'Yeni şifre',
+              id: 'Kata sandi baru',
+              hi: 'नया पासवर्ड',
+              ur: 'نیا پاس ورڈ',
+              fr: 'Nouveau mot de passe',
+              bn: 'নতুন পাসওয়ার্ড')),
           content: TextField(
             controller: controller,
             obscureText: true,
@@ -1958,6 +1931,105 @@ class _ProfileMainContent extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  /// تسجيل الخروج من كل الأجهزة الأخرى (يبقى هذا الجهاز مسجّلًا).
+  Future<void> _signOutOtherDevices(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_t3(dialogContext, ar: 'تسجيل الخروج من الأجهزة الأخرى؟', en: 'Sign out of other devices?',
+            es: '¿Cerrar sesión en otros dispositivos?', tr: 'Diğer cihazlardan çıkış yapılsın mı?',
+            id: 'Keluar dari perangkat lain?', hi: 'अन्य डिवाइस से साइन आउट करें?',
+            ur: 'دیگر ڈیوائسز سے سائن آؤٹ کریں؟', fr: 'Se déconnecter des autres appareils ?',
+            bn: 'অন্যান্য ডিভাইস থেকে সাইন আউট করবেন?')),
+        content: Text(_t3(dialogContext,
+            ar: 'سيُطلب تسجيل الدخول من جديد على كل جهاز آخر. يفيدك هذا إن استخدمت حسابك على جهاز لم يعد معك.',
+            en: 'Every other device will need to sign in again. Useful if you used your account on a device you no longer have.',
+            es: 'Los demás dispositivos tendrán que iniciar sesión de nuevo. Útil si usaste tu cuenta en un dispositivo que ya no tienes.',
+            tr: 'Diğer tüm cihazlarda yeniden oturum açmak gerekecek. Artık elinizde olmayan bir cihazda hesabınızı kullandıysanız faydalıdır.',
+            id: 'Semua perangkat lain harus masuk lagi. Berguna jika Anda pernah memakai akun di perangkat yang tidak lagi Anda miliki.',
+            hi: 'बाकी सभी डिवाइस पर फिर से साइन इन करना होगा। उपयोगी है अगर आपने खाता किसी ऐसे डिवाइस पर इस्तेमाल किया जो अब आपके पास नहीं है।',
+            ur: 'باقی تمام ڈیوائسز پر دوبارہ سائن ان کرنا ہوگا۔ مفید ہے اگر آپ نے اکاؤنٹ ایسی ڈیوائس پر استعمال کیا جو اب آپ کے پاس نہیں۔',
+            fr: 'Les autres appareils devront se reconnecter. Utile si vous avez utilisé votre compte sur un appareil que vous n\'avez plus.',
+            bn: 'অন্য সব ডিভাইসে আবার সাইন ইন করতে হবে। কাজে লাগে যদি এমন ডিভাইসে অ্যাকাউন্ট ব্যবহার করে থাকেন যা আর আপনার কাছে নেই।')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(_t3(dialogContext, ar: 'إلغاء', en: 'Cancel', es: 'Cancelar', tr: 'İptal',
+                id: 'Batal', hi: 'रद्द करें', ur: 'منسوخ کریں', fr: 'Annuler', bn: 'বাতিল করুন')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(_t3(dialogContext, ar: 'تسجيل الخروج', en: 'Sign out', es: 'Cerrar sesión', tr: 'Çıkış yap',
+                id: 'Keluar', hi: 'साइन आउट', ur: 'سائن آؤٹ', fr: 'Déconnecter', bn: 'সাইন আউট')),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    String message;
+    try {
+      await Supabase.instance.client.auth.signOut(scope: SignOutScope.others);
+      message = _t3(context, ar: 'تم تسجيل الخروج من كل الأجهزة الأخرى.', en: 'Signed out of all other devices.',
+          es: 'Se cerró la sesión en los demás dispositivos.', tr: 'Diğer tüm cihazlardan çıkış yapıldı.',
+          id: 'Berhasil keluar dari semua perangkat lain.', hi: 'अन्य सभी डिवाइस से साइन आउट हो गया।',
+          ur: 'دیگر تمام ڈیوائسز سے سائن آؤٹ ہو گیا۔', fr: 'Déconnecté des autres appareils.',
+          bn: 'অন্য সব ডিভাইস থেকে সাইন আউট হয়েছে।');
+    } catch (_) {
+      message = _t3(context, ar: 'تعذّر ذلك، حاول مرة أخرى.', en: 'Something went wrong. Please try again.',
+          es: 'Algo salió mal. Inténtalo de nuevo.', tr: 'Bir sorun oluştu. Lütfen tekrar deneyin.',
+          id: 'Terjadi kesalahan. Coba lagi.', hi: 'कुछ गलत हुआ। कृपया फिर से कोशिश करें।',
+          ur: 'کچھ غلط ہو گیا۔ دوبارہ کوشش کریں۔', fr: 'Une erreur s\'est produite. Réessayez.',
+          bn: 'কিছু ভুল হয়েছে। আবার চেষ্টা করুন।');
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// تعديل اسم العرض فقط (يظهر في منشورات المجتمع).
+  Future<void> _editDisplayName(BuildContext context, WidgetRef ref, ProfileModel? profile, String? userId) async {
+    final controller = TextEditingController(text: profile?.displayName ?? '');
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_t3(dialogContext, ar: 'اسم العرض', en: 'Display name', es: 'Nombre visible', tr: 'Görünen ad',
+            id: 'Nama tampilan', hi: 'प्रदर्शन नाम', ur: 'ڈسپلے نام', fr: 'Nom d\'affichage', bn: 'প্রদর্শন নাম')),
+        content: TextField(
+          controller: controller,
+          maxLength: 40,
+          autofocus: true,
+          decoration: const InputDecoration(prefixIcon: Icon(Icons.badge_outlined)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(_t3(dialogContext, ar: 'إلغاء', en: 'Cancel', es: 'Cancelar', tr: 'İptal',
+                id: 'Batal', hi: 'रद्द करें', ur: 'منسوخ کریں', fr: 'Annuler', bn: 'বাতিল করুন')),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (userId == null && profile == null) return;
+              final updated = (profile ?? ProfileModel(id: userId!)).copyWith(displayName: controller.text.trim());
+              final repo = ref.read(profileRepositoryProvider);
+              final result = await repo.upsertMyProfile(updated);
+              if (!dialogContext.mounted) return;
+              result.when(
+                success: (_) {
+                  ref.invalidate(myProfileProvider);
+                  Navigator.of(dialogContext).pop();
+                },
+                failure: (message) => ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(message)),
+                ),
+              );
+            },
+            child: Text(_t3(dialogContext, ar: 'حفظ', en: 'Save', es: 'Guardar', tr: 'Kaydet',
+                id: 'Simpan', hi: 'सहेजें', ur: 'محفوظ کریں', fr: 'Enregistrer', bn: 'সংরক্ষণ করুন')),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2427,6 +2499,56 @@ class _InfoTile extends StatelessWidget {
           const SizedBox(height: 4),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
+      ),
+    );
+  }
+}
+
+/// تظهر بدل صفحة الحساب لمن لم يسجّل الدخول.
+class _SignedOutView extends StatelessWidget {
+  const _SignedOutView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_t3(context, ar: 'حسابي', en: 'My Account', es: 'Mi cuenta', tr: 'Hesabım',
+            id: 'Akun Saya', hi: 'मेरा खाता', ur: 'میرا اکاؤنٹ', fr: 'Mon compte', bn: 'আমার অ্যাকাউন্ট')),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.account_circle_outlined, size: 64, color: AppColors.primary),
+              const SizedBox(height: AppSizes.md),
+              Text(
+                _t3(context,
+                    ar: 'سجّل الدخول لعرض حسابك وحجوزاتك',
+                    en: 'Sign in to see your account and bookings',
+                    es: 'Inicia sesión para ver tu cuenta y tus reservas',
+                    tr: 'Hesabınızı ve rezervasyonlarınızı görmek için giriş yapın',
+                    id: 'Masuk untuk melihat akun dan pemesanan Anda',
+                    hi: 'अपना खाता और बुकिंग देखने के लिए साइन इन करें',
+                    ur: 'اپنا اکاؤنٹ اور بکنگز دیکھنے کے لیے سائن ان کریں',
+                    fr: 'Connectez-vous pour voir votre compte et vos réservations',
+                    bn: 'আপনার অ্যাকাউন্ট ও বুকিং দেখতে সাইন ইন করুন'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: AppSizes.md),
+              SizedBox(
+                width: 220,
+                child: ElevatedButton(
+                  onPressed: () => context.push(AppRoutes.login),
+                  child: Text(_t3(context, ar: 'تسجيل الدخول', en: 'Sign in', es: 'Iniciar sesión', tr: 'Giriş yap',
+                      id: 'Masuk', hi: 'साइन इन करें', ur: 'سائن ان کریں', fr: 'Se connecter', bn: 'সাইন ইন করুন')),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

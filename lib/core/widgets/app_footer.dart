@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app.dart';
+import '../config/features.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
 import 'currency_selector_button.dart';
@@ -352,7 +353,16 @@ class AppFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final languageCode = Localizations.localeOf(context).languageCode;
-    final sections = _footerSections(languageCode);
+    // نخفي روابط الأقسام المخفية (features.dart) من الفوتر في كل اللغات.
+    final sections = [
+      for (final section in _footerSections(languageCode))
+        _FooterSectionData(section.title, [
+          for (final link in section.links)
+            if (!(link.route == AppRoutes.myCoins && !kRewardsEnabled) &&
+                !(link.route == AppRoutes.flights && !kFlightsEnabled))
+              link,
+        ]),
+    ];
 
     return Container(
       color: const Color(0xFFEAF5EC),
