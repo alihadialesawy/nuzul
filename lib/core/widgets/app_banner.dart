@@ -168,6 +168,39 @@ class _BannerAction extends StatelessWidget {
   }
 }
 
+/// شعار Flynoom (أبيض + برتقالي، خلفية شفافة) أعلى يسار البانر.
+/// يُرسم من الكود فوق الصورة — لا يُطبع داخل صور البانر — حتى يبقى
+/// حادًا على كل المقاسات ويتغيّر من ملف واحد لكل البانرات.
+/// الضغط عليه يرجع للصفحة الرئيسية.
+class _BannerLogo extends StatelessWidget {
+  final double height;
+  const _BannerLogo({required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Flynoom',
+      button: true,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => context.go(AppRoutes.home),
+          child: Image.asset(
+            // العلامة الملوّنة (F/دبوس/طائرة) بدون حد + FLY أبيض و NOOM برتقالي.
+            'assets/images/logo_flynoom_v3.png',
+            height: height,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            // لو الملف مش موجود لأي سبب، لا يظهر شيء بدل خطأ أحمر.
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// فاصل عمودي رفيع بين مجموعات الأزرار.
 class _BannerDivider extends StatelessWidget {
   final double height;
@@ -217,6 +250,12 @@ class _BannerDivider extends StatelessWidget {
 /// اسم المنصة أصبح ظاهر بالفعل داخل صورة الخلفية نفسها (banner_*.png)،
 /// وعرضه كنص كمان كان تكرارًا. الدوس-للرجوع-للرئيسية اتشال معاه بقرار
 /// من المستخدم (مفيش بديل قابل للدوس مكانه).
+///
+/// ملحوظة إضافية (إرجاع الشعار كصورة، أكتوبر 2026): صور البانر الجديدة
+/// بدون أي شعار مطبوع داخلها، فالشعار رجع كـ widget مستقل (_BannerLogo)
+/// أعلى اليسار، بعد زر الرجوع إن وُجد، وقابل للضغط للرجوع للرئيسية.
+/// الصف العلوي مثبّت على اتجاه LTR في كل اللغات (حتى العربية) عشان
+/// الشعار يفضل دايمًا على اليسار والأزرار على اليمين.
 class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
   final Widget? tabsBar;
   final double bannerHeight;
@@ -278,6 +317,7 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
     final actionSpacing = isMobile ? 1.0 : 4.0;
     final dividerMargin = isMobile ? 5.0 : 8.0;
     final taglineFontSize = isMobile ? 17.0 : 24.0;
+    final logoHeight = isMobile ? 26.0 : 42.0;
 
     return SizedBox(
       height: preferredSize.height,
@@ -336,6 +376,25 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
               },
             ),
           ],
+          // تظليل خفيف أعلى البانر حتى يبقى الشعار (خاصة "NOOM" البرتقالي)
+          // والأيقونات واضحة فوق أي صورة، حتى لو كانت سماء غروب برتقالية.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: isMobile ? 80 : 110,
+            child: const IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x8C000000), Color(0x00000000)],
+                  ),
+                ),
+              ),
+            ),
+          ),
           SafeArea(
             child: Padding(
               padding: EdgeInsets.symmetric(
@@ -345,122 +404,57 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      if (canPop) ...[
-                        _BannerIconWrap(
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
-                            iconSize: iconSize,
-                            padding: EdgeInsets.all(iconPadding),
-                            constraints: const BoxConstraints(),
-                            onPressed: () => context.pop(),
+                  // LTR ثابت: الشعار يسار والأزرار يمين في كل اللغات.
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Row(
+                      children: [
+                        if (canPop) ...[
+                          _BannerIconWrap(
+                            child: IconButton(
+                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                              iconSize: iconSize,
+                              padding: EdgeInsets.all(iconPadding),
+                              constraints: const BoxConstraints(),
+                              onPressed: () => context.pop(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          // reverse: true بيخلي المحتوى يتثبّت على أقصى
-                          // اليمين لما تكون فيه مساحة فاضية (زي شاشات
-                          // Windows/الويب العريضة)، بدل السلوك الافتراضي
-                          // لـ SingleChildScrollView اللي بيثبّت المحتوى
-                          // على أقصى الشمال ويلغي أثر mainAxisAlignment.end.
-                          reverse: true,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              if (isAdmin) ...[
-                                _BannerAction(
-                                  label: appBannerText(
-                                    context,
-                                    ar: 'لوحة تحكم الأدمن',
-                                    en: 'Admin dashboard',
-                                    es: 'Panel de administración',
+                          const SizedBox(width: 4),
+                        ],
+                        _BannerLogo(height: logoHeight),
+                        SizedBox(width: isMobile ? 8 : 16),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            // reverse: true بيخلي المحتوى يتثبّت على أقصى
+                            // اليمين لما تكون فيه مساحة فاضية (زي شاشات
+                            // Windows/الويب العريضة)، بدل السلوك الافتراضي
+                            // لـ SingleChildScrollView اللي بيثبّت المحتوى
+                            // على أقصى الشمال ويلغي أثر mainAxisAlignment.end.
+                            reverse: true,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                if (isAdmin) ...[
+                                  _BannerAction(
+                                    label: appBannerText(
+                                      context,
+                                      ar: 'لوحة تحكم الأدمن',
+                                      en: 'Admin dashboard',
+                                      es: 'Panel de administración',
+                                    ),
+                                    child: IconButton(
+                                      icon: const Icon(Icons.admin_panel_settings_outlined, color: Colors.white),
+                                      iconSize: iconSize,
+                                      padding: EdgeInsets.all(iconPadding),
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () => context.push(AppRoutes.adminDashboard),
+                                    ),
                                   ),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.admin_panel_settings_outlined, color: Colors.white),
-                                    iconSize: iconSize,
-                                    padding: EdgeInsets.all(iconPadding),
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () => context.push(AppRoutes.adminDashboard),
-                                  ),
-                                ),
-                                SizedBox(width: actionSpacing),
-                              ],
-                              OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  backgroundColor: Colors.white.withOpacity(0.16),
-                                  side: const BorderSide(color: Colors.white, width: 1.2),
-                                  shape: const StadiumBorder(),
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isMobile ? 7 : 10,
-                                    vertical: 4,
-                                  ),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                onPressed: () => context.push(AppRoutes.aiTravel),
-                                icon: const Icon(Icons.auto_awesome, size: 12),
-                                label: const Text('AI', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                              ),
-                              _BannerDivider(horizontalMargin: dividerMargin),
-
-                              _BannerAction(
-                                label: appBannerText(context, ar: 'العملة', en: 'Currency', es: 'Moneda'),
-                                child: const CurrencySelectorButton(),
-                              ),
-                              _BannerAction(
-                                label: appBannerText(context, ar: 'اللغة', en: 'Language', es: 'Idioma'),
-                                child: PopupMenuButton<Locale>(
-                                  icon: Icon(Icons.language, color: Colors.white, size: iconSize),
-                                  padding: EdgeInsets.all(iconPadding),
-                                  onSelected: (locale) => ref.read(localeProvider.notifier).setLocale(locale),
-                                  itemBuilder: (context) => const [
-                                    PopupMenuItem(value: Locale('ar'), child: Text('العربية')),
-                                    PopupMenuItem(value: Locale('en'), child: Text('English')),
-                                    PopupMenuItem(value: Locale('es'), child: Text('Español')),
-                                    PopupMenuItem(value: Locale('tr'), child: Text('Türkçe')),
-                                    PopupMenuItem(value: Locale('id'), child: Text('Bahasa Indonesia')),
-                                    PopupMenuItem(value: Locale('hi'), child: Text('हिन्दी')),
-                                    PopupMenuItem(value: Locale('ur'), child: Text('اردو')),
-                                    PopupMenuItem(value: Locale('fr'), child: Text('Français')),
-                                    PopupMenuItem(value: Locale('bn'), child: Text('বাংলা')),
-                                  ],
-                                ),
-                              ),
-                              _BannerAction(
-                                label: appBannerText(context, ar: 'حجوزاتي', en: 'My bookings', es: 'Mis reservas'),
-                                child: IconButton(
-                                  icon: const Icon(Icons.receipt_long_outlined, color: Colors.white),
-                                  iconSize: iconSize,
-                                  padding: EdgeInsets.all(iconPadding),
-                                  constraints: const BoxConstraints(),
-                                  onPressed: () async {
-                                    if (user == null) {
-                                      await context.push(AppRoutes.login);
-                                      if (context.mounted) context.push(AppRoutes.myBookings);
-                                    } else {
-                                      context.push(AppRoutes.myBookings);
-                                    }
-                                  },
-                                ),
-                              ),
-                              _BannerAction(
-                                label: appBannerText(context, ar: 'الدعم', en: 'Support', es: 'Soporte'),
-                                child: IconButton(
-                                  icon: const Icon(Icons.support_agent_outlined, color: Colors.white),
-                                  iconSize: iconSize,
-                                  padding: EdgeInsets.all(iconPadding),
-                                  constraints: const BoxConstraints(),
-                                  onPressed: () => context.push(AppRoutes.support),
-                                ),
-                              ),
-                              if (user == null)
-                                OutlinedButton(
+                                  SizedBox(width: actionSpacing),
+                                ],
+                                OutlinedButton.icon(
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.white,
                                     backgroundColor: Colors.white.withOpacity(0.16),
@@ -473,17 +467,88 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                     minimumSize: Size.zero,
                                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                   ),
-                                  onPressed: () => context.push(AppRoutes.login),
-                                  child: Text(
-                                    appBannerText(context, ar: 'تسجيل الدخول', en: 'Sign in', es: 'Iniciar sesión'),
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  onPressed: () => context.push(AppRoutes.aiTravel),
+                                  icon: const Icon(Icons.auto_awesome, size: 12),
+                                  label: const Text('AI', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                                ),
+                                _BannerDivider(horizontalMargin: dividerMargin),
+
+                                _BannerAction(
+                                  label: appBannerText(context, ar: 'العملة', en: 'Currency', es: 'Moneda'),
+                                  child: const CurrencySelectorButton(),
+                                ),
+                                _BannerAction(
+                                  label: appBannerText(context, ar: 'اللغة', en: 'Language', es: 'Idioma'),
+                                  child: PopupMenuButton<Locale>(
+                                    icon: Icon(Icons.language, color: Colors.white, size: iconSize),
+                                    padding: EdgeInsets.all(iconPadding),
+                                    onSelected: (locale) => ref.read(localeProvider.notifier).setLocale(locale),
+                                    itemBuilder: (context) => const [
+                                      PopupMenuItem(value: Locale('ar'), child: Text('العربية')),
+                                      PopupMenuItem(value: Locale('en'), child: Text('English')),
+                                      PopupMenuItem(value: Locale('es'), child: Text('Español')),
+                                      PopupMenuItem(value: Locale('tr'), child: Text('Türkçe')),
+                                      PopupMenuItem(value: Locale('id'), child: Text('Bahasa Indonesia')),
+                                      PopupMenuItem(value: Locale('hi'), child: Text('हिन्दी')),
+                                      PopupMenuItem(value: Locale('ur'), child: Text('اردو')),
+                                      PopupMenuItem(value: Locale('fr'), child: Text('Français')),
+                                      PopupMenuItem(value: Locale('bn'), child: Text('বাংলা')),
+                                    ],
                                   ),
                                 ),
-                            ],
+                                _BannerAction(
+                                  label: appBannerText(context, ar: 'حجوزاتي', en: 'My bookings', es: 'Mis reservas'),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.receipt_long_outlined, color: Colors.white),
+                                    iconSize: iconSize,
+                                    padding: EdgeInsets.all(iconPadding),
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () async {
+                                      if (user == null) {
+                                        await context.push(AppRoutes.login);
+                                        if (context.mounted) context.push(AppRoutes.myBookings);
+                                      } else {
+                                        context.push(AppRoutes.myBookings);
+                                      }
+                                    },
+                                  ),
+                                ),
+                                _BannerAction(
+                                  label: appBannerText(context, ar: 'الدعم', en: 'Support', es: 'Soporte'),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.support_agent_outlined, color: Colors.white),
+                                    iconSize: iconSize,
+                                    padding: EdgeInsets.all(iconPadding),
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () => context.push(AppRoutes.support),
+                                  ),
+                                ),
+                                if (user == null)
+                                  OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      backgroundColor: Colors.white.withOpacity(0.16),
+                                      side: const BorderSide(color: Colors.white, width: 1.2),
+                                      shape: const StadiumBorder(),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isMobile ? 7 : 10,
+                                        vertical: 4,
+                                      ),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    onPressed: () => context.push(AppRoutes.login),
+                                    child: Text(
+                                      appBannerText(context, ar: 'تسجيل الدخول', en: 'Sign in', es: 'Iniciar sesión'),
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   if (tabsBar != null) ...[
                     if (collapsed)
