@@ -14,6 +14,12 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM') ?? 'Flynoom <bookings@flynoom.com>';
 const EMAIL_REPLY_TO = Deno.env.get('EMAIL_REPLY_TO') ?? 'ali@flynoom.com';
 
+/// شعار البريد (FLY كحلي + NOOM برتقالي) مستضاف على الموقع نفسه بعد النشر.
+/// Flutter Web يضع الأصول تحت assets/assets/. لو لم تُحمَّل الصورة
+/// (بعض برامج البريد تحجب الصور) يظهر نص alt "FLYNOOM" بنفس التنسيق.
+const LOGO_URL = Deno.env.get('EMAIL_LOGO_URL') ??
+  'https://flynoom.com/assets/assets/images/logo_flynoom_dark.png';
+
 function esc(v: unknown): string {
   return String(v ?? '')
     .replace(/&/g, '&amp;')
@@ -69,7 +75,7 @@ function layout(heading: string, intro: string, content: string): string {
   return `<!doctype html><html><body style="margin:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827">
 <div style="max-width:640px;margin:0 auto;padding:24px 12px">
 <div style="background:#ffffff;border-radius:10px;padding:28px">
-<div style="font-size:24px;font-weight:900;letter-spacing:2px;color:#0b3a6b">FLYNOOM</div>
+<img src="${LOGO_URL}" alt="FLYNOOM" width="180" height="40" style="display:block;border:0;outline:none;height:auto;max-width:180px;font-size:24px;font-weight:900;letter-spacing:2px;color:#0b3a6b">
 <h1 style="font-size:20px;margin:16px 0 6px">${heading}</h1>
 <p style="margin:0 0 8px;color:#374151">${intro}</p>
 ${content}
@@ -217,3 +223,4 @@ export async function sendEmail(to: string | null | undefined, msg: { subject: s
     return false;
   }
 }
+

@@ -964,7 +964,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     PromoBannerCarousel(slides: defaultStaysPromoSlides(context)),
                     TrendingDestinations(onSelected: _selectDestination),
                     TravelStyleSection(onSelected: _selectDestination),
-                    const DealsSection(),
+                    // مخفي: بطاقات "Early Bird Discount" و"Save on stays" تعد بخصومات
+                    // غير موجودة (انظر kDealsEnabled في features.dart).
+                    if (kDealsEnabled) const DealsSection(),
                     AccommodationTypesSection(
                       onTypeSelected: _onAccommodationTypeSelected,
                       selectedType: _selectedAccommodationType,

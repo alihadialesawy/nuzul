@@ -1,11 +1,12 @@
 {
-    "name": "nuzul",
-    "short_name": "nuzul",
+    "name": "Flynoom — Hotels Worldwide",
+    "short_name": "Flynoom",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0D47A1",
+    "theme_color": "#0D47A1",
+    "description": "Book hotels worldwide with all-in prices and clear cancellation terms. Hotels for Umrah in Makkah and Madinah, and group quotes for 5+ rooms.",
+    "lang": "en",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
