@@ -4616,7 +4616,7 @@ class _GroupStaysFormState extends State<_GroupStaysForm> {
               ),
             ],
           ),
-        Select-String -Path pubspec.yaml -Pattern "stripe"
+        ),
       ),
     );
   }
