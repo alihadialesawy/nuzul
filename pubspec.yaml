@@ -7,8 +7,8 @@ environment:
 
 dependencies:
   # Payments
-  flutter_stripe: ^11.1.0
-  flutter_stripe_web: ^6.5.1
+  flutter_stripe: ^14.2.0
+  flutter_stripe_web: ^8.2.0
   flutter:
     sdk: flutter
   flutter_localizations:
@@ -30,7 +30,7 @@ dependencies:
   supabase_flutter: ^2.8.0
 
   # Models / serialization
-  freezed_annotation: ^2.4.4
+  freezed_annotation: ^3.1.0
   json_annotation: ^4.9.0
 
   # Utilities
@@ -54,7 +54,6 @@ dev_dependencies:
 
   # Code generation
   build_runner: ^2.4.11
-  freezed: ^2.5.7
   json_serializable: ^6.8.0
   riverpod_generator: ^2.4.3
 
