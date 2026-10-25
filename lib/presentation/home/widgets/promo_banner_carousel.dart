@@ -96,8 +96,10 @@ class _PromoBannerCarouselState extends State<PromoBannerCarousel> {
   Widget build(BuildContext context) {
     if (widget.slides.isEmpty) return const SizedBox.shrink();
 
+    // هامش يمين ويسار بنفس هامش شريط البحث، حتى لا يمتد الإعلان تحت
+    // شريط التمرير (scrollbar) على الويب وسطح المكتب.
     return Padding(
-      padding: const EdgeInsets.only(top: AppSizes.md),
+      padding: const EdgeInsets.fromLTRB(AppSizes.md, AppSizes.md, AppSizes.md, 0),
       child: SizedBox(
         height: widget.height,
         child: Stack(

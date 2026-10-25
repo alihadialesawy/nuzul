@@ -359,6 +359,7 @@ class AppFooter extends StatelessWidget {
         _FooterSectionData(section.title, [
           for (final link in section.links)
             if (!(link.route == AppRoutes.myCoins && !kRewardsEnabled) &&
+                !(link.route == AppRoutes.seasonalDeals && !kDealsEnabled) &&
                 !(link.route == AppRoutes.flights && !kFlightsEnabled))
               link,
         ]),

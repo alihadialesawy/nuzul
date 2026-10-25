@@ -84,10 +84,25 @@ class AppRoutes {
 // عشان GoRouter يعرف يميّز بين الـ Navigator الأساسي والفرعي بتاع الـ Shell.
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// هل رابط فتح الموقع غير صالح للتنقل؟ (ويب فقط)
+/// الموقع يستخدم روابط بعد # مثل flynoom.com/#/privacy-notice. لكن عند فشل
+/// تسجيل الدخول عبر Google، يعيد Supabase الزائر برابط مثل
+/// flynoom.com/?error=...#error=server_error&... — الجزء بعد # لا يبدأ بـ "/"،
+/// فيتعطل GoRouter (الشاشة الحمراء). في هذه الحالة نتجاهل الرابط ونفتح الرئيسية.
+/// الروابط العادية (#/privacy-notice) ورجوع الدخول الناجح (?code=...) لا تتأثر.
+bool get _startUrlIsInvalid {
+  final fragment = Uri.base.fragment;
+  return fragment.isNotEmpty && !fragment.startsWith('/');
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.home,
+    overridePlatformDefaultLocation: _startUrlIsInvalid,
+    // أي رابط غير معروف (مثلًا رابط قديم أو مكتوب خطأ) يعود للرئيسية بدل
+    // صفحة خطأ.
+    onException: (context, state, router) => router.go(AppRoutes.home),
     // يمنع أي حد مش أدمن من فتح أي مسار تحت /admin مباشرة (سواء
     // بالضغط على رابط أو بكتابة الرابط يدويًا). لو حاول، بيترجّع
     // للصفحة الرئيسية فورًا بدل ما تظهر له شاشة الأدمن أصلًا.
@@ -106,6 +121,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (!kFlightsEnabled && flightRoutes.contains(location)) return AppRoutes.home;
       if (!kCarsEnabled && location == AppRoutes.carBooking) return AppRoutes.home;
       if (!kRewardsEnabled && location == AppRoutes.myCoins) return AppRoutes.home;
+      if (!kDealsEnabled && location == AppRoutes.seasonalDeals) return AppRoutes.home;
 
       final goingToAdmin = location.startsWith(AppRoutes.adminDashboard);
       if (!goingToAdmin) return null;

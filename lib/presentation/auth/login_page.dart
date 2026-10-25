@@ -1,6 +1,12 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+// استيراد كامل بالبادئة sb: الدالة signInWithOAuth إضافة (extension) من
+// supabase_flutter ولا تتوفر مع استيراد show لأسماء محددة.
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import '../../app.dart';
 import '../../core/constants/app_sizes.dart';
@@ -26,6 +32,22 @@ String _t3(
   }
 }
 
+/// رابط الرجوع لتطبيق Android بعد تسجيل الدخول عبر Google.
+/// ⚠️ يجب أن يطابق:
+///   1) applicationId في android/app/build.gradle.kts (الجزء قبل ://)
+///   2) intent-filter في AndroidManifest.xml (scheme + host)
+///   3) Redirect URLs في Supabase ← Authentication ← URL Configuration
+const String _kMobileRedirect = 'com.flynoom.app://login-callback';
+
+/// زر Google يظهر على الويب و Android فقط:
+/// - iPhone: مخفي حتى نضيف "Sign in with Apple" معه (شرط Apple، المادة 4.8).
+/// - Windows/macOS: تسجيل الدخول عبر المتصفح يحتاج إعدادًا خاصًا؛ للتجربة
+///   شغّل الويب: flutter run -d chrome --web-port 5000
+bool get _googleSupportedHere {
+  if (kIsWeb) return true;
+  return defaultTargetPlatform == TargetPlatform.android;
+}
+
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -39,13 +61,40 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _googleLoading = false;
   String? _errorMessage;
+
+  /// على Android: بعد العودة من صفحة Google عبر الرابط، يصلنا حدث signedIn
+  /// فنغلق صفحة الدخول. (على الويب الصفحة كلها تُعاد تحميلها بعد الرجوع.)
+  StreamSubscription? _authSub;
+  bool _awaitingGoogle = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSub = sb.Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (!mounted || !_awaitingGoogle) return;
+      if (data.event == sb.AuthChangeEvent.signedIn) {
+        _awaitingGoogle = false;
+        _leavePage();
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _leavePage() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.home);
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -65,13 +114,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (!mounted) return;
 
     result.when(
-      success: (user) {
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go(AppRoutes.home);
-        }
-      },
+      success: (user) => _leavePage(),
       failure: (message) {
         setState(() {
           _isLoading = false;
@@ -81,27 +124,55 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  /// أزرار الدخول عبر Google/Apple/Facebook — شكل فقط حاليًا، هيتفعّلوا
-  /// لاحقًا بربطهم بـ Supabase OAuth signInWithOAuth.
-  void _showComingSoon(BuildContext context, String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _t3(
-            context,
-            ar: 'تسجيل الدخول عبر $provider هيتفعّل قريبًا',
-            en: '$provider sign-in is coming soon',
-            es: 'El inicio de sesión con $provider llegará pronto',
-          ),
-        ),
-        duration: const Duration(seconds: 1),
-      ),
+  /// تسجيل الدخول عبر Google (Supabase OAuth، تدفق PKCE الافتراضي).
+  /// الويب: ينتقل المتصفح لصفحة Google ثم يرجع لنفس الموقع مسجّلًا.
+  /// Android: يفتح المتصفح، ثم يرجع للتطبيق عبر _kMobileRedirect.
+  Future<void> _handleGoogle() async {
+    setState(() {
+      _googleLoading = true;
+      _errorMessage = null;
+    });
+    _awaitingGoogle = true;
+
+    final failedMsg = _t3(
+      context,
+      ar: 'تعذّر فتح تسجيل الدخول عبر Google. حاول مرة أخرى.',
+      en: 'Could not open Google sign-in. Please try again.',
+      es: 'No se pudo abrir el inicio de sesión con Google. Inténtalo de nuevo.',
     );
+
+    try {
+      final opened = await sb.Supabase.instance.client.auth.signInWithOAuth(
+        sb.OAuthProvider.google,
+        // '/' في النهاية ضروري: Redirect URLs في Supabase مثل http://localhost:5000/**
+        // لا تطابق الرابط بدون '/'، فيرجع المستخدم إلى Site URL (flynoom.com).
+        redirectTo: kIsWeb ? '${Uri.base.origin}/' : _kMobileRedirect,
+        authScreenLaunchMode:
+        kIsWeb ? sb.LaunchMode.platformDefault : sb.LaunchMode.externalApplication,
+        // يعرض قائمة الحسابات دائمًا، حتى يختار المستخدم الحساب الصحيح.
+        queryParams: const {'prompt': 'select_account'},
+      );
+      if (!opened) {
+        _awaitingGoogle = false;
+        if (mounted) setState(() => _errorMessage = failedMsg);
+      }
+    } on sb.AuthException catch (e) {
+      _awaitingGoogle = false;
+      if (mounted) setState(() => _errorMessage = e.message);
+    } catch (_) {
+      _awaitingGoogle = false;
+      if (mounted) setState(() => _errorMessage = failedMsg);
+    } finally {
+      // على Android يرجع الاستدعاء فور فتح المتصفح؛ لا نترك الزر معطّلًا
+      // لو ألغى المستخدم ورجع دون تسجيل.
+      if (mounted) setState(() => _googleLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final busy = _isLoading || _googleLoading;
 
     return Scaffold(
       appBar: const AppBanner(),
@@ -123,19 +194,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSizes.sm),
+              // مزايا حقيقية فقط (نظام المكافآت مخفي، فلا نعد به هنا).
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.card_giftcard, size: 16, color: Colors.amber),
+                  const Icon(Icons.bolt_outlined, size: 16, color: Colors.amber),
                   const SizedBox(width: 4),
-                  Text(
-                    _t3(
-                      context,
-                      ar: 'مكافآت العضوية',
-                      en: 'Membership rewards',
-                      es: 'Recompensas de socio',
+                  Flexible(
+                    child: Text(
+                      _t3(
+                        context,
+                        ar: 'بياناتك محفوظة لحجز أسرع',
+                        en: 'Faster booking with saved details',
+                        es: 'Reserva más rápido con tus datos guardados',
+                      ),
+                      style: const TextStyle(fontSize: 12),
                     ),
-                    style: const TextStyle(fontSize: 12),
                   ),
                   const SizedBox(width: 16),
                   const Icon(Icons.event_available_outlined, size: 16, color: Colors.teal),
@@ -195,7 +269,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                     const SizedBox(height: AppSizes.md),
                     ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
+                      onPressed: busy ? null : _handleLogin,
                       child: _isLoading
                           ? const SizedBox(
                         height: 20,
@@ -217,78 +291,114 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: AppSizes.lg),
-              Row(
-                children: [
-                  const Expanded(child: Divider()),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(_t3(context, ar: 'أو', en: 'or', es: 'o')),
+
+              if (_googleSupportedHere) ...[
+                const SizedBox(height: AppSizes.lg),
+                Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(_t3(context, ar: 'أو', en: 'or', es: 'o')),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
+                ),
+                const SizedBox(height: AppSizes.lg),
+                // زر بأسلوب Google الرسمي (أبيض بإطار + شعار G). ملف الشعار
+                // assets/images/google_g.png من صفحة Google Branding Guidelines؛
+                // إن لم يوجد يظهر رمز بديل.
+                OutlinedButton(
+                  onPressed: busy ? null : _handleGoogle,
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF1F1F1F),
+                    side: const BorderSide(color: Color(0xFF747775)),
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                   ),
-                  const Expanded(child: Divider()),
-                ],
-              ),
-              const SizedBox(height: AppSizes.lg),
-              // ملاحظة: أزرار الدخول الاجتماعي دي شكل بس حاليًا (Placeholders).
-              // لتفعيلها فعليًا لاحقًا: Supabase.instance.client.auth.signInWithOAuth(...)
-              ElevatedButton.icon(
-                onPressed: () => _showComingSoon(context, 'Google'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4285F4),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                icon: const Icon(Icons.g_mobiledata, size: 26),
-                label: Text(
-                  _t3(
-                    context,
-                    ar: 'المتابعة عبر Google',
-                    en: 'Continue with Google',
-                    es: 'Continuar con Google',
+                  child: _googleLoading
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                      : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/images/google_g.png',
+                        height: 20,
+                        width: 20,
+                        errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.g_mobiledata, size: 26, color: Color(0xFF4285F4)),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _t3(
+                          context,
+                          ar: 'المتابعة عبر Google',
+                          en: 'Continue with Google',
+                          es: 'Continuar con Google',
+                        ),
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: AppSizes.sm),
-              OutlinedButton.icon(
-                onPressed: () => _showComingSoon(context, 'Apple'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.black87,
-                  minimumSize: const Size.fromHeight(48),
+                const SizedBox(height: AppSizes.sm),
+                // الموافقة على الشروط عند إنشاء حساب عبر Google (لا يمر بصفحة التسجيل).
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      _t3(
+                        context,
+                        ar: 'بالمتابعة عبر Google، فإنك توافق على',
+                        en: 'By continuing with Google, you agree to our',
+                        es: 'Al continuar con Google, aceptas nuestros',
+                      ),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => context.push(AppRoutes.termsOfService),
+                      child: Text(
+                        _t3(context, ar: 'شروط الخدمة', en: 'Terms of Service', es: 'Términos del servicio'),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    Text(
+                      _t3(context, ar: 'وتقرّ بـ', en: 'and acknowledge our', es: 'y reconoces nuestro'),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => context.push(AppRoutes.privacyNotice),
+                      child: Text(
+                        _t3(context, ar: 'إشعار الخصوصية', en: 'Privacy Notice', es: 'Aviso de privacidad'),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ),
-                icon: const Icon(Icons.apple, size: 22),
-                label: Text(
-                  _t3(
-                    context,
-                    ar: 'المتابعة عبر Apple',
-                    en: 'Continue with Apple',
-                    es: 'Continuar con Apple',
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSizes.sm),
-              OutlinedButton.icon(
-                onPressed: () => _showComingSoon(context, 'Facebook'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF1877F2),
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                icon: const Icon(Icons.facebook, size: 22, color: Color(0xFF1877F2)),
-                label: Text(
-                  _t3(
-                    context,
-                    ar: 'المتابعة عبر Facebook',
-                    en: 'Continue with Facebook',
-                    es: 'Continuar con Facebook',
-                  ),
-                  style: const TextStyle(color: Colors.black87),
-                ),
-              ),
+              ],
+
+              // Apple و Facebook: مؤجلان. Apple يُضاف مع إطلاق تطبيق iPhone
+              // (بعد تفعيل حساب Apple Developer)، و Facebook غير مخطط حاليًا.
 
               const SizedBox(height: AppSizes.lg),
               TextButton(
-                onPressed: _isLoading
-                    ? null
-                    : () => context.push(AppRoutes.register),
+                onPressed: busy ? null : () => context.push(AppRoutes.register),
                 child: Text(l10n.noAccountRegister),
               ),
             ],

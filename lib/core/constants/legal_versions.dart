@@ -4,5 +4,5 @@
 /// في terms_of_service_page.dart أو privacy_notice_page.dart، غيّر الرقم
 /// هنا بنفس التاريخ (YYYY-MM-DD). يُحفظ مع كل حجز في جدول booking_consents،
 /// فنعرف بالضبط أي نسخة وافق عليها العميل.
-const String kTermsVersion = '2026-10-12';
-const String kPrivacyVersion = '2026-10-12';
+const String kTermsVersion = '2026-10-23';
+const String kPrivacyVersion = '2026-10-23';

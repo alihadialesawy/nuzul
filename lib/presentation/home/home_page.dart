@@ -91,6 +91,11 @@ String _t3(BuildContext context, {
 final flightHotelSelectionProvider =
 StateProvider<({DuffelFlightOffer? offer, HotelModel? hotel})>((ref) => (offer: null, hotel: null));
 
+/// قسم "Featured Hotels" مخفي حتى تتوفر بيانات حقيقية من HotelBeds.
+/// عرض تقييمات أو أعداد مراجعات أو أسعار غير حقيقية مخالف لقاعدة FTC
+/// للمراجعات (16 CFR 465) وقد يُعد إعلانًا مضللًا.
+const bool _kFeaturedHotelsEnabled = false;
+
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -966,7 +971,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                     if (_selectedAccommodationType != null)
                       AccommodationPreviewSection(selectedType: _selectedAccommodationType!),
-                    const FeaturedHotelsSection(),
+                    // مخفي مؤقتًا: بيانات تجريبية (تقييمات ومراجعات وأسعار غير حقيقية،
+                    // وأسماء Hilton/Marriott). يُعاد لاحقًا ببيانات HotelBeds حقيقية.
+                    if (_kFeaturedHotelsEnabled) const FeaturedHotelsSection(),
                     const ExploreCountriesSection(),
                     const FaqSection(),
                     const AppFooter(),

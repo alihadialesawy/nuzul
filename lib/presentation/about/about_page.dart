@@ -6,6 +6,9 @@ import '../../core/widgets/app_banner.dart';
 import '../../core/widgets/app_footer.dart';
 
 /// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني/تركي/إندونيسي/هندي/أوردو/فرنسي/بنغالي).
+/// غيّرها إلى true فقط بعد نشر التطبيق للعامة على Google Play و Apple App Store.
+const bool _kAppStoresLive = false;
+
 String _t3(
     BuildContext context, {
       required String ar,
@@ -250,6 +253,49 @@ class AboutPage extends StatelessWidget {
                   'এবং পেমেন্ট Stripe নিরাপদে প্রক্রিয়া করে, তাই আমরা কখনো আপনার কার্ড নম্বর সংরক্ষণ করি না।',
             )),
             const SizedBox(height: AppSizes.xl),
+            // ⚠️ قسم المتاجر مخفي حتى يُنشر التطبيق فعلًا للعامة على Google Play
+            // و Apple App Store. عند النشر غيّر _kAppStoresLive إلى true.
+            if (_kAppStoresLive) ...[
+              heading(_t3(context,
+                  ar: 'Flynoom على كل أجهزتك',
+                  en: 'Flynoom on all your devices',
+                  es: 'Flynoom en todos tus dispositivos',
+                  tr: 'Flynoom tüm cihazlarınızda',
+                  id: 'Flynoom di semua perangkat Anda',
+                  hi: 'आपके सभी डिवाइस पर Flynoom',
+                  ur: 'آپ کے تمام آلات پر Flynoom',
+                  fr: 'Flynoom sur tous vos appareils',
+                  bn: 'আপনার সব ডিভাইসে Flynoom')),
+              const SizedBox(height: AppSizes.sm),
+              body(_t3(
+                context,
+                ar: 'يمكنك استخدام Flynoom على الويب عبر flynoom.com، أو عبر تطبيقنا لهواتف Android على Google Play ولأجهزة iPhone على Apple App Store. '
+                    'حسابك وحجوزاتك وإعداداتك هي نفسها على كل أجهزتك.',
+                en: 'You can use Flynoom on the web at flynoom.com, or with our app for Android phones on Google Play and for iPhone on the Apple App Store. '
+                    'Your account, bookings, and settings are the same on every device.',
+                es: 'Puedes usar Flynoom en la web en flynoom.com, o con nuestra app para teléfonos Android en Google Play y para iPhone en el App Store de Apple. '
+                    'Tu cuenta, tus reservas y tu configuración son las mismas en todos tus dispositivos.',
+                tr: 'Flynoom\'u web\'de flynoom.com adresinden ya da Google Play\'deki Android uygulamamız ve Apple App Store\'daki iPhone uygulamamızla kullanabilirsiniz. '
+                    'Hesabınız, rezervasyonlarınız ve ayarlarınız tüm cihazlarınızda aynıdır.',
+                id: 'Anda dapat menggunakan Flynoom di web melalui flynoom.com, atau dengan aplikasi kami untuk ponsel Android di Google Play dan untuk iPhone di Apple App Store. '
+                    'Akun, pemesanan, dan pengaturan Anda sama di setiap perangkat.',
+                hi: 'आप Flynoom को वेब पर flynoom.com पर, या Google Play पर Android फ़ोन और Apple App Store पर iPhone के लिए हमारे ऐप से इस्तेमाल कर सकते हैं। '
+                    'आपका खाता, बुकिंग और सेटिंग्स हर डिवाइस पर एक जैसी रहती हैं।',
+                ur: 'آپ Flynoom کو ویب پر flynoom.com پر، یا Google Play پر Android فونز اور Apple App Store پر iPhone کے لیے ہماری ایپ کے ذریعے استعمال کر سکتے ہیں۔ '
+                    'آپ کا اکاؤنٹ، بکنگز اور سیٹنگز ہر ڈیوائس پر ایک جیسی رہتی ہیں۔',
+                fr: 'Vous pouvez utiliser Flynoom sur le web à l\'adresse flynoom.com, ou avec notre application pour téléphones Android sur Google Play et pour iPhone sur l\'App Store d\'Apple. '
+                    'Votre compte, vos réservations et vos réglages sont les mêmes sur tous vos appareils.',
+                bn: 'আপনি ওয়েবে flynoom.com-এ, অথবা Google Play-তে Android ফোনের জন্য এবং Apple App Store-এ iPhone-এর জন্য আমাদের অ্যাপ দিয়ে Flynoom ব্যবহার করতে পারেন। '
+                    'আপনার অ্যাকাউন্ট, বুকিং ও সেটিংস প্রতিটি ডিভাইসে একই থাকে।',
+              )),
+              const SizedBox(height: AppSizes.md),
+              // إشعار العلامات التجارية مطلوب عند ذكر أسماء المتجرين.
+              const Text(
+                'Google Play is a trademark of Google LLC. Apple, iPhone, and App Store are trademarks of Apple Inc., registered in the U.S. and other countries.',
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: AppSizes.xl),
+            ],
             const AppFooter(),
           ],
         ),

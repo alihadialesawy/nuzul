@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/app_banner.dart';
@@ -47,8 +49,13 @@ class _FaqItem {
   const _FaqItem(this.question, this.answer);
 }
 
-/// شاشة دعم العملاء: هيدر + تبويبات فئات + أسئلة شائعة قابلة للطي + كلمات
-/// دلالية سريعة + شريط وصول سريع (شات/اتصال/FAQ/طوارئ) تحت.
+/// شاشة دعم العملاء.
+///
+/// ⚠️ كل إجابة هنا وعد للعميل؛ لا تكتب إلا ما يعمل فعلًا الآن.
+/// أُزيلت من النسخة السابقة: أسئلة الطيران والسيارات (مخفية)، "تنبيهات الأسعار"،
+/// تصنيفات "More FAQ" التي لا تفتح شيئًا، زر "اتصل بنا" برقم وهمي،
+/// وزر "دردشة" الذي كان يفتح البريد فقط.
+/// عند إعادة الطيران: أضف تبويبًا بأسئلة طيران حقيقية.
 class SupportPage extends StatefulWidget {
   const SupportPage({super.key});
 
@@ -57,15 +64,19 @@ class SupportPage extends StatefulWidget {
 }
 
 class _SupportPageState extends State<SupportPage> {
-  String _activeCategory = 'flights';
   final _scrollController = ScrollController();
   final _faqSectionKey = GlobalKey();
 
-  // TODO: استبدل ده بالإيميل ورقم الدعم الرسمي بمجرد ما يتوفروا.
-  // لحد ما ده يحصل، الأزرار شغالة فعليًا وبتفتح تطبيق البريد/الاتصال
-  // بالجهاز، لكن بقيم مؤقتة placeholder.
   static const String _supportEmail = 'support@flynoom.com';
-  static const String _supportPhone = '+10000000000';
+
+  /// رقم هاتف/واتساب الدعم. اتركه فارغًا ما دام لا يوجد رقم يرد عليه أحد؛
+  /// زر "اتصل بنا" يظهر تلقائيًا عند كتابة رقم حقيقي هنا (مثل '+13135551234').
+  static const String _supportPhone = '';
+
+  /// رقم واتساب الدعم بالصيغة الدولية بدون + أو مسافات (يُستخدم في رابط wa.me).
+  /// الرقم لا يُكتب في الصفحة؛ يظهر فقط لمن يضغط زر واتساب.
+  /// لتغييره لاحقًا (مثلًا لرقم عمل منفصل) غيّر هذا السطر فقط.
+  static const String _whatsAppNumber = '19784839704';
 
   @override
   void dispose() {
@@ -85,6 +96,26 @@ class _SupportPageState extends State<SupportPage> {
     }
   }
 
+  Future<void> _openWhatsApp(BuildContext context) async {
+    final message = _t3(
+      context,
+      ar: 'مرحبًا Flynoom، رقم حجزي (إن وُجد): ',
+      en: 'Hello Flynoom, my booking reference (if any): ',
+      es: 'Hola Flynoom, mi referencia de reserva (si la tengo): ',
+      tr: 'Merhaba Flynoom, rezervasyon numaram (varsa): ',
+      id: 'Halo Flynoom, kode pemesanan saya (jika ada): ',
+      hi: 'नमस्ते Flynoom, मेरा बुकिंग नंबर (यदि हो): ',
+      ur: 'السلام علیکم Flynoom، میرا بکنگ نمبر (اگر ہو): ',
+      fr: 'Bonjour Flynoom, ma référence de réservation (le cas échéant) : ',
+      bn: 'হ্যালো Flynoom, আমার বুকিং নম্বর (যদি থাকে): ',
+    );
+    final uri = Uri.parse('https://wa.me/$_whatsAppNumber?text=${Uri.encodeComponent(message)}');
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication, webOnlyWindowName: '_blank');
+    if (!launched && context.mounted) {
+      _showLaunchError(context);
+    }
+  }
+
   Future<void> _openPhone(BuildContext context) async {
     final uri = Uri(scheme: 'tel', path: _supportPhone);
     final launched = await launchUrl(uri);
@@ -98,15 +129,15 @@ class _SupportPageState extends State<SupportPage> {
       SnackBar(
         content: Text(_t3(
           context,
-          ar: 'تعذر فتح التطبيق المطلوب على هذا الجهاز',
-          en: 'Could not open the required app on this device',
-          es: 'No se pudo abrir la aplicación en este dispositivo',
-          tr: 'Bu cihazda gerekli uygulama açılamadı',
-          id: 'Tidak dapat membuka aplikasi yang diperlukan di perangkat ini',
-          hi: 'इस डिवाइस पर आवश्यक ऐप नहीं खोला जा सका',
-          ur: 'اس ڈیوائس پر مطلوبہ ایپ نہیں کھولی جا سکی',
-          fr: 'Impossible d\'ouvrir l\'application requise sur cet appareil',
-          bn: 'এই ডিভাইসে প্রয়োজনীয় অ্যাপ খোলা যায়নি',
+          ar: 'تعذّر فتح التطبيق. راسلنا على $_supportEmail',
+          en: 'Could not open the app. Email us at $_supportEmail',
+          es: 'No se pudo abrir la aplicación. Escríbenos a $_supportEmail',
+          tr: 'Uygulama açılamadı. Bize $_supportEmail adresinden yazın',
+          id: 'Tidak dapat membuka aplikasi. Email kami di $_supportEmail',
+          hi: 'ऐप नहीं खुल सका। हमें $_supportEmail पर ईमेल करें',
+          ur: 'ایپ نہیں کھل سکی۔ ہمیں $_supportEmail پر ای میل کریں',
+          fr: 'Impossible d\'ouvrir l\'application. Écrivez-nous à $_supportEmail',
+          bn: 'অ্যাপ খোলা যায়নি। আমাদের $_supportEmail-এ ইমেইল করুন',
         )),
       ),
     );
@@ -123,34 +154,53 @@ class _SupportPageState extends State<SupportPage> {
     }
   }
 
-  void _showEmergencyDialog(BuildContext context) {
+  /// "مشكلة في الفندق؟" — بدل "مساعدة طارئة" التي كانت توحي بخدمة فورية 24/7.
+  void _showHotelProblemDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(_t3(
           dialogContext,
-          ar: 'مساعدة طارئة',
-          en: 'Emergency assistance',
-          es: 'Asistencia de emergencia',
-          tr: 'Acil yardım',
-          id: 'Bantuan darurat',
-          hi: 'आपातकालीन सहायता',
-          ur: 'ہنگامی امداد',
-          fr: 'Assistance d\'urgence',
-          bn: 'জরুরি সহায়তা',
+          ar: 'مشكلة في الفندق؟',
+          en: 'Problem at the hotel?',
+          es: '¿Un problema en el hotel?',
+          tr: 'Otelde bir sorun mu var?',
+          id: 'Ada masalah di hotel?',
+          hi: 'होटल में कोई समस्या?',
+          ur: 'ہوٹل میں کوئی مسئلہ؟',
+          fr: 'Un problème à l\'hôtel ?',
+          bn: 'হোটেলে কোনো সমস্যা?',
         )),
         content: Text(
           _t3(
             dialogContext,
-            ar: 'لو إنت في خطر فوري، تواصل أولًا مع خدمات الطوارئ المحلية في مكانك. لو المشكلة عاجلة وتخص حجزًا قائمًا (رحلة فايتتك، طيران اتلغى، أو محتاج تغيّر إقامتك)، تواصل مع فريق الدعم عبر البريد الإلكتروني وهنرد عليك بأسرع ما يمكن.',
-            en: 'If you are in immediate danger, contact local emergency services where you are first. For an urgent issue with an existing booking — a missed connection, a cancelled flight, or needing to change your stay — reach our support team by email and we\'ll respond as quickly as we can.',
-            es: 'Si estás en peligro inmediato, contacta primero con los servicios de emergencia locales. Para un problema urgente con una reserva existente, contacta a nuestro equipo de soporte por correo y responderemos lo antes posible.',
-            tr: 'Acil bir tehlike içindeyseniz önce bulunduğunuz yerdeki yerel acil servislerle iletişime geçin. Mevcut bir rezervasyonla ilgili acil bir durum için (kaçırılan aktarma, iptal edilen uçuş, konaklama değişikliği) destek ekibimize e-posta ile ulaşın, en kısa sürede yanıt vereceğiz.',
-            id: 'Jika Anda dalam bahaya langsung, hubungi dulu layanan darurat setempat. Untuk masalah mendesak terkait pemesanan yang sudah ada, hubungi tim dukungan kami melalui email dan kami akan merespons secepat mungkin.',
-            hi: 'अगर आप तत्काल खतरे में हैं, तो पहले अपने स्थान की स्थानीय आपातकालीन सेवाओं से संपर्क करें। किसी मौजूदा बुकिंग से जुड़ी तत्काल समस्या के लिए हमारी सहायता टीम को ईमेल करें, हम जल्द से जल्द जवाब देंगे।',
-            ur: 'اگر آپ فوری خطرے میں ہیں تو پہلے اپنے مقام کی مقامی ہنگامی خدمات سے رابطہ کریں۔ کسی موجودہ بکنگ سے متعلق فوری مسئلے کے لیے ای میل کے ذریعے ہماری سپورٹ ٹیم سے رابطہ کریں، ہم جلد از جلد جواب دیں گے۔',
-            fr: 'Si vous êtes en danger immédiat, contactez d\'abord les services d\'urgence locaux. Pour un problème urgent lié à une réservation existante, contactez notre équipe d\'assistance par e-mail et nous répondrons dès que possible.',
-            bn: 'আপনি যদি তাৎক্ষণিক বিপদে থাকেন, প্রথমে আপনার এলাকার স্থানীয় জরুরি সেবার সাথে যোগাযোগ করুন। বিদ্যমান বুকিং সংক্রান্ত জরুরি সমস্যার জন্য ইমেইলের মাধ্যমে আমাদের সহায়তা দলের সাথে যোগাযোগ করুন, আমরা যত দ্রুত সম্ভব সাড়া দেব।',
+            ar: '١. إن كنت في خطر، اتصل أولًا بخدمات الطوارئ المحلية.\n\n'
+                '٢. لمشكلة في الغرفة أو تسجيل الوصول، تواصل مع الفندق مباشرة؛ رقمه مكتوب في بريد تأكيد الحجز، ومعه رقم الحجز الذي يطلبه الفندق.\n\n'
+                '٣. ثم راسلنا عبر واتساب أو البريد برقم الحجز ووصف المشكلة، وسنتابع مع الفندق.',
+            en: '1. If you are in danger, call local emergency services first.\n\n'
+                '2. For a problem with your room or check-in, contact the hotel directly. Its phone number is in your confirmation email, together with the booking reference the hotel will ask for.\n\n'
+                '3. Then message us on WhatsApp or by email with your booking reference and what happened, and we will follow up with the hotel.',
+            es: '1. Si estás en peligro, llama primero a los servicios de emergencia locales.\n\n'
+                '2. Si hay un problema con tu habitación o el check-in, contacta directamente con el hotel. Su teléfono está en tu correo de confirmación, junto con la referencia de reserva que te pedirá el hotel.\n\n'
+                '3. Después, escríbenos con tu referencia de reserva y lo ocurrido, y haremos el seguimiento con el hotel.',
+            tr: '1. Tehlikedeyseniz önce yerel acil servisleri arayın.\n\n'
+                '2. Odanız veya girişinizle ilgili bir sorun için doğrudan otelle iletişime geçin. Otelin telefonu, otelin isteyeceği rezervasyon numarasıyla birlikte onay e-postanızda yer alır.\n\n'
+                '3. Ardından rezervasyon numaranızı ve yaşananları bize e-postayla gönderin, otelle biz takip edelim.',
+            id: '1. Jika Anda dalam bahaya, hubungi dulu layanan darurat setempat.\n\n'
+                '2. Untuk masalah kamar atau check-in, hubungi hotel langsung. Nomor teleponnya ada di email konfirmasi Anda, bersama kode pemesanan yang akan diminta hotel.\n\n'
+                '3. Lalu email kami kode pemesanan dan apa yang terjadi, dan kami akan menindaklanjuti dengan hotel.',
+            hi: '1. अगर आप खतरे में हैं, तो पहले स्थानीय आपातकालीन सेवाओं को कॉल करें।\n\n'
+                '2. कमरे या चेक-इन की समस्या के लिए सीधे होटल से संपर्क करें। उसका फ़ोन नंबर आपके पुष्टि ईमेल में है, साथ में वह बुकिंग नंबर भी जो होटल मांगेगा।\n\n'
+                '3. फिर हमें अपना बुकिंग नंबर और समस्या ईमेल करें, हम होटल से बात करेंगे।',
+            ur: '1. اگر آپ خطرے میں ہیں تو پہلے مقامی ہنگامی خدمات کو کال کریں۔\n\n'
+                '2. کمرے یا چیک اِن کے مسئلے کے لیے براہ راست ہوٹل سے رابطہ کریں۔ اس کا فون نمبر آپ کی تصدیقی ای میل میں ہے، ساتھ وہ بکنگ نمبر بھی جو ہوٹل مانگے گا۔\n\n'
+                '3. پھر ہمیں اپنا بکنگ نمبر اور مسئلہ ای میل کریں، ہم ہوٹل سے بات کریں گے۔',
+            fr: '1. Si vous êtes en danger, appelez d\'abord les services d\'urgence locaux.\n\n'
+                '2. Pour un problème de chambre ou d\'arrivée, contactez directement l\'hôtel. Son numéro figure dans votre e-mail de confirmation, avec la référence de réservation que l\'hôtel vous demandera.\n\n'
+                '3. Ensuite, envoyez-nous votre référence de réservation et ce qui s\'est passé, et nous assurerons le suivi avec l\'hôtel.',
+            bn: '১. আপনি বিপদে থাকলে প্রথমে স্থানীয় জরুরি সেবায় কল করুন।\n\n'
+                '২. রুম বা চেক-ইনের সমস্যার জন্য সরাসরি হোটেলের সাথে যোগাযোগ করুন। হোটেলের ফোন নম্বর আপনার নিশ্চিতকরণ ইমেইলে আছে, সাথে সেই বুকিং নম্বরও যা হোটেল চাইবে।\n\n'
+                '৩. তারপর আমাদের বুকিং নম্বর ও সমস্যাটি ইমেইল করুন, আমরা হোটেলের সাথে কথা বলব।',
           ),
           style: const TextStyle(height: 1.5),
         ),
@@ -170,6 +220,25 @@ class _SupportPageState extends State<SupportPage> {
               bn: 'বন্ধ করুন',
             )),
           ),
+          if (_whatsAppNumber.isNotEmpty)
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _openWhatsApp(context);
+              },
+              child: Text(_t3(
+                dialogContext,
+                ar: 'واتساب',
+                en: 'WhatsApp',
+                es: 'WhatsApp',
+                tr: 'WhatsApp',
+                id: 'WhatsApp',
+                hi: 'WhatsApp',
+                ur: 'واٹس ایپ',
+                fr: 'WhatsApp',
+                bn: 'WhatsApp',
+              )),
+            ),
           FilledButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
@@ -177,15 +246,15 @@ class _SupportPageState extends State<SupportPage> {
             },
             child: Text(_t3(
               dialogContext,
-              ar: 'إرسال بريد إلكتروني',
-              en: 'Send email',
-              es: 'Enviar correo',
-              tr: 'E-posta gönder',
-              id: 'Kirim email',
-              hi: 'ईमेल भेजें',
-              ur: 'ای میل بھیجیں',
-              fr: 'Envoyer un e-mail',
-              bn: 'ইমেইল পাঠান',
+              ar: 'راسلنا',
+              en: 'Email us',
+              es: 'Escríbenos',
+              tr: 'Bize yazın',
+              id: 'Email kami',
+              hi: 'हमें ईमेल करें',
+              ur: 'ہمیں ای میل کریں',
+              fr: 'Écrivez-nous',
+              bn: 'আমাদের ইমেইল করুন',
             )),
           ),
         ],
@@ -193,387 +262,213 @@ class _SupportPageState extends State<SupportPage> {
     );
   }
 
-  List<_FaqItem> _faqsFor(BuildContext context, String category) {
-    switch (category) {
-      case 'hotels':
-        return [
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'كيف أحجز غرفة؟',
-              en: 'How do I book a room?',
-              es: '¿Cómo reservo una habitación?',
-              tr: 'Nasıl oda ayırtırım?',
-              id: 'Bagaimana cara memesan kamar?',
-              hi: 'मैं कमरा कैसे बुक करूं?',
-              ur: 'میں کمرہ کیسے بک کروں؟',
-              fr: 'Comment réserver une chambre ?',
-              bn: 'আমি কীভাবে একটি রুম বুক করব?',
-            ),
-            _t3(
-              context,
-              ar: 'ادخل إلى تبويب "الإقامة"، واختر المدينة والتواريخ وعدد الضيوف، ثم ابدأ البحث. بعد اختيار الفندق ونوع الغرفة، أكمل بيانات الحجز والدفع.',
-              en: 'Go to the Stays tab, choose your city, dates, and guest count, then search. After picking a hotel and room type, complete your booking and payment.',
-              es: 'Ve a la pestaña Alojamientos, elige ciudad, fechas y huéspedes, y busca. Luego elige hotel y tipo de habitación para completar la reserva.',
-              tr: 'Konaklama sekmesine gidin, şehir, tarih ve misafir sayısını seçip arama yapın. Otel ve oda türünü seçtikten sonra rezervasyon ve ödemeyi tamamlayın.',
-              id: 'Buka tab Menginap, pilih kota, tanggal, dan jumlah tamu, lalu cari. Setelah memilih hotel dan tipe kamar, selesaikan pemesanan dan pembayaran.',
-              hi: '"ठहरना" टैब पर जाएं, अपना शहर, तारीखें और मेहमानों की संख्या चुनें, फिर खोजें। होटल और कमरे का प्रकार चुनने के बाद बुकिंग और भुगतान पूरा करें।',
-              ur: 'قیام کے ٹیب پر جائیں، اپنا شہر، تاریخیں اور مہمانوں کی تعداد منتخب کریں، پھر تلاش کریں۔ ہوٹل اور کمرے کی قسم منتخب کرنے کے بعد اپنی بکنگ اور ادائیگی مکمل کریں۔',
-              fr: 'Allez dans l\'onglet Séjours, choisissez votre ville, vos dates et le nombre de voyageurs, puis recherchez. Après avoir choisi un hôtel et un type de chambre, finalisez votre réservation et votre paiement.',
-              bn: 'থাকার ব্যবস্থা ট্যাবে যান, আপনার শহর, তারিখ ও অতিথি সংখ্যা নির্বাচন করুন, তারপর অনুসন্ধান করুন। হোটেল ও রুমের ধরন বেছে নেওয়ার পর আপনার বুকিং ও পেমেন্ট সম্পূর্ণ করুন।',
-            ),
-          ),
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'هل يمكنني إلغاء حجزي؟',
-              en: 'Can I cancel my booking?',
-              es: '¿Puedo cancelar mi reserva?',
-              tr: 'Rezervasyonumu iptal edebilir miyim?',
-              id: 'Bisakah saya membatalkan pesanan saya?',
-              hi: 'क्या मैं अपनी बुकिंग रद्द कर सकता हूं?',
-              ur: 'کیا میں اپنی بکنگ منسوخ کر سکتا ہوں؟',
-              fr: 'Puis-je annuler ma réservation ?',
-              bn: 'আমি কি আমার বুকিং বাতিল করতে পারি?',
-            ),
-            _t3(
-              context,
-              ar: 'نعم، من صفحة "حجوزاتي" يمكنك إلغاء أي حجز لا يزال في حالة "قيد الانتظار" أو "مؤكد"، وفقًا لسياسة الإلغاء الخاصة بالفندق.',
-              en: 'Yes, from "My Bookings" you can cancel any pending or confirmed booking, subject to the hotel\'s cancellation policy.',
-              es: 'Sí, desde "Mis reservas" puedes cancelar cualquier reserva pendiente o confirmada, según la política del hotel.',
-              tr: 'Evet, "Rezervasyonlarım" sayfasından, otelin iptal politikasına bağlı olarak bekleyen veya onaylanmış herhangi bir rezervasyonu iptal edebilirsiniz.',
-              id: 'Ya, dari "Pesanan Saya" Anda bisa membatalkan pesanan yang menunggu atau dikonfirmasi, sesuai kebijakan pembatalan hotel.',
-              hi: 'हाँ, "मेरी बुकिंग" से आप किसी भी लंबित या पुष्ट बुकिंग को रद्द कर सकते हैं, होटल की रद्दीकरण नीति के अनुसार।',
-              ur: 'جی ہاں، "میری بکنگز" سے آپ کوئی بھی زیر التوا یا تصدیق شدہ بکنگ منسوخ کر سکتے ہیں، ہوٹل کی منسوخی پالیسی کے مطابق۔',
-              fr: 'Oui, depuis « Mes réservations », vous pouvez annuler toute réservation en attente ou confirmée, selon la politique d\'annulation de l\'hôtel.',
-              bn: 'হ্যাঁ, "আমার বুকিং" থেকে আপনি যেকোনো অপেক্ষমাণ বা নিশ্চিত বুকিং বাতিল করতে পারেন, হোটেলের বাতিলকরণ নীতি সাপেক্ষে।',
-            ),
-          ),
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'ما طرق الدفع المتاحة؟',
-              en: 'What payment methods are supported?',
-              es: '¿Qué métodos de pago se admiten?',
-              tr: 'Hangi ödeme yöntemleri destekleniyor?',
-              id: 'Metode pembayaran apa saja yang didukung?',
-              hi: 'कौन से भुगतान तरीके समर्थित हैं?',
-              ur: 'کون سے ادائیگی کے طریقے قابل استعمال ہیں؟',
-              fr: 'Quels sont les moyens de paiement acceptés ?',
-              bn: 'কোন কোন পেমেন্ট পদ্ধতি সমর্থিত?',
-            ),
-            _t3(
-              context,
-              ar: 'ندعم الدفع عبر البطاقات الائتمانية على الأجهزة المدعومة. في بعض الأنظمة، يُسجَّل الحجز بحالة "قيد الانتظار" إلى أن يكتمل الدفع.',
-              en: 'We support credit card payments on supported devices. On some platforms, bookings are registered as "pending" until payment is completed elsewhere.',
-              es: 'Aceptamos pagos con tarjeta en dispositivos compatibles. En algunas plataformas, la reserva queda "pendiente" hasta completar el pago.',
-              tr: 'Desteklenen cihazlarda kredi kartı ödemelerini destekliyoruz. Bazı platformlarda, ödeme başka bir yerde tamamlanana kadar rezervasyon "beklemede" olarak kaydedilir.',
-              id: 'Kami mendukung pembayaran kartu kredit di perangkat yang didukung. Di beberapa platform, pesanan terdaftar sebagai "menunggu" hingga pembayaran selesai di tempat lain.',
-              hi: 'हम समर्थित डिवाइस पर क्रेडिट कार्ड भुगतान स्वीकार करते हैं। कुछ प्लेटफ़ॉर्म पर, भुगतान पूरा होने तक बुकिंग "लंबित" के रूप में दर्ज होती है।',
-              ur: 'ہم قابل استعمال ڈیوائسز پر کریڈٹ کارڈ ادائیگیوں کو سپورٹ کرتے ہیں۔ کچھ پلیٹ فارمز پر، بکنگ اس وقت تک "زیر التوا" رجسٹر رہتی ہے جب تک ادائیگی کہیں اور مکمل نہ ہو۔',
-              fr: 'Nous acceptons les paiements par carte de crédit sur les appareils compatibles. Sur certaines plateformes, les réservations sont enregistrées comme « en attente » jusqu\'à ce que le paiement soit finalisé ailleurs.',
-              bn: 'আমরা সমর্থিত ডিভাইসে ক্রেডিট কার্ড পেমেন্ট সমর্থন করি। কিছু প্ল্যাটফর্মে, পেমেন্ট অন্য কোথাও সম্পন্ন না হওয়া পর্যন্ত বুকিং "অপেক্ষমাণ" হিসেবে নিবন্ধিত থাকে।',
-            ),
-          ),
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'هل أحتاج حسابًا للبحث عن الفنادق؟',
-              en: 'Do I need an account to search for hotels?',
-              es: '¿Necesito una cuenta para buscar hoteles?',
-              tr: 'Otel aramak için hesaba ihtiyacım var mı?',
-              id: 'Apakah saya perlu akun untuk mencari hotel?',
-              hi: 'क्या होटल खोजने के लिए मुझे खाता चाहिए?',
-              ur: 'کیا ہوٹل تلاش کرنے کے لیے مجھے اکاؤنٹ چاہیے؟',
-              fr: 'Ai-je besoin d\'un compte pour rechercher des hôtels ?',
-              bn: 'হোটেল খুঁজতে কি আমার অ্যাকাউন্ট দরকার?',
-            ),
-            _t3(
-              context,
-              ar: 'لا، يمكنك البحث وتصفح النتائج دون تسجيل الدخول. تسجيل الدخول مطلوب فقط عند تأكيد الحجز.',
-              en: 'No, you can search and browse results without signing in. An account is only required when confirming a booking.',
-              es: 'No, puedes buscar y explorar resultados sin iniciar sesión. Solo se requiere cuenta al confirmar una reserva.',
-              tr: 'Hayır, oturum açmadan arama yapıp sonuçlara göz atabilirsiniz. Hesap yalnızca rezervasyonu onaylarken gereklidir.',
-              id: 'Tidak, Anda bisa mencari dan menjelajahi hasil tanpa masuk. Akun hanya diperlukan saat mengonfirmasi pemesanan.',
-              hi: 'नहीं, आप बिना साइन इन किए खोज सकते हैं और परिणाम देख सकते हैं। बुकिंग की पुष्टि करते समय ही खाता आवश्यक है।',
-              ur: 'نہیں، آپ سائن ان کیے بغیر تلاش اور نتائج دیکھ سکتے ہیں۔ بکنگ کی تصدیق کرتے وقت ہی اکاؤنٹ درکار ہوتا ہے۔',
-              fr: 'Non, vous pouvez rechercher et consulter les résultats sans vous connecter. Un compte n\'est requis que pour confirmer une réservation.',
-              bn: 'না, সাইন ইন না করেই আপনি অনুসন্ধান ও ফলাফল দেখতে পারেন। বুকিং নিশ্চিত করার সময়ই কেবল অ্যাকাউন্ট প্রয়োজন।',
-            ),
-          ),
-        ];
-      case 'carRentals':
-        return [
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'كيف أستأجر سيارة؟',
-              en: 'How do I rent a car?',
-              es: '¿Cómo alquilo un coche?',
-              tr: 'Nasıl araç kiralarım?',
-              id: 'Bagaimana cara menyewa mobil?',
-              hi: 'मैं कार कैसे किराए पर लूं?',
-              ur: 'میں کار کیسے کرایہ پر لوں؟',
-              fr: 'Comment louer une voiture ?',
-              bn: 'আমি কীভাবে গাড়ি ভাড়া নেব?',
-            ),
-            _t3(
-              context,
-              ar: 'من تبويب "تأجير السيارات"، أدخل مدينة الاستلام والتواريخ، وابحث عن السيارات المتاحة.',
-              en: 'From the Car rental tab, enter the pickup city and dates, then search available cars.',
-              es: 'Desde la pestaña de alquiler, indica ciudad de recogida y fechas, y busca coches disponibles.',
-              tr: 'Araç kiralama sekmesinden alış şehrini ve tarihlerini girip uygun araçları arayın.',
-              id: 'Dari tab Sewa mobil, masukkan kota pengambilan dan tanggal, lalu cari mobil yang tersedia.',
-              hi: '"कार किराए पर लें" टैब से, पिकअप शहर और तारीखें दर्ज करें, फिर उपलब्ध कारें खोजें।',
-              ur: 'کار کرایہ کے ٹیب سے، پک اپ شہر اور تاریخیں درج کریں، پھر دستیاب کاریں تلاش کریں۔',
-              fr: 'Depuis l\'onglet Location de voiture, saisissez la ville de prise en charge et les dates, puis recherchez les voitures disponibles.',
-              bn: 'গাড়ি ভাড়া ট্যাব থেকে, পিকআপ শহর ও তারিখ লিখুন, তারপর উপলব্ধ গাড়ি খুঁজুন।',
-            ),
-          ),
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'هل يمكنني تسليم السيارة في مكان مختلف؟',
-              en: 'Can I drop off at a different location?',
-              es: '¿Puedo devolver en otro lugar?',
-              tr: 'Farklı bir yere teslim edebilir miyim?',
-              id: 'Bisakah saya mengembalikan di lokasi berbeda?',
-              hi: 'क्या मैं अलग जगह पर कार लौटा सकता हूं?',
-              ur: 'کیا میں مختلف مقام پر کار واپس کر سکتا ہوں؟',
-              fr: 'Puis-je restituer la voiture à un autre endroit ?',
-              bn: 'আমি কি ভিন্ন স্থানে গাড়ি ফেরত দিতে পারি?',
-            ),
-            _t3(
-              context,
-              ar: 'نعم، فعّل خيار "مكان تسليم مختلف" في نموذج البحث وأدخل المكان الذي ترغب في التسليم فيه.',
-              en: 'Yes, enable "Different drop-off location" in the search form and enter your preferred drop-off spot.',
-              es: 'Sí, activa "Lugar de devolución diferente" en el formulario e indica el lugar deseado.',
-              tr: 'Evet, arama formunda "Farklı bir teslim noktası" seçeneğini etkinleştirip tercih ettiğiniz teslim yerini girin.',
-              id: 'Ya, aktifkan "Lokasi pengembalian berbeda" di formulir pencarian dan masukkan lokasi pengembalian pilihan Anda.',
-              hi: 'हाँ, खोज फॉर्म में "अलग लोकेशन पर लौटाएं" चालू करें और अपनी पसंदीदा जगह दर्ज करें।',
-              ur: 'جی ہاں، تلاش کے فارم میں "مختلف ڈراپ آف مقام" فعال کریں اور اپنی پسندیدہ ڈراپ آف جگہ درج کریں۔',
-              fr: 'Oui, activez « Lieu de restitution différent » dans le formulaire de recherche et indiquez l\'emplacement de votre choix.',
-              bn: 'হ্যাঁ, অনুসন্ধান ফর্মে "ভিন্ন ড্রপ-অফ স্থান" সক্রিয় করুন এবং আপনার পছন্দের ড্রপ-অফ স্থান লিখুন।',
-            ),
-          ),
-        ];
-      case 'flightHotel':
-        return [
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'هل حجز طيران + فندق أرخص؟',
-              en: 'Is booking flight + hotel cheaper?',
-              es: '¿Reservar vuelo + hotel es más barato?',
-              tr: 'Uçuş + otel rezervasyonu daha mı ucuz?',
-              id: 'Apakah memesan penerbangan + hotel lebih murah?',
-              hi: 'क्या उड़ान + होटल एक साथ बुक करना सस्ता है?',
-              ur: 'کیا پرواز + ہوٹل ایک ساتھ بک کرنا سستا ہے؟',
-              fr: 'Réserver vol + hôtel est-il moins cher ?',
-              bn: 'ফ্লাইট + হোটেল একসাথে বুক করা কি সস্তা?',
-            ),
-            _t3(
-              context,
-              ar: 'يعرض بحث "طيران + فندق" حاليًا نتائج الفنادق المتاحة، وسيتم تفعيل بحث الطيران المرتبط قريبًا مع عروض حصرية للحجز المشترك.',
-              en: 'The Flight+Hotel search shows available hotel results now; the linked flight search with bundled deals is coming soon.',
-              es: 'La búsqueda combinada muestra hoteles disponibles ahora; los vuelos vinculados llegarán pronto con ofertas exclusivas.',
-              tr: 'Uçuş+Otel araması şu anda uygun otel sonuçlarını gösteriyor; paket fırsatlarıyla bağlantılı uçuş araması yakında geliyor.',
-              id: 'Pencarian Penerbangan+Hotel saat ini menampilkan hasil hotel yang tersedia; pencarian penerbangan terkait dengan penawaran paket segera hadir.',
-              hi: '"उड़ान + होटल" खोज अभी उपलब्ध होटल परिणाम दिखाती है; जुड़े हुए ऑफ़र के साथ उड़ान खोज जल्द आ रही है।',
-              ur: 'پرواز+ہوٹل تلاش اس وقت دستیاب ہوٹل نتائج دکھاتی ہے؛ بنڈل آفرز کے ساتھ منسلک پرواز تلاش جلد آ رہی ہے۔',
-              fr: 'La recherche Vol+Hôtel affiche actuellement les hôtels disponibles ; la recherche de vol associée avec des offres groupées arrive bientôt.',
-              bn: 'ফ্লাইট+হোটেল অনুসন্ধান এখন উপলব্ধ হোটেলের ফলাফল দেখায়; বান্ডেল অফারসহ সংযুক্ত ফ্লাইট অনুসন্ধান শীঘ্রই আসছে।',
-            ),
-          ),
-        ];
-      case 'flights':
-      default:
-        return [
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'هل توجد عروض على تذاكر الطيران؟',
-              en: 'Are there any flight ticket promotions going on?',
-              es: '¿Hay promociones en vuelos?',
-              tr: 'Uçak bileti kampanyaları var mı?',
-              id: 'Apakah ada promo tiket penerbangan?',
-              hi: 'क्या फ़्लाइट टिकट पर कोई ऑफ़र चल रहा है?',
-              ur: 'کیا فلائٹ ٹکٹ پر کوئی پروموشن چل رہا ہے؟',
-              fr: 'Y a-t-il des promotions en cours sur les billets d\'avion ?',
-              bn: 'ফ্লাইট টিকিটে কি কোনো প্রমোশন চলছে?',
-            ),
-            _t3(
-              context,
-              ar: 'تتغيّر العروض باستمرار حسب الوجهة والتاريخ. استخدم ميزة "تنبيهات الأسعار" لنرسل إليك بريدًا إلكترونيًا بمجرد إيجاد السعر الذي ترغب في الوصول إليه.',
-              en: 'Promotions change often by destination and date. Use "Price alerts" so we can email you as soon as we find your target price.',
-              es: 'Las promociones cambian según destino y fecha. Usa "Alertas de precio" para recibir un correo al encontrar tu precio deseado.',
-              tr: 'Kampanyalar varış noktası ve tarihe göre sık sık değişir. Hedef fiyatınızı bulur bulmaz size e-posta gönderebilmemiz için "Fiyat uyarıları" özelliğini kullanın.',
-              id: 'Promo sering berubah tergantung tujuan dan tanggal. Gunakan "Peringatan harga" agar kami bisa mengirim email begitu menemukan harga target Anda.',
-              hi: 'ऑफ़र गंतव्य और तारीख के अनुसार अक्सर बदलते रहते हैं। "मूल्य अलर्ट" का उपयोग करें ताकि आपकी लक्ष्य कीमत मिलते ही हम आपको ईमेल कर सकें।',
-              ur: 'پروموشنز منزل اور تاریخ کے مطابق اکثر تبدیل ہوتی ہیں۔ "قیمت الرٹس" استعمال کریں تاکہ آپ کی ہدف قیمت ملتے ہی ہم آپ کو ای میل کر سکیں۔',
-              fr: 'Les promotions changent souvent selon la destination et la date. Utilisez « Alertes de prix » pour recevoir un e-mail dès que nous trouvons votre prix cible.',
-              bn: 'গন্তব্য ও তারিখ অনুযায়ী প্রমোশন প্রায়ই পরিবর্তিত হয়। "মূল্য সতর্কতা" ব্যবহার করুন যাতে আপনার লক্ষ্য মূল্য পেলেই আমরা আপনাকে ইমেইল করতে পারি।',
-            ),
-          ),
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'كيف أغيّر تذكرتي؟',
-              en: 'How do I change my ticket?',
-              es: '¿Cómo cambio mi boleto?',
-              tr: 'Biletimi nasıl değiştiririm?',
-              id: 'Bagaimana cara mengubah tiket saya?',
-              hi: 'मैं अपना टिकट कैसे बदलूं?',
-              ur: 'میں اپنا ٹکٹ کیسے تبدیل کروں؟',
-              fr: 'Comment modifier mon billet ?',
-              bn: 'আমি কীভাবে আমার টিকিট পরিবর্তন করব?',
-            ),
-            _t3(
-              context,
-              ar: 'سيتم تفعيل تعديل التذاكر بعد الحجز قريبًا. إلى أن تصبح هذه الخدمة متاحة، تواصل مع الدعم عبر الدردشة أو الاتصال أدناه.',
-              en: 'Post-booking ticket changes are coming soon. Until then, contact support via chat or call below.',
-              es: 'Los cambios de boleto llegarán pronto. Mientras tanto, contacta soporte por chat o llamada abajo.',
-              tr: 'Rezervasyon sonrası bilet değişiklikleri yakında geliyor. O zamana kadar aşağıdaki sohbet veya arama seçeneğiyle destek ekibine ulaşın.',
-              id: 'Perubahan tiket setelah pemesanan segera hadir. Sementara itu, hubungi dukungan melalui chat atau telepon di bawah.',
-              hi: 'बुकिंग के बाद टिकट बदलने की सुविधा जल्द आ रही है। तब तक, नीचे दिए गए चैट या कॉल के ज़रिए सहायता से संपर्क करें।',
-              ur: 'بکنگ کے بعد ٹکٹ تبدیلی جلد آ رہی ہے۔ اس وقت تک، نیچے دیے گئے چیٹ یا کال کے ذریعے سپورٹ سے رابطہ کریں۔',
-              fr: 'La modification des billets après réservation arrive bientôt. En attendant, contactez l\'assistance par chat ou par téléphone ci-dessous.',
-              bn: 'বুকিং-পরবর্তী টিকিট পরিবর্তন শীঘ্রই আসছে। ততক্ষণ, নিচের চ্যাট বা কলের মাধ্যমে সহায়তার সাথে যোগাযোগ করুন।',
-            ),
-          ),
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'كيف ألغي تذكرة الطيران؟',
-              en: 'How can I cancel my flight ticket?',
-              es: '¿Cómo cancelo mi boleto de vuelo?',
-              tr: 'Uçak biletimi nasıl iptal ederim?',
-              id: 'Bagaimana cara membatalkan tiket penerbangan saya?',
-              hi: 'मैं अपना फ़्लाइट टिकट कैसे रद्द करूं?',
-              ur: 'میں اپنی فلائٹ ٹکٹ کیسے منسوخ کروں؟',
-              fr: 'Comment annuler mon billet d\'avion ?',
-              bn: 'আমি কীভাবে আমার ফ্লাইট টিকিট বাতিল করব?',
-            ),
-            _t3(
-              context,
-              ar: 'سيتم تفعيل إلغاء تذاكر الطيران قريبًا. أما حجوزات الفنادق، فيمكنك إلغاؤها فعليًا من صفحة "حجوزاتي".',
-              en: 'Flight ticket cancellation is coming soon. Hotel bookings can already be cancelled from "My Bookings".',
-              es: 'La cancelación de vuelos llegará pronto. Las reservas de hotel ya se pueden cancelar desde "Mis reservas".',
-              tr: 'Uçak bileti iptali yakında geliyor. Otel rezervasyonlarını zaten "Rezervasyonlarım" sayfasından iptal edebilirsiniz.',
-              id: 'Pembatalan tiket penerbangan segera hadir. Pesanan hotel sudah bisa dibatalkan dari "Pesanan Saya".',
-              hi: 'फ़्लाइट टिकट रद्द करने की सुविधा जल्द आ रही है। होटल बुकिंग को अभी "मेरी बुकिंग" से रद्द किया जा सकता है।',
-              ur: 'فلائٹ ٹکٹ منسوخی جلد آ رہی ہے۔ ہوٹل بکنگز پہلے سے "میری بکنگز" سے منسوخ کی جا سکتی ہیں۔',
-              fr: 'L\'annulation des billets d\'avion arrive bientôt. Les réservations d\'hôtel peuvent déjà être annulées depuis « Mes réservations ».',
-              bn: 'ফ্লাইট টিকিট বাতিলকরণ শীঘ্রই আসছে। হোটেল বুকিং ইতিমধ্যে "আমার বুকিং" থেকে বাতিল করা যায়।',
-            ),
-          ),
-          _FaqItem(
-            _t3(
-              context,
-              ar: 'لديك سؤال مختلف؟ تواصل معنا الآن',
-              en: 'Have a different question? Chat with us now.',
-              es: '¿Tienes otra pregunta? Chatea con nosotros.',
-              tr: 'Farklı bir sorunuz mu var? Şimdi bizimle sohbet edin.',
-              id: 'Ada pertanyaan lain? Chat dengan kami sekarang.',
-              hi: 'कोई और सवाल है? अभी हमसे चैट करें।',
-              ur: 'کوئی اور سوال ہے؟ ابھی ہم سے چیٹ کریں۔',
-              fr: 'Une autre question ? Chattez avec nous dès maintenant.',
-              bn: 'অন্য কোনো প্রশ্ন আছে? এখনই আমাদের সাথে চ্যাট করুন।',
-            ),
-            _t3(
-              context,
-              ar: 'استخدم زر "Chat" أدناه للتواصل مع فريق الدعم مباشرة.',
-              en: 'Use the "Chat" button below to reach our support team directly.',
-              es: 'Usa el botón "Chat" abajo para contactar directamente con soporte.',
-              tr: 'Destek ekibimize doğrudan ulaşmak için aşağıdaki "Sohbet" düğmesini kullanın.',
-              id: 'Gunakan tombol "Chat" di bawah untuk menghubungi tim dukungan kami langsung.',
-              hi: 'सीधे हमारी सहायता टीम तक पहुंचने के लिए नीचे दिए गए "चैट" बटन का उपयोग करें।',
-              ur: 'براہ راست ہماری سپورٹ ٹیم تک پہنچنے کے لیے نیچے دیا گیا "چیٹ" بٹن استعمال کریں۔',
-              fr: 'Utilisez le bouton « Chat » ci-dessous pour contacter directement notre équipe d\'assistance.',
-              bn: 'সরাসরি আমাদের সহায়তা দলের সাথে যোগাযোগ করতে নিচের "চ্যাট" বোতাম ব্যবহার করুন।',
-            ),
-          ),
-        ];
-    }
-  }
-
-  List<String> _tagsFor(String category) {
-    switch (category) {
-      case 'hotels':
-        return ['Hot Topics', 'Booking & Price', 'Cancellation', 'Room Info', 'Payment'];
-      case 'carRentals':
-        return ['Hot Topics', 'Pickup & Return', 'Pricing', 'Insurance', 'License Requirements'];
-      case 'flightHotel':
-        return ['Hot Topics', 'Bundled Deals', 'Combined Cancellation'];
-      case 'flights':
-      default:
-        return ['Hot Topics', 'Booking & Price', 'Ticketing & Payment', 'Booking Query', 'Passenger Information-related'];
-    }
-  }
-
-  String _categoryLabel(BuildContext context, String category) {
-    switch (category) {
-      case 'hotels':
-        return _t3(
-          context,
-          ar: 'الفنادق',
-          en: 'Hotels',
-          es: 'Hoteles',
-          tr: 'Oteller',
-          id: 'Hotel',
-          hi: 'होटल',
-          ur: 'ہوٹلز',
-          fr: 'Hôtels',
-          bn: 'হোটেল',
-        );
-      case 'carRentals':
-        return _t3(
-          context,
-          ar: 'تأجير السيارات',
-          en: 'Car Rentals',
-          es: 'Alquiler de coches',
-          tr: 'Araç kiralama',
-          id: 'Sewa mobil',
-          hi: 'कार किराए पर लें',
-          ur: 'کار کرایہ پر لیں',
-          fr: 'Location de voitures',
-          bn: 'গাড়ি ভাড়া',
-        );
-      case 'flightHotel':
-        return _t3(
-          context,
-          ar: 'الفنادق والطيران',
-          en: 'Hotels & Homes',
-          es: 'Hoteles y vuelos',
-          tr: 'Oteller ve Uçuşlar',
-          id: 'Hotel dan Penerbangan',
-          hi: 'होटल और उड़ानें',
-          ur: 'ہوٹلز اور گھر',
-          fr: 'Hôtels et vols',
-          bn: 'হোটেল ও ফ্লাইট',
-        );
-      case 'flights':
-      default:
-        return _t3(
-          context,
-          ar: 'الطيران',
-          en: 'Flights',
-          es: 'Vuelos',
-          tr: 'Uçuşlar',
-          id: 'Penerbangan',
-          hi: 'उड़ानें',
-          ur: 'پروازیں',
-          fr: 'Vols',
-          bn: 'ফ্লাইট',
-        );
-    }
+  /// أسئلة الفنادق — كلها مطابقة لطريقة عمل الحجز الحالية (HotelBeds + Stripe).
+  List<_FaqItem> _hotelFaqs(BuildContext context) {
+    return [
+      _FaqItem(
+        _t3(context,
+            ar: 'كيف أحجز غرفة؟',
+            en: 'How do I book a room?',
+            es: '¿Cómo reservo una habitación?',
+            tr: 'Nasıl oda ayırtırım?',
+            id: 'Bagaimana cara memesan kamar?',
+            hi: 'मैं कमरा कैसे बुक करूं?',
+            ur: 'میں کمرہ کیسے بک کروں؟',
+            fr: 'Comment réserver une chambre ?',
+            bn: 'আমি কীভাবে রুম বুক করব?'),
+        _t3(context,
+            ar: 'من تبويب "الإقامة" أو "العمرة" اختر المدينة والتواريخ وعدد الضيوف ثم ابحث. اختر الفندق والغرفة، وراجع السعر النهائي وسياسة الإلغاء، ثم ادفع بالبطاقة.',
+            en: 'In the Stays or Umrah tab, choose the city, dates and guests, then search. Pick a hotel and room, review the final price and cancellation policy, then pay by card.',
+            es: 'En la pestaña Alojamientos o Umrah, elige ciudad, fechas y huéspedes y busca. Elige hotel y habitación, revisa el precio final y la política de cancelación y paga con tarjeta.',
+            tr: 'Konaklama veya Umre sekmesinde şehri, tarihleri ve misafirleri seçip arayın. Otel ve odayı seçin, nihai fiyatı ve iptal politikasını inceleyin, ardından kartla ödeyin.',
+            id: 'Di tab Menginap atau Umrah, pilih kota, tanggal, dan tamu, lalu cari. Pilih hotel dan kamar, periksa harga akhir dan kebijakan pembatalan, lalu bayar dengan kartu.',
+            hi: '"ठहरना" या "उमरा" टैब में शहर, तारीखें और मेहमान चुनकर खोजें। होटल और कमरा चुनें, अंतिम कीमत और रद्दीकरण नीति देखें, फिर कार्ड से भुगतान करें।',
+            ur: 'قیام یا عمرہ کے ٹیب میں شہر، تاریخیں اور مہمان منتخب کر کے تلاش کریں۔ ہوٹل اور کمرہ منتخب کریں، حتمی قیمت اور منسوخی پالیسی دیکھیں، پھر کارڈ سے ادائیگی کریں۔',
+            fr: 'Dans l\'onglet Séjours ou Omra, choisissez la ville, les dates et les voyageurs, puis recherchez. Choisissez un hôtel et une chambre, vérifiez le prix final et la politique d\'annulation, puis payez par carte.',
+            bn: '"থাকার ব্যবস্থা" বা "উমরাহ" ট্যাবে শহর, তারিখ ও অতিথি বেছে খুঁজুন। হোটেল ও রুম বেছে নিন, চূড়ান্ত মূল্য ও বাতিল নীতি দেখুন, তারপর কার্ডে পেমেন্ট করুন।'),
+      ),
+      _FaqItem(
+        _t3(context,
+            ar: 'متى يُسحب المبلغ من بطاقتي؟',
+            en: 'When is my card charged?',
+            es: '¿Cuándo se cobra mi tarjeta?',
+            tr: 'Kartımdan ne zaman ödeme alınır?',
+            id: 'Kapan kartu saya ditagih?',
+            hi: 'मेरे कार्ड से पैसे कब कटते हैं?',
+            ur: 'میرے کارڈ سے رقم کب کٹتی ہے؟',
+            fr: 'Quand ma carte est-elle débitée ?',
+            bn: 'আমার কার্ড থেকে কখন টাকা কাটা হয়?'),
+        _t3(context,
+            ar: 'عند الحجز يُحجز المبلغ على بطاقتك فقط، ولا يُسحب إلا بعد أن يؤكد الفندق حجزك. إن لم يُؤكَّد الحجز يُلغى الحجز المؤقت، وقد يستغرق ظهور ذلك في كشف حسابك بضعة أيام حسب البنك.',
+            en: 'When you book, the amount is only held on your card. It is charged only after the hotel confirms your booking. If the booking is not confirmed, the hold is released; your bank may take a few days to show this.',
+            es: 'Al reservar, el importe solo se retiene en tu tarjeta y se cobra únicamente cuando el hotel confirma la reserva. Si no se confirma, la retención se libera; tu banco puede tardar unos días en reflejarlo.',
+            tr: 'Rezervasyon yaptığınızda tutar yalnızca kartınızda bloke edilir ve otel rezervasyonu onayladıktan sonra tahsil edilir. Onaylanmazsa bloke kaldırılır; bankanızın bunu göstermesi birkaç gün sürebilir.',
+            id: 'Saat memesan, dana hanya ditahan di kartu Anda dan baru ditagih setelah hotel mengonfirmasi. Jika tidak terkonfirmasi, penahanan dilepas; bank Anda mungkin perlu beberapa hari untuk menampilkannya.',
+            hi: 'बुकिंग के समय राशि केवल आपके कार्ड पर रोकी जाती है, और होटल की पुष्टि के बाद ही काटी जाती है। पुष्टि न होने पर रोक हटा दी जाती है; बैंक में दिखने में कुछ दिन लग सकते हैं।',
+            ur: 'بکنگ کے وقت رقم صرف آپ کے کارڈ پر روکی جاتی ہے، اور ہوٹل کی تصدیق کے بعد ہی وصول کی جاتی ہے۔ تصدیق نہ ہونے پر روک ختم کر دی جاتی ہے؛ بینک میں ظاہر ہونے میں چند دن لگ سکتے ہیں۔',
+            fr: 'Lors de la réservation, le montant est seulement bloqué sur votre carte et n\'est débité qu\'après la confirmation de l\'hôtel. Sans confirmation, le blocage est levé ; votre banque peut mettre quelques jours à l\'afficher.',
+            bn: 'বুকিংয়ের সময় অর্থ শুধু আপনার কার্ডে আটকে রাখা হয়, এবং হোটেল নিশ্চিত করার পরেই কাটা হয়। নিশ্চিত না হলে আটকানো অর্থ ছেড়ে দেওয়া হয়; ব্যাংকে দেখাতে কয়েক দিন লাগতে পারে।'),
+      ),
+      _FaqItem(
+        _t3(context,
+            ar: 'كيف ألغي حجزي؟ وكم أسترد؟',
+            en: 'How do I cancel, and how much is refunded?',
+            es: '¿Cómo cancelo y cuánto se reembolsa?',
+            tr: 'Nasıl iptal ederim ve ne kadar iade alırım?',
+            id: 'Bagaimana cara membatalkan, dan berapa yang dikembalikan?',
+            hi: 'मैं कैसे रद्द करूं, और कितना वापस मिलेगा?',
+            ur: 'میں کیسے منسوخ کروں، اور کتنا واپس ملے گا؟',
+            fr: 'Comment annuler, et combien est remboursé ?',
+            bn: 'কীভাবে বাতিল করব, আর কত ফেরত পাব?'),
+        _t3(context,
+            ar: 'من صفحة "حجوزاتي" اضغط "إلغاء"، وسترى المبلغ المسترد ورسوم الإلغاء قبل التأكيد. المبلغ يعتمد على سياسة الإلغاء التي ظهرت لك قبل الدفع (بتوقيت الفندق المحلي). الأسعار غير القابلة للاسترداد لا يُسترد منها شيء.',
+            en: 'In "My Bookings", tap "Cancel". You will see the refund and any cancellation fee before you confirm. The amount follows the cancellation policy shown before you paid (in the hotel\'s local time). Non-refundable rates are not refunded.',
+            es: 'En "Mis reservas", pulsa "Cancelar". Verás el reembolso y la penalización antes de confirmar. El importe sigue la política de cancelación mostrada antes de pagar (hora local del hotel). Las tarifas no reembolsables no se reembolsan.',
+            tr: '"Rezervasyonlarım" sayfasında "İptal"e dokunun. Onaylamadan önce iade tutarını ve iptal ücretini görürsünüz. Tutar, ödeme öncesi gösterilen iptal politikasına (otelin yerel saati) göre belirlenir. İade edilemez fiyatlar iade edilmez.',
+            id: 'Di "Pesanan Saya", ketuk "Batalkan". Anda akan melihat jumlah pengembalian dan biaya pembatalan sebelum mengonfirmasi. Jumlahnya mengikuti kebijakan pembatalan yang ditampilkan sebelum membayar (waktu lokal hotel). Tarif yang tidak dapat dikembalikan tidak dikembalikan.',
+            hi: '"मेरी बुकिंग" में "रद्द करें" दबाएं। पुष्टि से पहले आपको वापसी राशि और रद्दीकरण शुल्क दिखेगा। राशि भुगतान से पहले दिखाई गई रद्दीकरण नीति (होटल के स्थानीय समय) के अनुसार होती है। नॉन-रिफ़ंडेबल दरों पर कोई वापसी नहीं होती।',
+            ur: '"میری بکنگز" میں "منسوخ کریں" دبائیں۔ تصدیق سے پہلے آپ کو واپسی کی رقم اور منسوخی فیس نظر آئے گی۔ رقم ادائیگی سے پہلے دکھائی گئی منسوخی پالیسی (ہوٹل کے مقامی وقت) کے مطابق ہوتی ہے۔ ناقابلِ واپسی نرخوں پر کوئی رقم واپس نہیں ہوتی۔',
+            fr: 'Dans « Mes réservations », touchez « Annuler ». Le remboursement et les frais d\'annulation s\'affichent avant de confirmer. Le montant suit la politique d\'annulation affichée avant le paiement (heure locale de l\'hôtel). Les tarifs non remboursables ne sont pas remboursés.',
+            bn: '"আমার বুকিং"-এ "বাতিল" চাপুন। নিশ্চিত করার আগে ফেরতের পরিমাণ ও বাতিল ফি দেখবেন। পরিমাণ নির্ভর করে পেমেন্টের আগে দেখানো বাতিল নীতির ওপর (হোটেলের স্থানীয় সময়)। নন-রিফান্ডেবল রেটে কোনো ফেরত নেই।'),
+      ),
+      _FaqItem(
+        _t3(context,
+            ar: 'هل توجد رسوم أدفعها في الفندق؟',
+            en: 'Are there fees to pay at the hotel?',
+            es: '¿Hay cargos que pagar en el hotel?',
+            tr: 'Otelde ödenecek ücretler var mı?',
+            id: 'Apakah ada biaya yang dibayar di hotel?',
+            hi: 'क्या होटल में कोई शुल्क देना होता है?',
+            ur: 'کیا ہوٹل میں کوئی فیس ادا کرنی ہوتی ہے؟',
+            fr: 'Y a-t-il des frais à payer à l\'hôtel ?',
+            bn: 'হোটেলে কি কোনো ফি দিতে হয়?'),
+        _t3(context,
+            ar: 'بعض الفنادق تفرض رسومًا محلية تُدفع عند الوصول، مثل ضريبة المدينة. إن وُجدت تظهر لك قبل الدفع، ومكتوبة في بريد التأكيد.',
+            en: 'Some hotels charge local fees paid on arrival, such as a city tax. If there are any, they are shown before you pay and listed in your confirmation email.',
+            es: 'Algunos hoteles cobran cargos locales al llegar, como una tasa municipal. Si los hay, se muestran antes de pagar y aparecen en tu correo de confirmación.',
+            tr: 'Bazı oteller varışta ödenen yerel ücretler alır (ör. şehir vergisi). Varsa ödemeden önce gösterilir ve onay e-postanızda yer alır.',
+            id: 'Beberapa hotel mengenakan biaya lokal yang dibayar saat tiba, seperti pajak kota. Jika ada, biaya itu ditampilkan sebelum membayar dan tercantum di email konfirmasi.',
+            hi: 'कुछ होटल पहुंचने पर स्थानीय शुल्क लेते हैं, जैसे शहर कर। अगर कोई हो, तो भुगतान से पहले दिखाया जाता है और पुष्टि ईमेल में लिखा होता है।',
+            ur: 'کچھ ہوٹل آمد پر مقامی فیس لیتے ہیں، جیسے شہر کا ٹیکس۔ اگر کوئی ہو تو ادائیگی سے پہلے دکھائی جاتی ہے اور تصدیقی ای میل میں درج ہوتی ہے۔',
+            fr: 'Certains hôtels facturent des frais locaux à l\'arrivée, comme une taxe de séjour. Le cas échéant, ils sont indiqués avant le paiement et dans votre e-mail de confirmation.',
+            bn: 'কিছু হোটেল পৌঁছানোর সময় স্থানীয় ফি নেয়, যেমন সিটি ট্যাক্স। থাকলে তা পেমেন্টের আগে দেখানো হয় এবং নিশ্চিতকরণ ইমেইলে লেখা থাকে।'),
+      ),
+      _FaqItem(
+        _t3(context,
+            ar: 'لم يصلني بريد التأكيد',
+            en: 'I did not receive my confirmation email',
+            es: 'No recibí el correo de confirmación',
+            tr: 'Onay e-postam gelmedi',
+            id: 'Saya tidak menerima email konfirmasi',
+            hi: 'मुझे पुष्टि ईमेल नहीं मिला',
+            ur: 'مجھے تصدیقی ای میل نہیں ملی',
+            fr: 'Je n\'ai pas reçu l\'e-mail de confirmation',
+            bn: 'আমি নিশ্চিতকরণ ইমেইল পাইনি'),
+        _t3(context,
+            ar: 'تحقّق من مجلد الرسائل غير المرغوبة (Spam). حجزك وحالته ظاهران دائمًا في "حجوزاتي". إن لم تجده هناك، راسلنا برقم الحجز أو بالبريد الذي حجزت به.',
+            en: 'Check your spam folder. Your booking and its status are always shown in "My Bookings". If you cannot find it there, email us with your booking reference or the email you booked with.',
+            es: 'Revisa la carpeta de spam. Tu reserva y su estado siempre aparecen en "Mis reservas". Si no la encuentras, escríbenos con la referencia o el correo con el que reservaste.',
+            tr: 'Spam klasörünüzü kontrol edin. Rezervasyonunuz ve durumu her zaman "Rezervasyonlarım"da görünür. Bulamazsanız rezervasyon numaranız veya kullandığınız e-postayla bize yazın.',
+            id: 'Periksa folder spam. Pemesanan dan statusnya selalu tampil di "Pesanan Saya". Jika tidak ada, email kami dengan kode pemesanan atau email yang Anda gunakan.',
+            hi: 'स्पैम फ़ोल्डर देखें। आपकी बुकिंग और उसकी स्थिति हमेशा "मेरी बुकिंग" में दिखती है। वहाँ न मिले तो बुकिंग नंबर या बुकिंग वाले ईमेल के साथ हमें लिखें।',
+            ur: 'اسپام فولڈر دیکھیں۔ آپ کی بکنگ اور اس کی حالت ہمیشہ "میری بکنگز" میں نظر آتی ہے۔ وہاں نہ ملے تو بکنگ نمبر یا بکنگ والی ای میل کے ساتھ ہمیں لکھیں۔',
+            fr: 'Vérifiez vos spams. Votre réservation et son statut apparaissent toujours dans « Mes réservations ». Si vous ne la trouvez pas, écrivez-nous avec la référence ou l\'e-mail utilisé.',
+            bn: 'স্প্যাম ফোল্ডার দেখুন। আপনার বুকিং ও তার অবস্থা সবসময় "আমার বুকিং"-এ দেখা যায়। সেখানে না পেলে বুকিং নম্বর বা যে ইমেইলে বুক করেছেন তা দিয়ে আমাদের লিখুন।'),
+      ),
+      _FaqItem(
+        _t3(context,
+            ar: 'هل يمكنني تغيير التواريخ أو أسماء الضيوف؟',
+            en: 'Can I change the dates or guest names?',
+            es: '¿Puedo cambiar las fechas o los nombres?',
+            tr: 'Tarihleri veya misafir adlarını değiştirebilir miyim?',
+            id: 'Bisakah saya mengubah tanggal atau nama tamu?',
+            hi: 'क्या मैं तारीखें या मेहमानों के नाम बदल सकता हूँ?',
+            ur: 'کیا میں تاریخیں یا مہمانوں کے نام بدل سکتا ہوں؟',
+            fr: 'Puis-je modifier les dates ou les noms ?',
+            bn: 'আমি কি তারিখ বা অতিথির নাম বদলাতে পারি?'),
+        _t3(context,
+            ar: 'التعديل غير متاح من الموقع حاليًا. راسلنا برقم الحجز والتعديل المطلوب، وسنسأل الفندق؛ بعض التعديلات قد لا تكون ممكنة. ويمكنك أيضًا الإلغاء وفق سياسة الإلغاء ثم الحجز من جديد.',
+            en: 'Changes cannot be made online yet. Email us your booking reference and the change you need, and we will ask the hotel; some changes may not be possible. You can also cancel under the cancellation policy and book again.',
+            es: 'Aún no se pueden hacer cambios en línea. Escríbenos con la referencia y el cambio que necesitas y consultaremos al hotel; algunos cambios pueden no ser posibles. También puedes cancelar según la política y reservar de nuevo.',
+            tr: 'Değişiklikler henüz çevrim içi yapılamıyor. Rezervasyon numaranızı ve istediğiniz değişikliği bize yazın, otele soralım; bazı değişiklikler mümkün olmayabilir. İptal politikasına göre iptal edip yeniden de rezervasyon yapabilirsiniz.',
+            id: 'Perubahan belum bisa dilakukan secara online. Email kami kode pemesanan dan perubahan yang diperlukan, kami akan menanyakan ke hotel; beberapa perubahan mungkin tidak bisa. Anda juga bisa membatalkan sesuai kebijakan lalu memesan lagi.',
+            hi: 'बदलाव अभी ऑनलाइन नहीं हो सकते। बुकिंग नंबर और ज़रूरी बदलाव हमें ईमेल करें, हम होटल से पूछेंगे; कुछ बदलाव संभव नहीं हो सकते। आप रद्दीकरण नीति के अनुसार रद्द करके फिर से बुक भी कर सकते हैं।',
+            ur: 'تبدیلیاں ابھی آن لائن نہیں ہو سکتیں۔ بکنگ نمبر اور مطلوبہ تبدیلی ہمیں ای میل کریں، ہم ہوٹل سے پوچھیں گے؛ کچھ تبدیلیاں ممکن نہیں ہو سکتیں۔ آپ منسوخی پالیسی کے مطابق منسوخ کر کے دوبارہ بک بھی کر سکتے ہیں۔',
+            fr: 'Les modifications ne sont pas encore possibles en ligne. Envoyez-nous votre référence et la modification souhaitée, nous interrogerons l\'hôtel ; certaines modifications peuvent être impossibles. Vous pouvez aussi annuler selon la politique et réserver à nouveau.',
+            bn: 'পরিবর্তন এখনও অনলাইনে করা যায় না। বুকিং নম্বর ও প্রয়োজনীয় পরিবর্তন আমাদের ইমেইল করুন, আমরা হোটেলকে জিজ্ঞেস করব; কিছু পরিবর্তন সম্ভব নাও হতে পারে। বাতিল নীতি অনুযায়ী বাতিল করে আবার বুকও করতে পারেন।'),
+      ),
+      _FaqItem(
+        _t3(context,
+            ar: 'ما طرق الدفع المتاحة؟',
+            en: 'Which payment methods do you accept?',
+            es: '¿Qué métodos de pago aceptan?',
+            tr: 'Hangi ödeme yöntemlerini kabul ediyorsunuz?',
+            id: 'Metode pembayaran apa yang diterima?',
+            hi: 'आप कौन से भुगतान तरीके स्वीकार करते हैं?',
+            ur: 'آپ کون سے ادائیگی کے طریقے قبول کرتے ہیں؟',
+            fr: 'Quels moyens de paiement acceptez-vous ?',
+            bn: 'আপনারা কোন পেমেন্ট পদ্ধতি গ্রহণ করেন?'),
+        _t3(context,
+            ar: 'بطاقات الائتمان والخصم، بالدولار الأمريكي. تتم معالجة الدفع بأمان عبر Stripe، ولا نحتفظ برقم بطاقتك.',
+            en: 'Credit and debit cards, in U.S. dollars. Payments are processed securely by Stripe, and we do not store your card number.',
+            es: 'Tarjetas de crédito y débito, en dólares estadounidenses. Stripe procesa los pagos de forma segura y no guardamos el número de tu tarjeta.',
+            tr: 'ABD doları cinsinden kredi ve banka kartları. Ödemeler Stripe tarafından güvenle işlenir ve kart numaranızı saklamayız.',
+            id: 'Kartu kredit dan debit, dalam dolar AS. Pembayaran diproses dengan aman oleh Stripe, dan kami tidak menyimpan nomor kartu Anda.',
+            hi: 'अमेरिकी डॉलर में क्रेडिट और डेबिट कार्ड। भुगतान Stripe द्वारा सुरक्षित रूप से प्रोसेस होते हैं, और हम आपका कार्ड नंबर संग्रहीत नहीं करते।',
+            ur: 'امریکی ڈالر میں کریڈٹ اور ڈیبٹ کارڈ۔ ادائیگیاں Stripe کے ذریعے محفوظ طریقے سے ہوتی ہیں، اور ہم آپ کا کارڈ نمبر محفوظ نہیں کرتے۔',
+            fr: 'Cartes de crédit et de débit, en dollars américains. Les paiements sont traités de façon sécurisée par Stripe et nous ne conservons pas votre numéro de carte.',
+            bn: 'মার্কিন ডলারে ক্রেডিট ও ডেবিট কার্ড। পেমেন্ট Stripe নিরাপদে প্রক্রিয়া করে, এবং আমরা আপনার কার্ড নম্বর সংরক্ষণ করি না।'),
+      ),
+      _FaqItem(
+        _t3(context,
+            ar: 'أريد حجز 5 غرف أو أكثر',
+            en: 'I need 5 or more rooms',
+            es: 'Necesito 5 o más habitaciones',
+            tr: '5 veya daha fazla odaya ihtiyacım var',
+            id: 'Saya butuh 5 kamar atau lebih',
+            hi: 'मुझे 5 या अधिक कमरे चाहिए',
+            ur: 'مجھے 5 یا زیادہ کمرے چاہئیں',
+            fr: 'J\'ai besoin de 5 chambres ou plus',
+            bn: 'আমার ৫ বা তার বেশি রুম দরকার'),
+        _t3(context,
+            ar: 'استخدم تبويب "Group stays" وأرسل طلبك، وسنرسل لك عرض سعر بالبريد. الطلب لا يُلزمك بشيء ولا يُسحب أي مبلغ.',
+            en: 'Use the "Group stays" tab to send a request, and we will email you a quote. The request is free and nothing is charged.',
+            es: 'Usa la pestaña "Group stays" para enviar una solicitud y te enviaremos un presupuesto por correo. Es gratis y no se cobra nada.',
+            tr: '"Group stays" sekmesinden talep gönderin, size e-postayla teklif gönderelim. Talep ücretsizdir ve ödeme alınmaz.',
+            id: 'Gunakan tab "Group stays" untuk mengirim permintaan, dan kami akan mengirim penawaran lewat email. Gratis dan tidak ada tagihan.',
+            hi: '"Group stays" टैब से अनुरोध भेजें, हम ईमेल से कोटेशन भेजेंगे। अनुरोध मुफ़्त है और कोई शुल्क नहीं लगता।',
+            ur: '"Group stays" ٹیب سے درخواست بھیجیں، ہم ای میل پر قیمت بھیجیں گے۔ درخواست مفت ہے اور کوئی رقم نہیں کٹتی۔',
+            fr: 'Utilisez l\'onglet « Group stays » pour envoyer une demande, et nous vous enverrons un devis par e-mail. C\'est gratuit et rien n\'est débité.',
+            bn: '"Group stays" ট্যাব থেকে অনুরোধ পাঠান, আমরা ইমেইলে মূল্য পাঠাব। অনুরোধ বিনামূল্যে, কোনো টাকা কাটা হয় না।'),
+      ),
+      _FaqItem(
+        _t3(context,
+            ar: 'هل يشمل حجز فندق العمرة التأشيرة؟',
+            en: 'Does an Umrah hotel booking include a visa?',
+            es: '¿La reserva de hotel para la Umrah incluye visado?',
+            tr: 'Umre otel rezervasyonu vizeyi kapsar mı?',
+            id: 'Apakah pemesanan hotel umrah termasuk visa?',
+            hi: 'क्या उमरा होटल बुकिंग में वीज़ा शामिल है?',
+            ur: 'کیا عمرہ ہوٹل بکنگ میں ویزا شامل ہے؟',
+            fr: 'La réservation d\'hôtel pour la Omra inclut-elle un visa ?',
+            bn: 'উমরাহ হোটেল বুকিংয়ে কি ভিসা অন্তর্ভুক্ত?'),
+        _t3(context,
+            ar: 'لا. الحجز للفندق فقط. التأشيرة وتصاريح العمرة (نسك) مسؤوليتك؛ في تبويب "العمرة" روابط للمواقع السعودية الرسمية.',
+            en: 'No. The booking is for the hotel only. The visa and Umrah permits (Nusuk) are your responsibility; the Umrah tab has links to the official Saudi websites.',
+            es: 'No. La reserva es solo del hotel. El visado y los permisos de Umrah (Nusuk) son tu responsabilidad; la pestaña Umrah tiene enlaces a los sitios oficiales saudíes.',
+            tr: 'Hayır. Rezervasyon yalnızca oteli kapsar. Vize ve Umre izinleri (Nusuk) sizin sorumluluğunuzdadır; Umre sekmesinde resmi Suudi sitelerinin bağlantıları var.',
+            id: 'Tidak. Pemesanan hanya untuk hotel. Visa dan izin umrah (Nusuk) menjadi tanggung jawab Anda; tab Umrah berisi tautan ke situs resmi Saudi.',
+            hi: 'नहीं। बुकिंग केवल होटल की है। वीज़ा और उमरा परमिट (नुसुक) आपकी ज़िम्मेदारी है; "उमरा" टैब में आधिकारिक सऊदी वेबसाइटों के लिंक हैं।',
+            ur: 'نہیں۔ بکنگ صرف ہوٹل کی ہے۔ ویزا اور عمرہ اجازت نامے (نسک) آپ کی ذمہ داری ہیں؛ عمرہ ٹیب میں سرکاری سعودی ویب سائٹس کے لنکس ہیں۔',
+            fr: 'Non. La réservation concerne uniquement l\'hôtel. Le visa et les permis de Omra (Nusuk) sont à votre charge ; l\'onglet Omra contient des liens vers les sites officiels saoudiens.',
+            bn: 'না। বুকিং শুধু হোটেলের জন্য। ভিসা ও উমরাহ পারমিট (নুসুক) আপনার দায়িত্ব; "উমরাহ" ট্যাবে সৌদি সরকারি ওয়েবসাইটের লিংক আছে।'),
+      ),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final categories = ['hotels', 'flights', 'flightHotel'];
-    final faqs = _faqsFor(context, _activeCategory);
-    final tags = _tagsFor(_activeCategory);
+    final faqs = _hotelFaqs(context);
 
     return Scaffold(
       appBar: const AppBanner(),
@@ -582,7 +477,7 @@ class _SupportPageState extends State<SupportPage> {
           controller: _scrollController,
           padding: EdgeInsets.zero,
           children: [
-            // هيدر بعنوان "Customer support"
+            // هيدر "دعم العملاء" + طريقة التواصل الحقيقية
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(AppSizes.lg),
@@ -590,27 +485,48 @@ class _SupportPageState extends State<SupportPage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),
-                        children: [
-                          TextSpan(
-                            text: _t3(
-                              context,
-                              ar: 'دعم العملاء',
-                              en: 'Customer support',
-                              es: 'Atención al cliente',
-                              tr: 'Müşteri desteği',
-                              id: 'Dukungan pelanggan',
-                              hi: 'ग्राहक सहायता',
-                              ur: 'کسٹمر سپورٹ',
-                              fr: 'Assistance client',
-                              bn: 'গ্রাহক সহায়তা',
-                            ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),
+                            children: [
+                              TextSpan(
+                                text: _t3(
+                                  context,
+                                  ar: 'دعم العملاء',
+                                  en: 'Customer support',
+                                  es: 'Atención al cliente',
+                                  tr: 'Müşteri desteği',
+                                  id: 'Dukungan pelanggan',
+                                  hi: 'ग्राहक सहायता',
+                                  ur: 'کسٹمر سپورٹ',
+                                  fr: 'Assistance client',
+                                  bn: 'গ্রাহক সহায়তা',
+                                ),
+                              ),
+                              const TextSpan(text: ' .', style: TextStyle(color: Colors.amber)),
+                            ],
                           ),
-                          const TextSpan(text: ' .', style: TextStyle(color: Colors.amber)),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _t3(
+                            context,
+                            ar: 'فريق حقيقي يرد بالعربية والإنجليزية عبر واتساب أو على $_supportEmail',
+                            en: 'Real people reply in Arabic and English on WhatsApp or at $_supportEmail',
+                            es: 'Personas reales responden en árabe e inglés por WhatsApp o en $_supportEmail',
+                            tr: 'Gerçek kişiler WhatsApp\'tan veya $_supportEmail adresinden Arapça ve İngilizce yanıt verir',
+                            id: 'Orang sungguhan membalas dalam bahasa Arab dan Inggris lewat WhatsApp atau di $_supportEmail',
+                            hi: 'असली लोग WhatsApp पर या $_supportEmail पर अरबी और अंग्रेज़ी में जवाब देते हैं',
+                            ur: 'حقیقی لوگ واٹس ایپ پر یا $_supportEmail پر عربی اور انگریزی میں جواب دیتے ہیں',
+                            fr: 'De vraies personnes répondent en arabe et en anglais sur WhatsApp ou à $_supportEmail',
+                            bn: 'সত্যিকারের মানুষ WhatsApp-এ বা $_supportEmail-এ আরবি ও ইংরেজিতে উত্তর দেন',
+                          ),
+                          style: const TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                      ],
                     ),
                   ),
                   const Icon(Icons.support_agent, size: 64, color: Colors.white70),
@@ -634,53 +550,22 @@ class _SupportPageState extends State<SupportPage> {
                       Text(
                         _t3(
                           context,
-                          ar: 'دردشة الخدمة',
-                          en: 'Service chat',
-                          es: 'Chat de servicio',
-                          tr: 'Hizmet sohbeti',
-                          id: 'Obrolan layanan',
-                          hi: 'सेवा चैट',
-                          ur: 'سروس چیٹ',
-                          fr: 'Chat de service',
-                          bn: 'সেবা চ্যাট',
+                          ar: 'الأسئلة الشائعة: الفنادق',
+                          en: 'Frequently asked questions: hotels',
+                          es: 'Preguntas frecuentes: hoteles',
+                          tr: 'Sık sorulan sorular: oteller',
+                          id: 'Pertanyaan umum: hotel',
+                          hi: 'अक्सर पूछे जाने वाले प्रश्न: होटल',
+                          ur: 'اکثر پوچھے جانے والے سوالات: ہوٹلز',
+                          fr: 'Questions fréquentes : hôtels',
+                          bn: 'প্রায়শই জিজ্ঞাসিত প্রশ্ন: হোটেল',
                         ),
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                       ),
                     ],
                   ),
                   const SizedBox(height: AppSizes.md),
-                  // تبويبات الفئات
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: categories.map((cat) {
-                        final isActive = cat == _activeCategory;
-                        return Padding(
-                          padding: const EdgeInsetsDirectional.only(end: AppSizes.sm),
-                          child: GestureDetector(
-                            onTap: () => setState(() => _activeCategory = cat),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: isActive ? AppColors.primaryDark : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.divider),
-                              ),
-                              child: Text(
-                                _categoryLabel(context, cat),
-                                style: TextStyle(
-                                  color: isActive ? Colors.white : AppColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.md),
-                  // كروت الأسئلة الشائعة (2 عمود)
+                  // كروت الأسئلة الشائعة (عمودان على الشاشات الواسعة)
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final isWide = constraints.maxWidth > 700;
@@ -711,44 +596,42 @@ class _SupportPageState extends State<SupportPage> {
                       return Column(children: rows);
                     },
                   ),
-                  const SizedBox(height: AppSizes.lg),
-                  Text(
-                    _t3(
-                      context,
-                      ar: 'المزيد من أسئلة ${_categoryLabel(context, _activeCategory)}',
-                      en: 'More ${_categoryLabel(context, _activeCategory)} FAQ',
-                      es: 'Más preguntas de ${_categoryLabel(context, _activeCategory)}',
-                      tr: 'Daha fazla ${_categoryLabel(context, _activeCategory)} SSS',
-                      id: 'Lebih banyak FAQ ${_categoryLabel(context, _activeCategory)}',
-                      hi: 'अधिक ${_categoryLabel(context, _activeCategory)} सवाल-जवाब',
-                      ur: 'مزید ${_categoryLabel(context, _activeCategory)} سوالات',
-                      fr: 'Plus de FAQ ${_categoryLabel(context, _activeCategory)}',
-                      bn: 'আরও ${_categoryLabel(context, _activeCategory)} প্রশ্নোত্তর',
-                    ),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
                   const SizedBox(height: AppSizes.sm),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      ...tags.map(
-                            (tag) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(tag, style: const TextStyle(fontSize: 13)),
+                      Text(
+                        _t3(
+                          context,
+                          ar: 'تبحث عن حجزك؟',
+                          en: 'Looking for your booking?',
+                          es: '¿Buscas tu reserva?',
+                          tr: 'Rezervasyonunuzu mu arıyorsunuz?',
+                          id: 'Mencari pemesanan Anda?',
+                          hi: 'अपनी बुकिंग ढूंढ रहे हैं?',
+                          ur: 'اپنی بکنگ تلاش کر رہے ہیں؟',
+                          fr: 'Vous cherchez votre réservation ?',
+                          bn: 'আপনার বুকিং খুঁজছেন?',
                         ),
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text('...'),
+                      TextButton.icon(
+                        onPressed: () => context.push(AppRoutes.myBookings),
+                        icon: const Icon(Icons.luggage_outlined, size: 18),
+                        label: Text(_t3(
+                          context,
+                          ar: 'حجوزاتي',
+                          en: 'My Bookings',
+                          es: 'Mis reservas',
+                          tr: 'Rezervasyonlarım',
+                          id: 'Pesanan Saya',
+                          hi: 'मेरी बुकिंग',
+                          ur: 'میری بکنگز',
+                          fr: 'Mes réservations',
+                          bn: 'আমার বুকিং',
+                        )),
                       ),
                     ],
                   ),
@@ -756,73 +639,107 @@ class _SupportPageState extends State<SupportPage> {
               ),
             ),
             const Divider(height: 1),
-            // شريط الوصول السريع تحت
+            // شريط الوصول السريع: وسائل تواصل حقيقية فقط
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_whatsAppNumber.isNotEmpty) ...[
+                    Expanded(
+                      child: _QuickAccessButton(
+                        icon: Icons.chat_outlined,
+                        label: _t3(
+                          context,
+                          ar: 'واتساب',
+                          en: 'WhatsApp',
+                          es: 'WhatsApp',
+                          tr: 'WhatsApp',
+                          id: 'WhatsApp',
+                          hi: 'WhatsApp',
+                          ur: 'واٹس ایپ',
+                          fr: 'WhatsApp',
+                          bn: 'WhatsApp',
+                        ),
+                        onTap: () => _openWhatsApp(context),
+                      ),
+                    ),
+                    const VerticalDivider(width: 1),
+                  ],
                   Expanded(
                     child: _QuickAccessButton(
-                      icon: Icons.headset_mic_outlined,
+                      icon: Icons.email_outlined,
                       label: _t3(
                         context,
-                        ar: 'دردشة',
-                        en: 'Chat',
-                        es: 'Chat',
-                        tr: 'Sohbet',
-                        id: 'Chat',
-                        hi: 'चैट',
-                        ur: 'چیٹ',
-                        fr: 'Chat',
-                        bn: 'চ্যাট',
+                        ar: 'راسلنا',
+                        en: 'Email us',
+                        es: 'Escríbenos',
+                        tr: 'Bize yazın',
+                        id: 'Email kami',
+                        hi: 'हमें ईमेल करें',
+                        ur: 'ہمیں ای میل کریں',
+                        fr: 'Écrivez-nous',
+                        bn: 'আমাদের ইমেইল করুন',
                       ),
                       onTap: () => _openEmail(context),
                     ),
                   ),
-                  const VerticalDivider(width: 1),
-                  Expanded(
-                    child: _QuickAccessButton(
-                      icon: Icons.call_outlined,
-                      label: _t3(
-                        context,
-                        ar: 'اتصل بنا',
-                        en: 'Call us',
-                        es: 'Llámanos',
-                        tr: 'Bizi arayın',
-                        id: 'Hubungi kami',
-                        hi: 'हमें कॉल करें',
-                        ur: 'ہمیں کال کریں',
-                        fr: 'Appelez-nous',
-                        bn: 'আমাদের কল করুন',
+                  if (_supportPhone.isNotEmpty) ...[
+                    const VerticalDivider(width: 1),
+                    Expanded(
+                      child: _QuickAccessButton(
+                        icon: Icons.call_outlined,
+                        label: _t3(
+                          context,
+                          ar: 'اتصل بنا',
+                          en: 'Call us',
+                          es: 'Llámanos',
+                          tr: 'Bizi arayın',
+                          id: 'Hubungi kami',
+                          hi: 'हमें कॉल करें',
+                          ur: 'ہمیں کال کریں',
+                          fr: 'Appelez-nous',
+                          bn: 'আমাদের কল করুন',
+                        ),
+                        onTap: () => _openPhone(context),
                       ),
-                      onTap: () => _openPhone(context),
                     ),
-                  ),
+                  ],
                   const VerticalDivider(width: 1),
                   Expanded(
                     child: _QuickAccessButton(
                       icon: Icons.info_outline,
-                      label: 'FAQ',
+                      label: _t3(
+                        context,
+                        ar: 'الأسئلة الشائعة',
+                        en: 'FAQ',
+                        es: 'Preguntas frecuentes',
+                        tr: 'SSS',
+                        id: 'FAQ',
+                        hi: 'सामान्य प्रश्न',
+                        ur: 'عام سوالات',
+                        fr: 'FAQ',
+                        bn: 'প্রশ্নোত্তর',
+                      ),
                       onTap: _scrollToFaq,
                     ),
                   ),
                   const VerticalDivider(width: 1),
                   Expanded(
                     child: _QuickAccessButton(
-                      icon: Icons.sos_outlined,
+                      icon: Icons.hotel_outlined,
                       label: _t3(
                         context,
-                        ar: 'مساعدة طارئة',
-                        en: 'Emergency assistance',
-                        es: 'Asistencia de emergencia',
-                        tr: 'Acil yardım',
-                        id: 'Bantuan darurat',
-                        hi: 'आपातकालीन सहायता',
-                        ur: 'ہنگامی امداد',
-                        fr: 'Assistance d\'urgence',
-                        bn: 'জরুরি সহায়তা',
+                        ar: 'مشكلة في الفندق؟',
+                        en: 'Problem at the hotel?',
+                        es: '¿Problema en el hotel?',
+                        tr: 'Otelde sorun mu var?',
+                        id: 'Masalah di hotel?',
+                        hi: 'होटल में समस्या?',
+                        ur: 'ہوٹل میں مسئلہ؟',
+                        fr: 'Problème à l\'hôtel ?',
+                        bn: 'হোটেলে সমস্যা?',
                       ),
-                      onTap: () => _showEmergencyDialog(context),
+                      onTap: () => _showHotelProblemDialog(context),
                     ),
                   ),
                 ],

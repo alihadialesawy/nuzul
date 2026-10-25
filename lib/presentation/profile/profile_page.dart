@@ -971,7 +971,8 @@ class _ProfileSidebar extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSizes.md),
-            _SidebarSectionHeader(_t3(context, ar: 'حجوزاتي', en: 'My bookings', es: 'Mis reservas', tr: 'Rezervasyonlarım',
+            // عنوان القسم يظهر مع الطيران فقط؛ بدونه يكفي زر "حجوزاتي" وحده.
+            if (kFlightsEnabled) _SidebarSectionHeader(_t3(context, ar: 'حجوزاتي', en: 'My bookings', es: 'Mis reservas', tr: 'Rezervasyonlarım',
                 id: 'Pesanan saya',
                 hi: 'मेरी बुकिंग',
                 ur: 'میری بکنگز',
@@ -1002,7 +1003,7 @@ class _ProfileSidebar extends StatelessWidget {
                 hi: 'मेरी बुकिंग',
                 ur: 'میری بکنگز',
                 fr: 'Mes réservations',
-                bn: 'আমার বুকিং'), color: nextColor(), onTap: () => context.push(AppRoutes.myBookings)),
+                bn: 'আমার বুকিং'), color: nextColor(), bold: true, onTap: () => context.push(AppRoutes.myBookings)),
             if (kFlightsEnabled) _SidebarItem(label: _t3(context, ar: 'طيران + فندق', en: 'Flight + Hotel', es: 'Vuelo + Hotel', tr: 'Uçuş + Otel',
                 id: 'Penerbangan + Hotel',
                 hi: 'उड़ान + होटल',

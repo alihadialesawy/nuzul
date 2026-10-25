@@ -14,3 +14,9 @@ const bool kCarsEnabled = false;
 /// ⚠️ قبل إعادته: صمّم برنامجًا حقيقيًا بمزايا تقدر عليها، واكتب شروطه
 /// (الكسب، القيمة، الانتهاء، لا استبدال نقدي)، وأزل النصوص المنسوخة.
 const bool kRewardsEnabled = false;
+
+/// صفحة "عروض موسمية وعطلات" مخفية: بطاقاتها كانت تعد بخصومات غير موجودة
+/// ("Early Bird Discount"، "Save on stays"...).
+/// ⚠️ قبل إعادتها: اعرض فقط عروضًا حقيقية (مثل offers/promotions التي ترسلها
+/// HotelBeds مع الأسعار في حساب production) بقيمة الخصم الفعلية.
+const bool kDealsEnabled = false;
