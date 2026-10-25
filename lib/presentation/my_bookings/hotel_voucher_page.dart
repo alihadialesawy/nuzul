@@ -66,12 +66,10 @@ class HotelVoucherPage extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('FLYNOOM',
-                                        style: TextStyle(
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: 2,
-                                            color: AppColors.primary)),
+                                    // شعار بنص داكن (FLY كحلي) للخلفيات البيضاء.
+                                    // لو لم يوجد الملف يظهر الاسم نصًا كما كان.
+                                    _VoucherLogo(),
+                                    SizedBox(height: 4),
                                     Text('Hotel booking voucher',
                                         style: TextStyle(color: AppColors.textSecondary)),
                                   ],
@@ -252,4 +250,29 @@ class _Field extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// شعار Flynoom في رأس القسيمة. يُطبع أيضًا عند Ctrl+P / الحفظ كـ PDF.
+class _VoucherLogo extends StatelessWidget {
+  const _VoucherLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/images/logo_flynoom_dark.png',
+      height: 40,
+      fit: BoxFit.contain,
+      alignment: AlignmentDirectional.centerStart,
+      filterQuality: FilterQuality.high,
+      errorBuilder: (_, __, ___) => const Text(
+        'FLYNOOM',
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 2,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+  }
 }

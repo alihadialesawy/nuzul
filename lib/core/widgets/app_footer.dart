@@ -47,7 +47,6 @@ class AppFooter extends StatelessWidget {
         _FooterSectionData('الدعم', [
           _FooterLinkData('إدارة رحلاتك', route: AppRoutes.myBookings),
           _FooterLinkData('التواصل مع خدمة العملاء', route: AppRoutes.support),
-          _FooterLinkData('مركز مصادر الأمان', route: AppRoutes.support),
         ]),
         _FooterSectionData('استكشف', const [
           _FooterLinkData('برنامج الولاء', route: AppRoutes.myCoins),
@@ -75,7 +74,6 @@ class AppFooter extends StatelessWidget {
         _FooterSectionData('Destek', [
           _FooterLinkData('Seyahatlerinizi yönetin', route: AppRoutes.myBookings),
           _FooterLinkData('Müşteri hizmetleriyle iletişime geçin', route: AppRoutes.support),
-          _FooterLinkData('Güvenlik kaynak merkezi', route: AppRoutes.support),
         ]),
         _FooterSectionData('Keşfet', const [
           _FooterLinkData('Sadakat programı', route: AppRoutes.myCoins),
@@ -103,7 +101,6 @@ class AppFooter extends StatelessWidget {
         _FooterSectionData('Soporte', [
           _FooterLinkData('Gestiona tus viajes', route: AppRoutes.myBookings),
           _FooterLinkData('Contactar con servicio al cliente', route: AppRoutes.support),
-          _FooterLinkData('Centro de recursos de seguridad', route: AppRoutes.support),
         ]),
         _FooterSectionData('Descubre', const [
           _FooterLinkData('Programa de fidelidad', route: AppRoutes.myCoins),
@@ -131,7 +128,6 @@ class AppFooter extends StatelessWidget {
         _FooterSectionData('Dukungan', [
           _FooterLinkData('Kelola perjalanan Anda', route: AppRoutes.myBookings),
           _FooterLinkData('Hubungi Layanan Pelanggan', route: AppRoutes.support),
-          _FooterLinkData('Pusat sumber daya keamanan', route: AppRoutes.support),
         ]),
         _FooterSectionData('Jelajahi', const [
           _FooterLinkData('Program loyalitas', route: AppRoutes.myCoins),
@@ -159,7 +155,6 @@ class AppFooter extends StatelessWidget {
         _FooterSectionData('सहायता', [
           _FooterLinkData('अपनी यात्राएं प्रबंधित करें', route: AppRoutes.myBookings),
           _FooterLinkData('ग्राहक सेवा से संपर्क करें', route: AppRoutes.support),
-          _FooterLinkData('सुरक्षा संसाधन केंद्र', route: AppRoutes.support),
         ]),
         _FooterSectionData('खोजें', const [
           _FooterLinkData('लॉयल्टी प्रोग्राम', route: AppRoutes.myCoins),
@@ -187,7 +182,6 @@ class AppFooter extends StatelessWidget {
         _FooterSectionData('সহায়তা', [
           _FooterLinkData('আপনার ভ্রমণ পরিচালনা করুন', route: AppRoutes.myBookings),
           _FooterLinkData('গ্রাহক সেবার সাথে যোগাযোগ করুন', route: AppRoutes.support),
-          _FooterLinkData('নিরাপত্তা রিসোর্স সেন্টার', route: AppRoutes.support),
         ]),
         _FooterSectionData('আবিষ্কার করুন', const [
           _FooterLinkData('লয়্যালটি প্রোগ্রাম', route: AppRoutes.myCoins),
@@ -215,7 +209,6 @@ class AppFooter extends StatelessWidget {
         _FooterSectionData('Assistance', [
           _FooterLinkData('Gérer vos voyages', route: AppRoutes.myBookings),
           _FooterLinkData('Contacter le service client', route: AppRoutes.support),
-          _FooterLinkData('Centre de ressources de sécurité', route: AppRoutes.support),
         ]),
         _FooterSectionData('Découvrir', const [
           _FooterLinkData('Programme de fidélité', route: AppRoutes.myCoins),
@@ -243,7 +236,6 @@ class AppFooter extends StatelessWidget {
         _FooterSectionData('مدد', [
           _FooterLinkData('اپنے سفر کا انتظام کریں', route: AppRoutes.myBookings),
           _FooterLinkData('کسٹمر سروس سے رابطہ کریں', route: AppRoutes.support),
-          _FooterLinkData('حفاظتی وسائل کا مرکز', route: AppRoutes.support),
         ]),
         _FooterSectionData('دریافت کریں', const [
           _FooterLinkData('لائلٹی پروگرام', route: AppRoutes.myCoins),
@@ -270,7 +262,6 @@ class AppFooter extends StatelessWidget {
       _FooterSectionData('Support', [
         _FooterLinkData('Manage your trips', route: AppRoutes.myBookings),
         _FooterLinkData('Contact Customer Service', route: AppRoutes.support),
-        _FooterLinkData('Safety Resource Center', route: AppRoutes.support),
       ]),
       _FooterSectionData('Discover', const [
         _FooterLinkData('Loyalty program', route: AppRoutes.myCoins),
