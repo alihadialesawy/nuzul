@@ -13,6 +13,7 @@ import '../../data/repositories/hotelbeds_booking_repository.dart' show Cancella
 import '../../localization/app_localizations.dart';
 import '../booking/booking_page.dart'
     show bookingRepositoryProvider, hotelBedsBookingRepositoryProvider;
+import 'hotel_receipt_page.dart';
 import 'hotel_voucher_page.dart';
 
 final inboxRepositoryProvider = Provider((ref) => InboxRepository());
@@ -266,7 +267,10 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancelBookingUndo),
+            child: Text(_tm(ctx,
+                ar: 'أبقِ الحجز', en: 'Keep booking', es: 'Mantener reserva', tr: 'Rezervasyonu koru',
+                id: 'Pertahankan pemesanan', hi: 'बुकिंग रखें', ur: 'بکنگ برقرار رکھیں',
+                fr: 'Garder la réservation', bn: 'বুকিং রাখুন')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -338,7 +342,10 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancelBookingUndo),
+            child: Text(_tm(context,
+                ar: 'أبقِ الحجز', en: 'Keep booking', es: 'Mantener reserva', tr: 'Rezervasyonu koru',
+                id: 'Pertahankan pemesanan', hi: 'बुकिंग रखें', ur: 'بکنگ برقرار رکھیں',
+                fr: 'Garder la réservation', bn: 'বুকিং রাখুন')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -408,18 +415,35 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
             _buildDetailsRow(context),
             if (_hasVoucher) ...[
               const SizedBox(height: AppSizes.sm),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.receipt_long_outlined, size: 18),
-                  label: Text(_tm(context,
-                      ar: 'عرض القسيمة', en: 'View voucher', es: 'Ver bono', tr: 'Kuponu görüntüle',
-                      id: 'Lihat voucher', hi: 'वाउचर देखें', ur: 'واؤچر دیکھیں',
-                      fr: 'Voir le bon', bn: 'ভাউচার দেখুন')),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => HotelVoucherPage(booking: item.hotelBooking!),
-                  )),
-                ),
+              // القسيمة للفندق (بلا سعر) + الإيصال للعميل (المبلغ المدفوع).
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+                      label: Text(_tm(context,
+                          ar: 'عرض القسيمة', en: 'View voucher', es: 'Ver bono', tr: 'Kuponu görüntüle',
+                          id: 'Lihat voucher', hi: 'वाउचर देखें', ur: 'واؤچر دیکھیں',
+                          fr: 'Voir le bon', bn: 'ভাউচার দেখুন')),
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => HotelVoucherPage(booking: item.hotelBooking!),
+                      )),
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.sm),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                      label: Text(_tm(context,
+                          ar: 'الإيصال', en: 'Receipt', es: 'Recibo', tr: 'Makbuz',
+                          id: 'Kuitansi', hi: 'रसीद', ur: 'رسید',
+                          fr: 'Reçu', bn: 'রসিদ')),
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => HotelReceiptPage(booking: item.hotelBooking!),
+                      )),
+                    ),
+                  ),
+                ],
               ),
             ],
             if (_canCancel) ...[
