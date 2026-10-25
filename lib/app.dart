@@ -122,6 +122,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (!kCarsEnabled && location == AppRoutes.carBooking) return AppRoutes.home;
       if (!kRewardsEnabled && location == AppRoutes.myCoins) return AppRoutes.home;
       if (!kDealsEnabled && location == AppRoutes.seasonalDeals) return AppRoutes.home;
+      if (!kAiEnabled && location == AppRoutes.aiTravel) return AppRoutes.home;
 
       final goingToAdmin = location.startsWith(AppRoutes.adminDashboard);
       if (!goingToAdmin) return null;

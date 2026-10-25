@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app.dart';
+import '../config/features.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
 import '../providers/locale_provider.dart';
@@ -454,24 +455,27 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                   ),
                                   SizedBox(width: actionSpacing),
                                 ],
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    backgroundColor: Colors.white.withOpacity(0.16),
-                                    side: const BorderSide(color: Colors.white, width: 1.2),
-                                    shape: const StadiumBorder(),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: isMobile ? 7 : 10,
-                                      vertical: 4,
+                                // زر AI مخفي مع صفحته (انظر kAiEnabled في features.dart).
+                                if (kAiEnabled) ...[
+                                  OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      backgroundColor: Colors.white.withOpacity(0.16),
+                                      side: const BorderSide(color: Colors.white, width: 1.2),
+                                      shape: const StadiumBorder(),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isMobile ? 7 : 10,
+                                        vertical: 4,
+                                      ),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    onPressed: () => context.push(AppRoutes.aiTravel),
+                                    icon: const Icon(Icons.auto_awesome, size: 12),
+                                    label: const Text('AI', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
                                   ),
-                                  onPressed: () => context.push(AppRoutes.aiTravel),
-                                  icon: const Icon(Icons.auto_awesome, size: 12),
-                                  label: const Text('AI', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                                ),
-                                _BannerDivider(horizontalMargin: dividerMargin),
+                                  _BannerDivider(horizontalMargin: dividerMargin),
+                                ],
 
                                 _BannerAction(
                                   label: appBannerText(context, ar: 'العملة', en: 'Currency', es: 'Moneda'),
