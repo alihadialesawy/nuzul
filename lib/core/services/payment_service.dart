@@ -151,6 +151,9 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             CardField(
+              // الرمز البريدي إلزامي: نعرف منه ولاية البطاقة (منع الولايات غير
+              // المسجّل فيها في hotelbeds-book) ويتحقق منه بنك العميل.
+              enablePostalCode: true,
               onCardChanged: (card) {
                 setState(() => _card = card);
               },
