@@ -64,6 +64,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _googleLoading = false;
   String? _errorMessage;
 
+  /// الدخول فشل لأن البريد لم يُفعَّل بعد (Confirm email في Supabase).
+  bool _notConfirmed = false;
+  bool _resending = false;
+
   /// على Android: بعد العودة من صفحة Google عبر الرابط، يصلنا حدث signedIn
   /// فنغلق صفحة الدخول. (على الويب الصفحة كلها تُعاد تحميلها بعد الرجوع.)
   StreamSubscription? _authSub;
@@ -103,6 +107,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _notConfirmed = false;
     });
 
     final controller = ref.read(authControllerProvider);
@@ -116,12 +121,51 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     result.when(
       success: (user) => _leavePage(),
       failure: (message) {
+        final m = message.toLowerCase();
+        final notConfirmed = m.contains('not confirmed') ||
+            m.contains('email_not_confirmed') ||
+            m.contains('confirm your email') ||
+            m.contains('غير مؤكد') ||
+            m.contains('تأكيد البريد') ||
+            m.contains('تفعيل');
         setState(() {
           _isLoading = false;
-          _errorMessage = message;
+          _notConfirmed = notConfirmed;
+          _errorMessage = notConfirmed
+              ? _t3(context,
+              ar: 'لم تفعّل حسابك بعد. افتح رسالة التفعيل في بريدك واضغط الرابط، ثم سجّل الدخول.',
+              en: "Your account isn't activated yet. Open the confirmation email and tap the link, then sign in.",
+              es: 'Tu cuenta aún no está activada. Abre el correo de confirmación y toca el enlace; luego inicia sesión.')
+              : message;
         });
       },
     );
+  }
+
+  Future<void> _resendConfirmation() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
+    setState(() => _resending = true);
+    try {
+      await sb.Supabase.instance.client.auth.resend(type: sb.OtpType.signup, email: email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_t3(context,
+            ar: 'أعدنا إرسال رابط التفعيل إلى $email. تحقق أيضًا من مجلد Spam.',
+            en: 'We sent the confirmation link again to $email. Check your spam folder too.',
+            es: 'Volvimos a enviar el enlace a $email. Revisa también la carpeta de spam.')),
+      ));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_t3(context,
+            ar: 'تعذّر الإرسال الآن. انتظر دقيقة ثم حاول مرة أخرى.',
+            en: 'Could not send right now. Please wait a minute and try again.',
+            es: 'No se pudo enviar ahora. Espera un minuto e inténtalo de nuevo.')),
+      ));
+    } finally {
+      if (mounted) setState(() => _resending = false);
+    }
   }
 
   /// تسجيل الدخول عبر Google (Supabase OAuth، تدفق PKCE الافتراضي).
@@ -265,6 +309,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         style: const TextStyle(color: Colors.red),
                         textAlign: TextAlign.center,
                       ),
+                      if (_notConfirmed)
+                        TextButton(
+                          onPressed: _resending ? null : _resendConfirmation,
+                          child: Text(_t3(context,
+                              ar: 'إعادة إرسال رابط التفعيل',
+                              en: 'Resend confirmation link',
+                              es: 'Reenviar enlace de confirmación')),
+                        ),
                     ],
 
                     const SizedBox(height: AppSizes.md),
