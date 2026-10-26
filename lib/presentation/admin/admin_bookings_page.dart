@@ -49,6 +49,13 @@ String _formatDate(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
 
+/// المبلغ بالدولار: حجوزات HotelBeds تُحفظ بالمبلغ المدفوع فعليًا (charge_amount)،
+/// أما total_price فهو قيمة قديمة بالريال للعرض في نسخ سابقة من التطبيق.
+String _amountUsd(BookingModel b, {int decimals = 2}) {
+  final v = (b.isHotelBeds && b.chargeAmount != null) ? b.chargeAmount! : b.totalPrice;
+  return '\$${v.toStringAsFixed(decimals)}';
+}
+
 Color _statusColor(String status) {
   switch (status) {
     case 'confirmed':
@@ -139,7 +146,11 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> with Sing
           (b.customerName?.toLowerCase().contains(query) ?? false) ||
           (b.customerPhone?.toLowerCase().contains(query) ?? false) ||
           b.id.toLowerCase().contains(query) ||
-          (b.hotelName?.toLowerCase().contains(query) ?? false);
+          (b.hotelName?.toLowerCase().contains(query) ?? false) ||
+          (b.clientReference?.toLowerCase().contains(query) ?? false) ||
+          (b.supplierReference?.toLowerCase().contains(query) ?? false) ||
+          (b.holderEmail?.toLowerCase().contains(query) ?? false) ||
+          b.holderFullName.toLowerCase().contains(query);
       return matchesStatus && matchesSearch;
     }).toList();
   }
@@ -561,7 +572,7 @@ class _BookingTile extends StatelessWidget {
             ),
             const SizedBox(width: AppSizes.sm),
             Text(
-              '\$${booking.totalPrice.toStringAsFixed(0)}',
+              _amountUsd(booking, decimals: 0),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
           ],
@@ -680,7 +691,7 @@ class _BookingDetailsDialogState extends ConsumerState<_BookingDetailsDialog> {
                   ur: 'کل قیمت',
                   fr: 'Prix total',
                   bn: 'মোট মূল্য'),
-              value: '\$${booking.totalPrice.toStringAsFixed(2)}',
+              value: _amountUsd(booking),
             ),
             if (booking.createdAt != null)
               _DetailRow(
@@ -693,6 +704,14 @@ class _BookingDetailsDialogState extends ConsumerState<_BookingDetailsDialog> {
                     bn: 'বুকিং তৈরি হয়েছে'),
                 value: _formatDate(booking.createdAt!),
               ),
+            if (booking.isHotelBeds) ...[
+              if (booking.supplierReference != null)
+                _DetailRow(label: 'HotelBeds ref', value: booking.supplierReference!),
+              if (booking.clientReference != null)
+                _DetailRow(label: 'Flynoom ref', value: booking.clientReference!),
+              if ((booking.holderEmail ?? '').isNotEmpty)
+                _DetailRow(label: 'Email', value: booking.holderEmail!),
+            ],
             _DetailRow(
               label: _t3(context, ar: 'الحالة الحالية', en: 'Current status', es: 'Estado actual',
                   tr: 'Mevcut durum',
@@ -703,6 +722,22 @@ class _BookingDetailsDialogState extends ConsumerState<_BookingDetailsDialog> {
                   bn: 'বর্তমান অবস্থা'),
               value: _statusLabel(context, booking.status),
             ),
+            if (booking.isHotelBeds) ...[
+              const SizedBox(height: AppSizes.sm),
+              Text(
+                _t3(context,
+                    ar: 'لإلغاء هذا الحجز أو إعادة إرسال بريد التأكيد أو تصحيح البريد، استخدم "مكتب الحجوزات" من لوحة التحكم.',
+                    en: 'To cancel this booking, resend the confirmation, or fix the email, use the Booking desk on the dashboard.',
+                    es: 'Para cancelar, reenviar la confirmación o corregir el correo, usa el Booking desk del panel.',
+                    tr: 'İptal, onayı yeniden gönderme veya e-posta düzeltme için paneldeki Booking desk\'i kullanın.',
+                    id: 'Untuk membatalkan, mengirim ulang konfirmasi, atau memperbaiki email, gunakan Booking desk di dasbor.',
+                    hi: 'रद्द करने, पुष्टि दोबारा भेजने या ईमेल सुधारने के लिए डैशबोर्ड पर Booking desk का उपयोग करें।',
+                    ur: 'منسوخ کرنے، تصدیق دوبارہ بھیجنے یا ای میل درست کرنے کے لیے ڈیش بورڈ پر Booking desk استعمال کریں۔',
+                    fr: 'Pour annuler, renvoyer la confirmation ou corriger l\'e-mail, utilisez le Booking desk du tableau de bord.',
+                    bn: 'বাতিল, নিশ্চিতকরণ আবার পাঠানো বা ইমেইল ঠিক করতে ড্যাশবোর্ডের Booking desk ব্যবহার করুন।'),
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
           ],
         ),
       ),
@@ -717,7 +752,10 @@ class _BookingDetailsDialogState extends ConsumerState<_BookingDetailsDialog> {
               fr: 'Fermer',
               bn: 'বন্ধ করুন')),
         ),
-        if (booking.status != 'confirmed')
+        // ⚠️ حجوزات HotelBeds: لا تغيير يدوي للحالة هنا. تغيير الحالة لا يلغي
+        // الحجز عند الفندق ولا يسترد المبلغ من Stripe. الإلغاء وإعادة إرسال البريد
+        // من "مكتب الحجوزات" فقط.
+        if (!booking.isHotelBeds && booking.status != 'confirmed')
           TextButton(
             onPressed: _updating ? null : () => _changeStatus('confirmed'),
             child: Text(_t3(context, ar: 'تأكيد', en: 'Confirm', es: 'Confirmar',
@@ -728,7 +766,7 @@ class _BookingDetailsDialogState extends ConsumerState<_BookingDetailsDialog> {
                 fr: 'Confirmer',
                 bn: 'নিশ্চিত করুন'), style: const TextStyle(color: Colors.green)),
           ),
-        if (booking.status != 'cancelled')
+        if (!booking.isHotelBeds && booking.status != 'cancelled')
           TextButton(
             onPressed: _updating ? null : () => _changeStatus('cancelled'),
             child: Text(_t3(context, ar: 'إلغاء', en: 'Cancel', es: 'Cancelar',

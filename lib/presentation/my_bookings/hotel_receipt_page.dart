@@ -24,6 +24,27 @@ class HotelReceiptPage extends StatelessWidget {
     return '${m[d.month - 1]} ${d.day}, ${d.year}';
   }
 
+  static String _cardBrand(String? b) {
+    switch ((b ?? '').toLowerCase()) {
+      case 'visa':
+        return 'Visa';
+      case 'mastercard':
+        return 'Mastercard';
+      case 'amex':
+        return 'American Express';
+      case 'discover':
+        return 'Discover';
+      case 'diners':
+        return 'Diners Club';
+      case 'jcb':
+        return 'JCB';
+      case 'unionpay':
+        return 'UnionPay';
+      default:
+        return (b ?? '').isEmpty ? 'Card' : b![0].toUpperCase() + b.substring(1);
+    }
+  }
+
   static String _title(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
 
@@ -116,6 +137,8 @@ class HotelReceiptPage extends StatelessWidget {
                             const SizedBox(height: AppSizes.md),
                             const _Section('Payment'),
                             _AmountRow('Total paid online', _usd(paid), bold: true),
+                            if (b.cardLast4 != null)
+                              _Row('Paid with', '${_cardBrand(b.cardBrand)} •••• ${b.cardLast4}'),
                             const Padding(
                               padding: EdgeInsets.only(bottom: 6),
                               child: Text(

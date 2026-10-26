@@ -25,6 +25,28 @@ String _t(BuildContext context, {required String ar, required String en}) =>
 /// الفلاتر المعروضة. 'attempts' = محاولات لم تكتمل (awaiting_payment/failed).
 const _filters = ['active', 'needs_attention', 'cancelled', 'attempts', 'all'];
 
+/// "visa" → "Visa"، "amex" → "American Express"...
+String _cardBrand(String b) {
+  switch (b.toLowerCase()) {
+    case 'visa':
+      return 'Visa';
+    case 'mastercard':
+      return 'Mastercard';
+    case 'amex':
+      return 'American Express';
+    case 'discover':
+      return 'Discover';
+    case 'diners':
+      return 'Diners Club';
+    case 'jcb':
+      return 'JCB';
+    case 'unionpay':
+      return 'UnionPay';
+    default:
+      return b.isEmpty ? 'Card' : b[0].toUpperCase() + b.substring(1);
+  }
+}
+
 String _filterLabel(BuildContext context, String f) {
   switch (f) {
     case 'active':
@@ -458,55 +480,89 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
 
   /// إعادة إرسال بريد التأكيد (للعميل الذي يقول "لم يصلني الإيميل").
   Future<void> _resendConfirmation() async {
-    final controller = TextEditingController(text: '${widget.row['holder_email'] ?? ''}');
-    final to = await showDialog<String>(
+    final original = '${widget.row['holder_email'] ?? ''}'.trim();
+    final controller = TextEditingController(text: original);
+    var saveEmail = true;
+    final result = await showDialog<(String, bool)>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(_t(ctx, ar: 'إعادة إرسال بريد التأكيد', en: 'Resend confirmation email')),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _t(ctx,
-                    ar: 'تُرسل نفس رسالة التأكيد الأصلية (القسيمة كاملة). يمكنك تعديل البريد إذا كتبه العميل خطأ.',
-                    en: 'Sends the original confirmation (full voucher). You can change the address if the guest mistyped it.'),
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) {
+          final changed = controller.text.trim().toLowerCase() != original.toLowerCase();
+          return AlertDialog(
+            title: Text(_t(ctx, ar: 'إعادة إرسال بريد التأكيد', en: 'Resend confirmation email')),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _t(ctx,
+                        ar: 'تُرسل نفس رسالة التأكيد الأصلية (القسيمة كاملة). يمكنك تعديل البريد إذا كتبه العميل خطأ.',
+                        en: 'Sends the original confirmation (full voucher). You can change the address if the guest mistyped it.'),
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: AppSizes.md),
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.emailAddress,
+                    onChanged: (_) => setD(() {}),
+                    decoration: InputDecoration(
+                      labelText: _t(ctx, ar: 'إلى', en: 'To'),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  if (changed) ...[
+                    CheckboxListTile(
+                      value: saveEmail,
+                      onChanged: (v) => setD(() => saveEmail = v ?? false),
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      dense: true,
+                      title: Text(_t(ctx,
+                          ar: 'احفظه بريدًا لهذا الحجز (تصل إليه رسائل الإلغاء لاحقًا)',
+                          en: 'Save as this booking\'s email (future cancellation emails go here)')),
+                    ),
+                    Text(
+                      _t(ctx,
+                          ar: '⚠️ قبل تغيير البريد تحقق من هوية المتصل: رقم الحجز، والاسم الكامل، وآخر 4 أرقام من البطاقة في Stripe.',
+                          en: '⚠️ Before changing the email, verify the caller: booking reference, full name, and last 4 card digits in Stripe.'),
+                      style: const TextStyle(fontSize: 12, color: AppColors.error),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: AppSizes.md),
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: _t(ctx, ar: 'إلى', en: 'To'),
-                  border: const OutlineInputBorder(),
-                ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_t(ctx, ar: 'رجوع', en: 'Back'))),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, (controller.text.trim(), changed && saveEmail)),
+                child: Text(_t(ctx, ar: 'إرسال', en: 'Send')),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_t(ctx, ar: 'رجوع', en: 'Back'))),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: Text(_t(ctx, ar: 'إرسال', en: 'Send')),
-          ),
-        ],
+          );
+        },
       ),
     );
     controller.dispose();
-    if (to == null || to.isEmpty || !mounted) return;
+    if (result == null || result.$1.isEmpty || !mounted) return;
+    final to = result.$1;
+    final save = result.$2;
 
     setState(() => _busy = true);
     try {
       final r = await _callFunction('hotelbeds-resend-confirmation', {
         'bookingId': widget.row['id'],
         'toEmail': to,
+        'saveEmail': save,
       });
       if (!mounted) return;
-      _snack(_t(context, ar: 'أُرسل بريد التأكيد إلى ${r['to'] ?? to}', en: 'Confirmation sent to ${r['to'] ?? to}'));
+      if (save) widget.row['holder_email'] = r['to'] ?? to;
+      _snack(save
+          ? _t(context,
+          ar: 'حُفظ البريد الجديد وأُرسل التأكيد إلى ${r['to'] ?? to}',
+          en: 'Email updated and confirmation sent to ${r['to'] ?? to}')
+          : _t(context, ar: 'أُرسل بريد التأكيد إلى ${r['to'] ?? to}', en: 'Confirmation sent to ${r['to'] ?? to}'));
     } catch (e) {
       if (mounted) _snack('$e');
     } finally {
@@ -565,6 +621,13 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
               _r(_t(context, ar: 'الخروج', en: 'Check-out'), _date(r['check_out'])),
               _r(_t(context, ar: 'العميل', en: 'Guest'), guest.isEmpty ? null : guest),
               _r(_t(context, ar: 'البريد', en: 'Email'), r['holder_email'], copy: true),
+              // للتحقق من هوية المتصل قبل تغيير البريد أو الإلغاء.
+              _r(
+                _t(context, ar: 'البطاقة', en: 'Card'),
+                r['card_last4'] == null
+                    ? null
+                    : '${_cardBrand('${r['card_brand'] ?? ''}')} •••• ${r['card_last4']}',
+              ),
               _r(_t(context, ar: 'المدفوع', en: 'Paid'), _usd(r['charge_amount'])),
               _r(_t(context, ar: 'تاريخ الحجز', en: 'Booked at'), _dateTime(r['created_at'])),
               if (status == 'cancelled') ...[

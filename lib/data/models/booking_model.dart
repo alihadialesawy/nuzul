@@ -45,6 +45,8 @@
   final double? refundAmount;
   final double? payAtHotelUsd; // رسوم إلزامية تُدفع في الفندق (تقدير USD)
   final List<Map<String, dynamic>> payAtHotelFees; // التفاصيل بالعملة المحلية
+  final String? cardBrand; // visa / mastercard ... (من Stripe)
+  final String? cardLast4; // آخر 4 أرقام فقط
 
   BookingModel({
     required this.id,
@@ -87,6 +89,8 @@
     this.refundAmount,
     this.payAtHotelUsd,
     this.payAtHotelFees = const [],
+    this.cardBrand,
+    this.cardLast4,
   });
 
   bool get isHotelBeds => supplier == 'hotelbeds';
@@ -181,6 +185,8 @@
           .whereType<Map>()
           .map((m) => Map<String, dynamic>.from(m))
           .toList(),
+      cardBrand: json['card_brand'] as String?,
+      cardLast4: json['card_last4'] as String?,
     );
   }
 }

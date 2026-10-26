@@ -53,6 +53,45 @@ const REVIEW_CONSENT_TEXT =
 
 const BOOKING_TOLERANCE = Number(Deno.env.get('HOTELBEDS_BOOKING_TOLERANCE') ?? '2') || 0;
 
+/// الولايات التي لا نبيع لسكانها حتى نسجّل فيها كـ Seller of Travel.
+/// ⚠️ عند التسجيل في ولاية: احذفها من هنا، ومن نص مربع الإقرار في
+/// booking_page.dart، ومن البند 3 في شروط الخدمة.
+const RESTRICTED_STATE_NAMES: Record<string, string> = {
+  CA: 'California',
+  FL: 'Florida',
+  HI: 'Hawaii',
+  WA: 'Washington',
+};
+
+/// ولاية الرمز البريدي الأمريكي (أول 3 أرقام) — للولايات المقيّدة فقط.
+function restrictedStateFromZip(zip: string): string | null {
+  const z = Number(zip.replace(/\D/g, '').slice(0, 3));
+  if (!Number.isFinite(z) || zip.replace(/\D/g, '').length < 5) return null;
+  if (z >= 900 && z <= 961) return 'CA';
+  if (z >= 320 && z <= 349 && z !== 340) return 'FL'; // 340 = بريد عسكري (AA)
+  if (z >= 967 && z <= 968) return 'HI';
+  if (z >= 980 && z <= 994) return 'WA';
+  return null;
+}
+
+/// يرجع رمز الولاية المقيّدة من عنوان فاتورة البطاقة، أو null.
+function restrictedStateFromIntent(intent: any): string | null {
+  const pm = intent?.payment_method;
+  if (!pm || typeof pm !== 'object') return null;
+  const addr = pm.billing_details?.address ?? {};
+  const country = String(addr.country ?? pm.card?.country ?? '').toUpperCase();
+  if (country && country !== 'US') return null;
+  const state = String(addr.state ?? '').toUpperCase();
+  if (state && RESTRICTED_STATE_NAMES[state]) return state;
+  const zip = String(addr.postal_code ?? '');
+  return zip ? restrictedStateFromZip(zip) : null;
+}
+
+/// رسائل HotelBeds التي تعني أن الحجز لم يتم يقينًا، حتى لو جاءت برمز 5xx.
+const PRICE_CHANGED_PATTERN = /price has changed|price difference exceeds/i;
+const DEFINITE_REJECT_PATTERN =
+  /price has changed|price difference exceeds|no availability|not available|insufficient allotment|allotment exceeded/i;
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -95,7 +134,9 @@ Deno.serve(async (req) => {
     }
 
     // ───── التحقق من الدفع ─────
-    const intent = await stripe.paymentIntents.retrieve(booking.payment_intent_id);
+    const intent = await stripe.paymentIntents.retrieve(booking.payment_intent_id, {
+      expand: ['payment_method'],
+    });
     const expectedCents = Math.round(Number(booking.charge_amount) * 100);
     if (
       intent.metadata?.booking_id !== bookingId ||
@@ -109,6 +150,46 @@ Deno.serve(async (req) => {
       return fail('payment_incomplete', 'Your card was not authorized. Please try again.', {
         paymentStatus: intent.status,
       });
+    }
+
+    // ───── منع سكان الولايات غير المسجّل فيها (Seller of Travel) ─────
+    // نعتمد على الرمز البريدي لعنوان فاتورة البطاقة: يجمعه Stripe على الويب
+    // والموبايل، ويتحقق منه بنك العميل، فهو أقوى من إقرار العميل وحده.
+    const restricted = restrictedStateFromIntent(intent);
+    if (restricted) {
+      console.log(`RESTRICTED STATE ${booking.client_reference}: ${restricted}`);
+      try {
+        await stripe.paymentIntents.cancel(intent.id);
+      } catch (e) {
+        console.log('Cancel intent failed', String(e));
+      }
+      await setStatus({ status: 'failed', failure_reason: `restricted_state:${restricted}` });
+      return fail(
+        'state_not_supported',
+        `We can't accept bookings from residents of ${RESTRICTED_STATE_NAMES[restricted]} yet. ` +
+          'Your card has not been charged.',
+      );
+    }
+
+    // ───── نوع البطاقة وآخر 4 أرقام (للتحقق من هوية العميل عند الاتصال) ─────
+    // Stripe لا يعطي رقم البطاقة كاملًا أبدًا؛ هذه البيانات آمنة للتخزين.
+    const pmObj: any = typeof intent.payment_method === 'object' ? intent.payment_method : null;
+    const card = pmObj?.card;
+    if (card?.last4) {
+      const { error: cardErr } = await admin
+        .from('bookings')
+        .update({ card_brand: card.brand ?? null, card_last4: card.last4 })
+        .eq('id', bookingId);
+      console.log(
+        cardErr
+          ? `CARD SAVE FAILED ${booking.client_reference}: ${cardErr.message}`
+          : `CARD SAVED ${booking.client_reference}: ${card.brand} ${card.last4}`,
+      );
+    } else {
+      console.log(
+        `CARD INFO MISSING ${booking.client_reference}: payment_method=` +
+          (pmObj ? `object type=${pmObj.type}` : String(intent.payment_method)),
+      );
     }
 
     // ───── تسجيل موافقة المراجعة النهائية ─────
@@ -163,9 +244,16 @@ Deno.serve(async (req) => {
     const hbData = await hbRes.json().catch(() => ({}));
     const hb = hbData?.booking;
 
+    // رفض صريح تعيده HotelBeds أحيانًا برمز 5xx (مثل "Price has changed"):
+    // الحجز لم يتم يقينًا، فنعامله كرفض عادي (إلغاء حجز المبلغ + failed)
+    // بدل needs_attention.
+    const hbErrorMsg = String(hbData?.error?.message ?? '');
+    const definiteReject = DEFINITE_REJECT_PATTERN.test(hbErrorMsg);
+    const priceChanged = PRICE_CHANGED_PATTERN.test(hbErrorMsg);
+
     // خطأ داخلي عند HotelBeds (5xx): لا نعرف يقينًا هل تم الحجز. لا نلغي
     // المبلغ المحجوز تلقائيًا؛ يُراجَع يدويًا عبر clientReference.
-    if (hbRes.status >= 500) {
+    if (hbRes.status >= 500 && !definiteReject) {
       const reason = hbData?.error?.message ?? `HTTP ${hbRes.status}`;
       console.log(`BOOKING UNKNOWN ${booking.client_reference}: supplier ${reason}`);
       await setStatus({
@@ -186,6 +274,13 @@ Deno.serve(async (req) => {
         console.log('Cancel intent failed', String(e));
       }
       await setStatus({ status: 'failed', failure_reason: reason, supplier_response: hbData });
+      if (priceChanged) {
+        return fail(
+          'price_changed',
+          'The hotel changed the price of this room while you were booking. Your card has not been charged. ' +
+            'Please go back and select the room again to see the current price.',
+        );
+      }
       return fail(
         'booking_failed',
         'This room is no longer available for your dates. Your card has not been charged. ' +
