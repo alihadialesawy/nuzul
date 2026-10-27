@@ -194,6 +194,28 @@ ${row('Refund', `${usd(refund)} USD`)}
   };
 }
 
+/// الحجز لم يتم عند الفندق بعد أن كان "قيد المراجعة": المبلغ المحجوز أُلغي ولم يُسحب.
+export function bookingNotCompletedEmail(b: any): { subject: string; html: string } {
+  const content =
+    section('Booking attempt', `<table style="border-collapse:collapse">
+${row('Hotel', esc(b.hotel_name))}
+${row('Dates', `${usDate(b.check_in)} – ${usDate(b.check_out)}`)}
+${row('Flynoom reference', esc(b.client_reference))}
+${row('Amount held', `${usd(b.charge_amount)} USD`)}
+</table>`) +
+    `<p style="color:#374151"><b>You have not been charged.</b> The temporary hold on your card has been released. Depending on your bank, it can take a few business days to disappear from your statement.</p>
+<p style="color:#374151">We're sorry for the inconvenience. You're welcome to search again on <a href="https://flynoom.com" style="color:#0b3a6b">flynoom.com</a> and choose another room or hotel.</p>`;
+
+  return {
+    subject: `Booking not completed: ${b.hotel_name} (Ref ${b.client_reference})`,
+    html: layout(
+      'Your booking could not be completed',
+      `Hi ${esc(b.holder_first_name ?? '')}, unfortunately the hotel could not confirm your booking.`,
+      content,
+    ),
+  };
+}
+
 /// يرسل البريد. لا يرمي أخطاء أبدًا (يرجع true/false).
 export async function sendEmail(to: string | null | undefined, msg: { subject: string; html: string }): Promise<boolean> {
   if (!to || !RESEND_API_KEY) {
@@ -223,4 +245,3 @@ export async function sendEmail(to: string | null | undefined, msg: { subject: s
     return false;
   }
 }
-

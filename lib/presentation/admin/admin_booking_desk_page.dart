@@ -570,6 +570,149 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
     }
   }
 
+  /// "Check with HotelBeds": يسأل HotelBeds هل الحجز موجود، ويقرأ حالة الدفع،
+  /// ثم يعرض الإجراء المقترح. لا يتغير شيء إلا بعد تأكيد المدير.
+  Future<void> _checkWithHotelBeds() async {
+    setState(() => _busy = true);
+    Map<String, dynamic> check;
+    try {
+      check = await _callFunction('hotelbeds-check-booking', {
+        'bookingId': widget.row['id'],
+        'mode': 'check',
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _snack('$e');
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    final action = '${check['action'] ?? ''}';
+    final canApply = const ['capture_and_confirm', 'release_and_fail', 'mark_confirmed', 'mark_failed']
+        .contains(action);
+    final positive = action == 'capture_and_confirm' || action == 'mark_confirmed';
+    var notifyGuest = true;
+
+    String findingLabel(BuildContext ctx) {
+      switch ('${check['finding']}') {
+        case 'confirmed':
+          return _t(ctx, ar: 'مؤكد عند HotelBeds', en: 'Confirmed at HotelBeds');
+        case 'cancelled_at_supplier':
+          return _t(ctx, ar: 'ملغى عند HotelBeds', en: 'Cancelled at HotelBeds');
+        case 'not_found':
+          return _t(ctx, ar: 'غير موجود عند HotelBeds', en: 'Not found at HotelBeds');
+        default:
+          return _t(ctx, ar: 'غير معروف', en: 'Unknown');
+      }
+    }
+
+    String paymentLabel(BuildContext ctx) {
+      switch ('${check['paymentStatus']}') {
+        case 'requires_capture':
+          return _t(ctx, ar: 'محجوز على البطاقة (لم يُسحب)', en: 'On hold (not charged)');
+        case 'succeeded':
+          return _t(ctx, ar: 'مسحوب', en: 'Captured');
+        case 'canceled':
+          return _t(ctx, ar: 'أُلغي الحجز على البطاقة', en: 'Hold released');
+        default:
+          return '${check['paymentStatus'] ?? '—'}';
+      }
+    }
+
+    String applyLabel(BuildContext ctx) {
+      switch (action) {
+        case 'capture_and_confirm':
+          return _t(ctx, ar: 'سحب المبلغ وتأكيد الحجز', en: 'Capture & confirm');
+        case 'mark_confirmed':
+          return _t(ctx, ar: 'تأكيد الحجز', en: 'Mark confirmed');
+        case 'release_and_fail':
+          return _t(ctx, ar: 'إلغاء حجز المبلغ وإغلاق الحجز', en: 'Release hold & close');
+        default:
+          return _t(ctx, ar: 'إغلاق الحجز كفاشل', en: 'Mark failed');
+      }
+    }
+
+    final apply = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text(_t(ctx, ar: 'نتيجة الفحص عند HotelBeds', en: 'HotelBeds check result')),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${_t(ctx, ar: 'HotelBeds', en: 'HotelBeds')}: ${findingLabel(ctx)}'
+                    '${check['hbReference'] != null ? ' (${check['hbReference']})' : ''}',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text('Stripe: ${paymentLabel(ctx)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: AppSizes.md),
+                SelectableText(
+                  '${check['message'] ?? ''}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: canApply ? AppColors.textSecondary : Colors.red,
+                  ),
+                ),
+                if (canApply && action != 'mark_failed')
+                  CheckboxListTile(
+                    value: notifyGuest,
+                    onChanged: (v) => setD(() => notifyGuest = v ?? true),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    dense: true,
+                    title: Text(positive
+                        ? _t(ctx, ar: 'أرسل للعميل بريد التأكيد', en: 'Email the guest their confirmation')
+                        : _t(ctx,
+                        ar: 'أرسل للعميل بريد "لم يكتمل الحجز ولم يُسحب المبلغ"',
+                        en: 'Email the guest that the booking was not completed and they were not charged')),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_t(ctx, ar: 'رجوع', en: 'Back'))),
+            if (canApply)
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: positive ? const Color(0xFF00B894) : Colors.red),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(applyLabel(ctx)),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (apply != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final r = await _callFunction('hotelbeds-check-booking', {
+        'bookingId': widget.row['id'],
+        'mode': 'apply',
+        'expectAction': action,
+        'notifyGuest': notifyGuest,
+      });
+      if (!mounted) return;
+      final emailed = r['emailed'] == true;
+      _snack(r['result'] == 'confirmed'
+          ? _t(context,
+          ar: 'تم تأكيد الحجز${emailed ? ' وأُرسل بريد التأكيد' : ''}.',
+          en: 'Booking confirmed${emailed ? ' and confirmation emailed' : ''}.')
+          : _t(context,
+          ar: 'أُغلق الحجز ولم يُسحب أي مبلغ${emailed ? '، وأُبلغ العميل بالبريد' : ''}.',
+          en: 'Booking closed, guest not charged${emailed ? ' and emailed' : ''}.'));
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _snack('$e');
+    }
+  }
+
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   Widget _r(String label, dynamic value, {bool copy = false}) {
@@ -658,12 +801,12 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
                     Text('• ${_t(context, ar: 'من', en: 'From')} ${p['from']}: ${p['amount']}',
                         style: const TextStyle(fontSize: 12)),
               ],
-              if (status == 'needs_attention') ...[
+              if (status == 'needs_attention' || status == 'processing') ...[
                 const SizedBox(height: AppSizes.md),
                 Text(
                   _t(context,
-                      ar: 'هذا الحجز يحتاج مراجعة يدوية: تحقّق من حالته عند HotelBeds ومن الدفع في Stripe قبل أي إجراء.',
-                      en: 'Needs manual review: check the booking at HotelBeds and the payment in Stripe before acting.'),
+                      ar: 'هذا الحجز يحتاج مراجعة: اضغط "تحقق من HotelBeds" لمعرفة حالته الحقيقية قبل أي إجراء.',
+                      en: 'Needs review: tap "Check with HotelBeds" to see its real status before acting.'),
                   style: const TextStyle(fontSize: 12, color: Colors.red),
                 ),
               ],
@@ -676,6 +819,14 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
           onPressed: _busy ? null : () => Navigator.pop(context, false),
           child: Text(_t(context, ar: 'إغلاق', en: 'Close')),
         ),
+        if (status == 'needs_attention' || status == 'processing')
+          FilledButton.icon(
+            onPressed: _busy ? null : _checkWithHotelBeds,
+            icon: _busy
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.fact_check_outlined),
+            label: Text(_t(context, ar: 'تحقق من HotelBeds', en: 'Check with HotelBeds')),
+          ),
         if (status == 'confirmed')
           OutlinedButton.icon(
             onPressed: _busy ? null : _resendConfirmation,
