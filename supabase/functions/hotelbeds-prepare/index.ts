@@ -28,9 +28,11 @@ import {
   corsHeaders,
   fail,
   fetchWithTimeout,
+  FX_BUFFER_PERCENT,
   getUser,
   HOTELBEDS_BASE_URL,
   hotelbedsHeaders,
+  MARKUP_PERCENT,
   newClientReference,
   ok,
   round2,
@@ -276,6 +278,11 @@ Deno.serve(async (req) => {
         rate_type: rate.rateType ?? null,
         supplier_currency: supplierCurrency,
         supplier_net: net,
+        // التكلفة بالدولار بدون هامش الصرف — لحساب الربح في لوحة الإحصاءات.
+        supplier_net_usd: await toUsdRaw(net, supplierCurrency),
+        // الإعدادات المطبقة على هذا الحجز (للإحصاءات والمراجعة لاحقًا).
+        markup_pct: hotelMandatory ? null : MARKUP_PERCENT,
+        fx_buffer_pct: supplierCurrency === 'USD' ? 0 : FX_BUFFER_PERCENT,
         supplier_selling_rate: sellingRate,
         hotel_mandatory: hotelMandatory,
         charge_currency: 'USD',

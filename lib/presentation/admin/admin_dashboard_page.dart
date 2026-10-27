@@ -8,6 +8,7 @@ import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/app_banner.dart';
 import 'admin_booking_desk_page.dart';
 import 'admin_group_requests_page.dart';
+import 'admin_stats_page.dart';
 
 /// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني).
 String _t3(
@@ -57,6 +58,20 @@ class AdminDashboardPage extends StatelessWidget {
     String description,
     VoidCallback onTap,
     })>[
+      (
+      icon: Icons.insights_outlined,
+      color: const Color(0xFF6C5CE7),
+      title: _t3(context, ar: 'إحصاءات المنصة', en: 'Platform Stats', es: 'Estadísticas'),
+      description: _t3(
+        context,
+        ar: 'الأرباح ونسبة الزيادة، عدد الحسابات، ومن حجز فندقًا',
+        en: 'Profit and markup, number of accounts, and who booked a hotel',
+        es: 'Ganancias y margen, número de cuentas y quién reservó',
+      ),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AdminStatsPage()),
+      ),
+      ),
       (
       icon: Icons.receipt_long_outlined,
       color: const Color(0xFF0984E3),
