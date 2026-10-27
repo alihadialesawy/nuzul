@@ -2,7 +2,11 @@ import 'core/widgets/app_nav_rail.dart';
 import 'core/widgets/beta_banner.dart';
 import 'core/fast_scroll_behavior.dart';
 import 'presentation/profile/my_coins_page.dart';
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +18,7 @@ import 'core/widgets/app_bottom_nav_bar.dart';
 import 'localization/app_localizations.dart';
 import 'presentation/auth/login_page.dart';
 import 'presentation/auth/register_page.dart';
+import 'presentation/auth/reset_password_page.dart';
 import 'presentation/auth/controllers/admin_controller.dart';
 import 'presentation/home/home_page.dart';
 import 'presentation/hotel_details/hotel_details_page.dart';
@@ -50,6 +55,7 @@ class AppRoutes {
   static const String home = '/';
   static const String login = '/login';
   static const String register = '/register';
+  static const String resetPassword = '/reset-password';
   static const String hotelDetails = '/hotel-details';
   static const String booking = '/booking';
   static const String flightBooking = '/flight-booking';
@@ -95,11 +101,17 @@ bool get _startUrlIsInvalid {
   return fragment.isNotEmpty && !fragment.startsWith('/');
 }
 
+/// فُتح الموقع من رابط "نسيت كلمة المرور"؟ (ويب فقط)
+/// الرابط يعود إلى flynoom.com/?flow=recovery&code=...، فنفتح صفحة كلمة
+/// المرور الجديدة مباشرة (Supabase يحوّل code إلى جلسة تلقائيًا).
+bool get _startIsPasswordRecovery =>
+    kIsWeb && Uri.base.queryParameters['flow'] == 'recovery';
+
 final appRouterProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
+  final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: AppRoutes.home,
-    overridePlatformDefaultLocation: _startUrlIsInvalid,
+    initialLocation: _startIsPasswordRecovery ? AppRoutes.resetPassword : AppRoutes.home,
+    overridePlatformDefaultLocation: _startUrlIsInvalid || _startIsPasswordRecovery,
     // أي رابط غير معروف (مثلًا رابط قديم أو مكتوب خطأ) يعود للرئيسية بدل
     // صفحة خطأ.
     onException: (context, state, router) => router.go(AppRoutes.home),
@@ -181,6 +193,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.register,
             builder: (context, state) => const RegisterPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.resetPassword,
+            builder: (context, state) => const ResetPasswordPage(),
           ),
           GoRoute(
             path: AppRoutes.hotelDetails,
@@ -354,6 +370,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  // رابط "نسيت كلمة المرور" (خاصة على Android، حيث يفتح الرابط التطبيق):
+  // عند وصول حدث passwordRecovery ننتقل لصفحة كلمة المرور الجديدة.
+  final StreamSubscription<sb.AuthState> recoverySub =
+  sb.Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    if (data.event == sb.AuthChangeEvent.passwordRecovery) {
+      router.go(AppRoutes.resetPassword);
+    }
+  });
+  ref.onDispose(() {
+    recoverySub.cancel();
+    router.dispose();
+  });
+
+  return router;
 });
 
 class NuzulApp extends ConsumerWidget {

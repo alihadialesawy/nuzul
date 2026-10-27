@@ -168,6 +168,58 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
+  /// "نسيت كلمة المرور؟": يرسل Supabase رابط إعادة التعيين إلى البريد.
+  /// الويب: يعود الرابط إلى /?flow=recovery فيفتح التطبيق صفحة كلمة المرور
+  /// الجديدة (app.dart). Android: يفتح التطبيق عبر _kMobileRedirect ويصل
+  /// حدث passwordRecovery.
+  Future<void> _forgotPassword() async {
+    // النافذة تملك حقل النص الخاص بها وتتخلص منه بنفسها بعد إغلاقها بالكامل
+    // (التخلص منه هنا مباشرة بعد الإغلاق يسبب الشاشة الحمراء أثناء حركة الإغلاق).
+    final email = await showDialog<String>(
+      context: context,
+      builder: (_) => _ForgotPasswordDialog(initialEmail: _emailController.text.trim()),
+    );
+    if (email == null || email.isEmpty || !mounted) return;
+
+    try {
+      await sb.Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: kIsWeb ? '${Uri.base.origin}/?flow=recovery' : _kMobileRedirect,
+      );
+    } on sb.AuthException catch (e) {
+      // كثرة الطلبات: نخبر المستخدم أن ينتظر. غير ذلك نعرض نفس الرسالة
+      // دائمًا، حتى لا يعرف أحد أي البريد مسجّل عندنا وأيها غير مسجّل.
+      if (e.statusCode == '429' || e.message.toLowerCase().contains('rate')) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_t3(context,
+              ar: 'طلبات كثيرة. انتظر دقيقة ثم حاول مرة أخرى.',
+              en: 'Too many requests. Please wait a minute and try again.',
+              es: 'Demasiadas solicitudes. Espera un minuto e inténtalo de nuevo.')),
+        ));
+        return;
+      }
+    } catch (_) {}
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(_t3(ctx, ar: 'تحقق من بريدك', en: 'Check your email', es: 'Revisa tu correo')),
+        content: Text(_t3(ctx,
+            ar: 'إذا كان هناك حساب بالبريد $email فستصلك رسالة فيها رابط لتعيين كلمة مرور جديدة. '
+                'افتح الرابط على هذا الجهاز وهذا المتصفح نفسه. تحقق أيضًا من مجلد Spam.',
+            en: "If an account exists for $email, you'll receive an email with a link to set a new password. "
+                'Open the link on this same device and browser. Check your spam folder too.',
+            es: 'Si existe una cuenta con $email, recibirás un correo con un enlace para crear una nueva contraseña. '
+                'Ábrelo en este mismo dispositivo y navegador. Revisa también la carpeta de spam.')),
+        actions: [
+          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
+
   /// تسجيل الدخول عبر Google (Supabase OAuth، تدفق PKCE الافتراضي).
   /// الويب: ينتقل المتصفح لصفحة Google ثم يرجع لنفس الموقع مسجّلًا.
   /// Android: يفتح المتصفح، ثم يرجع للتطبيق عبر _kMobileRedirect.
@@ -300,6 +352,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         prefixIcon: const Icon(Icons.lock_outline),
                       ),
                       validator: Validators.password,
+                    ),
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: TextButton(
+                        onPressed: busy ? null : _forgotPassword,
+                        child: Text(_t3(
+                          context,
+                          ar: 'نسيت كلمة المرور؟',
+                          en: 'Forgot password?',
+                          es: '¿Olvidaste tu contraseña?',
+                        )),
+                      ),
                     ),
 
                     if (_errorMessage != null) ...[
@@ -457,6 +521,73 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// نافذة "نسيت كلمة المرور؟": تطلب البريد وترجعه عند الضغط على "أرسل الرابط".
+class _ForgotPasswordDialog extends StatefulWidget {
+  final String initialEmail;
+  const _ForgotPasswordDialog({required this.initialEmail});
+
+  @override
+  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
+}
+
+class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _controller = TextEditingController(text: widget.initialEmail);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState!.validate()) Navigator.pop(context, _controller.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_t3(context, ar: 'إعادة تعيين كلمة المرور', en: 'Reset your password', es: 'Restablecer contraseña')),
+      content: SizedBox(
+        width: 400,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _t3(context,
+                    ar: 'أدخل بريدك الإلكتروني وسنرسل لك رابطًا لتعيين كلمة مرور جديدة.',
+                    en: "Enter your email and we'll send you a link to set a new password.",
+                    es: 'Introduce tu correo y te enviaremos un enlace para crear una nueva contraseña.'),
+              ),
+              const SizedBox(height: AppSizes.md),
+              TextFormField(
+                controller: _controller,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(prefixIcon: Icon(Icons.email_outlined)),
+                validator: Validators.email,
+                onFieldSubmitted: (_) => _submit(),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(_t3(context, ar: 'رجوع', en: 'Back', es: 'Volver')),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(_t3(context, ar: 'أرسل الرابط', en: 'Send link', es: 'Enviar enlace')),
+        ),
+      ],
     );
   }
 }
