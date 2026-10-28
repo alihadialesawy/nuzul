@@ -96,6 +96,13 @@ StateProvider<({DuffelFlightOffer? offer, HotelModel? hotel})>((ref) => (offer: 
 /// للمراجعات (16 CFR 465) وقد يُعد إعلانًا مضللًا.
 const bool _kFeaturedHotelsEnabled = false;
 
+/// قسم "أنواع الإقامة الشائعة" (فنادق/شقق/فلل/منتجعات/شاليهات) مخفي مؤقتًا:
+/// نتائج بحث HotelBeds لا تحدد نوع العقار (تعطي فئة النجوم فقط)، فكانت
+/// الأزرار الأربعة الأخيرة لا تعرض شيئًا، وزر "فنادق" يعرض فنادق تجريبية
+/// بأسعار بيئة الاختبار. يُعاد عند ربطه بنوع العقار الحقيقي من HotelBeds
+/// Content API (accommodationTypeCode).
+const bool _kAccommodationTypesEnabled = false;
+
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -967,12 +974,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                     // مخفي: بطاقات "Early Bird Discount" و"Save on stays" تعد بخصومات
                     // غير موجودة (انظر kDealsEnabled في features.dart).
                     if (kDealsEnabled) const DealsSection(),
-                    AccommodationTypesSection(
-                      onTypeSelected: _onAccommodationTypeSelected,
-                      selectedType: _selectedAccommodationType,
-                    ),
-                    if (_selectedAccommodationType != null)
-                      AccommodationPreviewSection(selectedType: _selectedAccommodationType!),
+                    if (_kAccommodationTypesEnabled) ...[
+                      AccommodationTypesSection(
+                        onTypeSelected: _onAccommodationTypeSelected,
+                        selectedType: _selectedAccommodationType,
+                      ),
+                      if (_selectedAccommodationType != null)
+                        AccommodationPreviewSection(selectedType: _selectedAccommodationType!),
+                    ],
                     // مخفي مؤقتًا: بيانات تجريبية (تقييمات ومراجعات وأسعار غير حقيقية،
                     // وأسماء Hilton/Marriott). يُعاد لاحقًا ببيانات HotelBeds حقيقية.
                     if (_kFeaturedHotelsEnabled) const FeaturedHotelsSection(),

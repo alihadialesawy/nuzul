@@ -159,73 +159,87 @@ class _TravelStyleSectionState extends State<TravelStyleSection> {
   Widget build(BuildContext context) {
     final destinations = _travelStyles[_activeStyle] ?? const [];
 
+    // المسافة الأفقية نفسها المستخدمة في باقي أقسام الصفحة، حتى تبدأ كل
+    // الأقسام من نفس الخط ولا تلتصق البطاقة الأولى بحافة الصفحة.
+    const hPad = AppSizes.md;
+
     return Padding(
       padding: const EdgeInsets.only(top: AppSizes.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _t3(context, ar: 'إقامات تناسب كل أسلوب سفر', en: 'Stays for every travel style', es: 'Alojamientos para cada estilo de viaje', tr: 'Her seyahat tarzına uygun konaklama', id: 'Menginap untuk setiap gaya perjalanan',
-                hi: 'हर यात्रा शैली के लिए ठहरने की जगहें',
-                ur: 'ہر سفری انداز کے لیے قیام',
-                fr: 'Des séjours pour tous les styles de voyage',
-                bn: 'প্রতিটি ভ্রমণ শৈলীর জন্য থাকার ব্যবস্থা'),
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _t3(context, ar: 'أسعار متوسطة بناءً على الشهر الحالي', en: 'Average prices based on current calendar month', es: 'Precios promedio del mes actual', tr: 'Mevcut takvim ayına göre ortalama fiyatlar', id: 'Harga rata-rata berdasarkan bulan kalender saat ini',
-                hi: 'वर्तमान कैलेंडर माह के आधार पर औसत मूल्य',
-                ur: 'موجودہ کیلنڈر مہینے کی بنیاد پر اوسط قیمتیں',
-                fr: 'Prix moyens basés sur le mois calendaire en cours',
-                bn: 'বর্তমান ক্যালেন্ডার মাসের ভিত্তিতে গড় মূল্য'),
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
-          const SizedBox(height: AppSizes.md),
-          // كل التبويبات داخل حاوية واحدة (Container) بخلفية فاتحة،
-          // وكل تبويب بيبقى Pill بلون شفاف مميز خاص بيه بدل الخط
-          // السفلي البسيط.
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _travelStyles.keys.map((key) {
-                  final isActive = key == _activeStyle;
-                  final color = _styleColors[key] ?? AppColors.primary;
-                  return Padding(
-                    padding: const EdgeInsetsDirectional.only(end: 8),
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() => _activeStyle = key),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isActive ? color.withOpacity(0.18) : color.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isActive ? color : Colors.transparent,
-                            width: 1.5,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: hPad),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _t3(context, ar: 'إقامات تناسب كل أسلوب سفر', en: 'Stays for every travel style', es: 'Alojamientos para cada estilo de viaje', tr: 'Her seyahat tarzına uygun konaklama', id: 'Menginap untuk setiap gaya perjalanan',
+                      hi: 'हर यात्रा शैली के लिए ठहरने की जगहें',
+                      ur: 'ہر سفری انداز کے لیے قیام',
+                      fr: 'Des séjours pour tous les styles de voyage',
+                      bn: 'প্রতিটি ভ্রমণ শৈলীর জন্য থাকার ব্যবস্থা'),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  // (كان: "أسعار متوسطة بناءً على الشهر الحالي" — حُذف لأن البطاقات
+                  // لا تعرض أسعارًا، والجملة كانت توحي بأسعار غير موجودة.)
+                  _t3(context, ar: 'اختر وجهة لعرض الفنادق المتاحة', en: 'Pick a destination to see available hotels', es: 'Elige un destino para ver los hoteles disponibles', tr: 'Müsait otelleri görmek için bir destinasyon seçin', id: 'Pilih destinasi untuk melihat hotel yang tersedia',
+                      hi: 'उपलब्ध होटल देखने के लिए एक गंतव्य चुनें',
+                      ur: 'دستیاب ہوٹل دیکھنے کے لیے کوئی منزل منتخب کریں',
+                      fr: 'Choisissez une destination pour voir les hôtels disponibles',
+                      bn: 'উপলব্ধ হোটেল দেখতে একটি গন্তব্য বেছে নিন'),
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: AppSizes.md),
+                // كل التبويبات داخل حاوية واحدة (Container) بخلفية فاتحة،
+                // وكل تبويب بيبقى Pill بلون شفاف مميز خاص بيه بدل الخط
+                // السفلي البسيط.
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _travelStyles.keys.map((key) {
+                        final isActive = key == _activeStyle;
+                        final color = _styleColors[key] ?? AppColors.primary;
+                        return Padding(
+                          padding: const EdgeInsetsDirectional.only(end: 8),
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => setState(() => _activeStyle = key),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isActive ? color.withOpacity(0.18) : color.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isActive ? color : Colors.transparent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                _styleLabel(context, key),
+                                style: TextStyle(
+                                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                                  fontSize: 14,
+                                  color: isActive ? color : Colors.black87,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          _styleLabel(context, key),
-                          style: TextStyle(
-                            fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                            fontSize: 14,
-                            color: isActive ? color : Colors.black87,
-                          ),
-                        ),
-                      ),
+                        );
+                      }).toList(),
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: AppSizes.md),
@@ -233,6 +247,7 @@ class _TravelStyleSectionState extends State<TravelStyleSection> {
             height: 230,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: hPad),
               itemCount: destinations.length,
               separatorBuilder: (_, __) => const SizedBox(width: AppSizes.sm),
               itemBuilder: (context, index) {
