@@ -200,6 +200,8 @@ Deno.serve(async (req) => {
       refund_amount: refundError ? 0 : refund,
       refund_id: refundId,
       failure_reason: refundError ? `refund failed: ${refundError}` : null,
+      // من نفّذ الإلغاء (العميل نفسه، أو المالك/المساعد نيابة عنه).
+      cancelled_by: user.id,
       updated_at: new Date().toISOString(),
     }).eq('id', bookingId);
 

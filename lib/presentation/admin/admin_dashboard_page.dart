@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import '../../app.dart';
 import '../../core/config/features.dart';
@@ -31,8 +32,37 @@ String _t3(
 /// قسم إدارة (حجوزات، طلبات مجموعات، فنادق...). الوصول لهذي الشاشة محمي
 /// على مستوى الـ router (redirect في app.dart)، والبيانات نفسها محمية
 /// بسياسات RLS عبر public.is_admin().
-class AdminDashboardPage extends StatelessWidget {
+///
+/// الأدوار (profiles.role):
+///   super_admin = المالك: كل البطاقات، بما فيها Platform Stats (الأرباح).
+///   admin       = مساعد: كل البطاقات ما عدا Platform Stats.
+/// الإخفاء هنا للواجهة فقط؛ الحماية الحقيقية في قاعدة البيانات:
+/// admin_stats ترفض أي أحد غير public.is_owner().
+class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
+
+  @override
+  State<AdminDashboardPage> createState() => _AdminDashboardPageState();
+}
+
+class _AdminDashboardPageState extends State<AdminDashboardPage> {
+  /// هل المستخدم الحالي هو المالك؟ (false حتى يصل الرد، فلا تظهر الأرباح لحظيًا لمساعد.)
+  bool _isOwner = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOwner();
+  }
+
+  Future<void> _checkOwner() async {
+    try {
+      final r = await Supabase.instance.client.rpc('is_owner');
+      if (mounted) setState(() => _isOwner = r == true);
+    } catch (_) {
+      // الدالة غير موجودة بعد أو خطأ شبكة: نخفي الأرباح احتياطًا.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,20 +88,21 @@ class AdminDashboardPage extends StatelessWidget {
     String description,
     VoidCallback onTap,
     })>[
-      (
-      icon: Icons.insights_outlined,
-      color: const Color(0xFF6C5CE7),
-      title: _t3(context, ar: 'إحصاءات المنصة', en: 'Platform Stats', es: 'Estadísticas'),
-      description: _t3(
-        context,
-        ar: 'الأرباح ونسبة الزيادة، عدد الحسابات، ومن حجز فندقًا',
-        en: 'Profit and markup, number of accounts, and who booked a hotel',
-        es: 'Ganancias y margen, número de cuentas y quién reservó',
-      ),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const AdminStatsPage()),
-      ),
-      ),
+      if (_isOwner)
+        (
+        icon: Icons.insights_outlined,
+        color: const Color(0xFF6C5CE7),
+        title: _t3(context, ar: 'إحصاءات المنصة', en: 'Platform Stats', es: 'Estadísticas'),
+        description: _t3(
+          context,
+          ar: 'الأرباح ونسبة الزيادة، عدد الحسابات، ومن حجز فندقًا',
+          en: 'Profit and markup, number of accounts, and who booked a hotel',
+          es: 'Ganancias y margen, número de cuentas y quién reservó',
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AdminStatsPage()),
+        ),
+        ),
       (
       icon: Icons.receipt_long_outlined,
       color: const Color(0xFF0984E3),

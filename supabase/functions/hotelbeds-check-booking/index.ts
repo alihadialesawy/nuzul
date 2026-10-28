@@ -329,7 +329,7 @@ Deno.serve(async (req) => {
     if (!locked || locked.length === 0) return fail('changed', 'Booking changed meanwhile. Refresh and check again.');
 
     const setFields = (fields: Record<string, unknown>) =>
-      admin.from('bookings').update({ ...fields, updated_at: new Date().toISOString() }).eq('id', bookingId);
+      admin.from('bookings').update({ ...fields, resolved_by: user.id, updated_at: new Date().toISOString() }).eq('id', bookingId);
 
     if (a.action === 'capture_and_confirm' || a.action === 'mark_confirmed') {
       if (a.action === 'capture_and_confirm') {
