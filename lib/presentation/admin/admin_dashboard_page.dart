@@ -53,6 +53,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   /// عدد تنبيهات "مهام اليوم" (null حتى يصل الرد).
   int? _alertCount;
+  bool _alertsLoaded = false;
 
   @override
   void initState() {
@@ -63,7 +64,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   Future<void> _loadAlertCount() async {
     final n = await AdminAlertsPage.fetchCount();
-    if (mounted) setState(() => _alertCount = n);
+    if (mounted) {
+      setState(() {
+        _alertCount = n;
+        _alertsLoaded = true;
+      });
+    }
   }
 
   Future<void> _checkOwner() async {
@@ -73,6 +79,90 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     } catch (_) {
       // الدالة غير موجودة بعد أو خطأ شبكة: نخفي الأرباح احتياطًا.
     }
+  }
+
+  Future<void> _openAlerts() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminAlertsPage()));
+    _loadAlertCount();
+  }
+
+  /// بطاقة "مهام اليوم" أولًا: حمراء مع العدد إذا كان هناك ما يحتاج تدخّلًا،
+  /// خضراء إذا لم يكن هناك شيء، ورمادية أثناء التحميل.
+  Widget _actionCenterCard(BuildContext context) {
+    final n = _alertCount;
+    final loading = !_alertsLoaded;
+    final failed = _alertsLoaded && n == null;
+    final hasWork = (n ?? 0) > 0;
+    final color = (loading || failed)
+        ? AppColors.textHint
+        : (hasWork ? const Color(0xFFD63031) : const Color(0xFF00B894));
+    final subtitle = loading
+        ? _t3(context, ar: 'جارٍ التحقق…', en: 'Checking…', es: 'Comprobando…')
+        : failed
+        ? _t3(context, ar: 'تعذّر التحقق — اضغط للفتح', en: 'Could not check — tap to open', es: 'No se pudo comprobar: toca para abrir')
+        : hasWork
+        ? _t3(context,
+        ar: '$n ${n == 1 ? 'أمر يحتاج' : 'أمور تحتاج'} تدخّلك',
+        en: '$n item${n == 1 ? '' : 's'} need${n == 1 ? 's' : ''} your attention',
+        es: '$n elemento${n == 1 ? '' : 's'} requiere${n == 1 ? '' : 'n'} atención')
+        : _t3(context,
+        ar: 'لا شيء يحتاج تدخّلًا الآن',
+        en: 'Nothing needs attention right now',
+        es: 'Nada requiere atención ahora');
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSizes.md),
+      color: color.withOpacity(0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: color.withOpacity(0.6), width: 1.5),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: _openAlerts,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.md),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  hasWork ? Icons.notifications_active : Icons.task_alt,
+                  color: color,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: AppSizes.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _t3(context, ar: 'مهام اليوم', en: 'Action Center', es: 'Centro de tareas'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              if (hasWork)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+                  child: Text('$n', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textHint),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -99,24 +189,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     String description,
     VoidCallback onTap,
     })>[
-      (
-      icon: Icons.notifications_active_outlined,
-      color: (_alertCount ?? 0) > 0 ? const Color(0xFFD63031) : const Color(0xFF00B894),
-      title: _t3(context, ar: 'مهام اليوم', en: 'Action Center', es: 'Centro de tareas') +
-          (_alertCount != null && _alertCount! > 0 ? '  ($_alertCount)' : ''),
-      description: _t3(
-        context,
-        ar: 'حجوزات عالقة، وصول قريب، إلغاء مجاني ينتهي، طلبات مجموعات وحذف حسابات',
-        en: 'Stuck bookings, upcoming arrivals, free cancellation ending, group and deletion requests',
-        es: 'Reservas bloqueadas, llegadas, fin de cancelación gratuita, grupos y eliminaciones',
-      ),
-      onTap: () async {
-        await Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AdminAlertsPage()),
-        );
-        _loadAlertCount();
-      },
-      ),
       if (_isOwner)
         (
         icon: Icons.insights_outlined,
@@ -208,6 +280,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         child: ListView(
           padding: const EdgeInsets.all(AppSizes.md),
           children: [
+            _actionCenterCard(context),
             for (final section in sections)
               Card(
                 margin: const EdgeInsets.only(bottom: AppSizes.md),
