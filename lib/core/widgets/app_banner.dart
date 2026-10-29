@@ -31,7 +31,7 @@ String appBannerText(
 /// الجملة التسويقية اللي بتظهر فوق صورة البانر، بتتغيّر حسب التبويب
 /// النشط (إقامة/طيران/طيران+فندق/تأجير سيارات) ومترجمة لكل اللغات
 /// التسع المدعومة في التطبيق.
-String _bannerTagline(BuildContext context, String? activeTab) {
+String _bannerTagline(BuildContext context, String? activeTab, [String? assetVariant]) {
   final languageCode = Localizations.localeOf(context).languageCode;
 
   String pick({
@@ -103,6 +103,46 @@ String _bannerTagline(BuildContext context, String? activeTab) {
         ur: 'آپ کا سفر یہیں سے شروع ہوتا ہے',
         fr: 'Votre route commence ici',
         bn: 'আপনার পথ এখান থেকেই শুরু',
+      );
+    case 'umrah':
+    // عند اختيار مكة أو المدينة في تبويب العمرة يتغيّر النص مع صورة البانر.
+      if (assetVariant == 'makkah') {
+        return pick(
+          ar: 'في رحاب البيت العتيق، بجوار المسجد الحرام',
+          en: 'In the presence of the Ancient House, near the Sacred Mosque',
+          es: 'Junto a la Casa Antigua, cerca de la Mezquita Sagrada',
+          tr: "Beyt-i Atik'in huzurunda, Mescid-i Haram'ın yakınında",
+          id: 'Di sisi Baitul Atiq, dekat Masjidil Haram',
+          hi: 'बैतुल अतीक़ के सान्निध्य में, मस्जिद अल-हराम के निकट',
+          ur: 'بیتِ عتیق کے سائے میں، مسجد الحرام کے قریب',
+          fr: 'Auprès de la Maison antique, près de la Mosquée sacrée',
+          bn: 'বাইতুল আতিকের সান্নিধ্যে, মসজিদুল হারামের কাছে',
+        );
+      }
+      if (assetVariant == 'madinah') {
+        return pick(
+          ar: 'في طيبة الطيبة، بجوار المسجد النبوي الشريف',
+          en: "In blessed Madinah, near the Prophet's Mosque",
+          es: 'En la bendita Medina, cerca de la Mezquita del Profeta',
+          tr: "Mübarek Medine'de, Mescid-i Nebevi'nin yakınında",
+          id: 'Di Madinah yang diberkahi, dekat Masjid Nabawi',
+          hi: 'मुबारक मदीना में, मस्जिद-ए-नबवी के निकट',
+          ur: 'مدینہ طیبہ میں، مسجد نبوی شریف کے قریب',
+          fr: 'À Médine la bénie, près de la Mosquée du Prophète',
+          bn: 'পবিত্র মদিনায়, মসজিদে নববীর কাছে',
+        );
+      }
+      // "ضيوف الرحمن": الوصف المعروف لحجاج بيت الله وعُمّاره.
+      return pick(
+        ar: 'في خدمة ضيوف الرحمن إلى بيت الله الحرام',
+        en: 'Serving the guests of Allah on their way to the Sacred House',
+        es: 'Al servicio de los invitados de Allah, rumbo a la Casa Sagrada',
+        tr: "Allah'ın misafirlerinin hizmetinde, Beytullah'a doğru",
+        id: 'Melayani tamu Allah dalam perjalanan menuju Baitullah',
+        hi: 'अल्लाह के मेहमानों की सेवा में, बैतुल्लाह की राह पर',
+        ur: 'اللہ کے مہمانوں کی خدمت میں، بیت اللہ کی راہ پر',
+        fr: "Au service des invités d'Allah, en route vers la Maison sacrée",
+        bn: 'আল্লাহর মেহমানদের সেবায়, বাইতুল্লাহর পথে',
       );
     case 'stays':
     default:
@@ -564,7 +604,7 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Text(
-                              _bannerTagline(context, activeTab),
+                              _bannerTagline(context, activeTab, assetVariant),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
