@@ -7,7 +7,9 @@ import '../../core/config/features.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/app_banner.dart';
+import 'admin_alerts_page.dart';
 import 'admin_booking_desk_page.dart';
+import 'admin_financial_report_page.dart';
 import 'admin_group_requests_page.dart';
 import 'admin_stats_page.dart';
 
@@ -49,10 +51,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   /// هل المستخدم الحالي هو المالك؟ (false حتى يصل الرد، فلا تظهر الأرباح لحظيًا لمساعد.)
   bool _isOwner = false;
 
+  /// عدد تنبيهات "مهام اليوم" (null حتى يصل الرد).
+  int? _alertCount;
+
   @override
   void initState() {
     super.initState();
     _checkOwner();
+    _loadAlertCount();
+  }
+
+  Future<void> _loadAlertCount() async {
+    final n = await AdminAlertsPage.fetchCount();
+    if (mounted) setState(() => _alertCount = n);
   }
 
   Future<void> _checkOwner() async {
@@ -88,6 +99,24 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     String description,
     VoidCallback onTap,
     })>[
+      (
+      icon: Icons.notifications_active_outlined,
+      color: (_alertCount ?? 0) > 0 ? const Color(0xFFD63031) : const Color(0xFF00B894),
+      title: _t3(context, ar: 'مهام اليوم', en: 'Action Center', es: 'Centro de tareas') +
+          (_alertCount != null && _alertCount! > 0 ? '  ($_alertCount)' : ''),
+      description: _t3(
+        context,
+        ar: 'حجوزات عالقة، وصول قريب، إلغاء مجاني ينتهي، طلبات مجموعات وحذف حسابات',
+        en: 'Stuck bookings, upcoming arrivals, free cancellation ending, group and deletion requests',
+        es: 'Reservas bloqueadas, llegadas, fin de cancelación gratuita, grupos y eliminaciones',
+      ),
+      onTap: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AdminAlertsPage()),
+        );
+        _loadAlertCount();
+      },
+      ),
       if (_isOwner)
         (
         icon: Icons.insights_outlined,
@@ -101,6 +130,21 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         ),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const AdminStatsPage()),
+        ),
+        ),
+      if (_isOwner)
+        (
+        icon: Icons.request_quote_outlined,
+        color: const Color(0xFF2D3436),
+        title: _t3(context, ar: 'التقارير المالية', en: 'Financial Reports', es: 'Informes financieros'),
+        description: _t3(
+          context,
+          ar: 'تقرير بالفترة: المبيعات والمستردات والتكلفة والربح، مع طباعة وPDF وCSV للمحاسب',
+          en: 'Sales, refunds, cost and profit by period — print, PDF, and CSV for your accountant',
+          es: 'Ventas, reembolsos, costos y ganancia por periodo: imprimir, PDF y CSV',
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AdminFinancialReportPage()),
         ),
         ),
       (

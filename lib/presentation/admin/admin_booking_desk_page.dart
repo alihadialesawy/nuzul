@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import '../../core/pdf/flynoom_pdf.dart';
+import '../../data/models/booking_model.dart';
 
 /// مكتب الحجوزات — حجوزات HotelBeds الحقيقية (جدول bookings حيث supplier = 'hotelbeds').
 ///
@@ -13,7 +15,13 @@ import '../../core/constants/app_sizes.dart';
 ///   HotelBeds وتسترد عبر Stripe وترسل بريد الإلغاء للعميل.
 /// • لا يوجد هنا أي تعديل يدوي للحالة — حالة هذه الحجوزات يحددها السيرفر فقط.
 class AdminBookingDeskPage extends StatefulWidget {
-  const AdminBookingDeskPage({super.key});
+  /// يُفتح من مركز التنبيهات مباشرة على حجز معيّن (رقم Flynoom في البحث).
+  final String? initialQuery;
+
+  /// الفلتر عند الفتح: active / needs_attention / cancelled / attempts / all.
+  final String initialFilter;
+
+  const AdminBookingDeskPage({super.key, this.initialQuery, this.initialFilter = 'active'});
 
   @override
   State<AdminBookingDeskPage> createState() => _AdminBookingDeskPageState();
@@ -145,6 +153,12 @@ class _AdminBookingDeskPageState extends State<AdminBookingDeskPage> {
   @override
   void initState() {
     super.initState();
+    _filter = _filters.contains(widget.initialFilter) ? widget.initialFilter : 'active';
+    final q = widget.initialQuery?.trim() ?? '';
+    if (q.isNotEmpty) {
+      _search.text = q;
+      _query = q;
+    }
     _load();
   }
 
@@ -713,6 +727,31 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
     }
   }
 
+  /// الوثائق (PDF): الفاتورة، والإيصال، والقسيمة — تفتح نافذة الطباعة،
+  /// ومنها يمكن الحفظ كـ PDF أو الطباعة.
+  Future<void> _document(String kind) async {
+    setState(() => _busy = true);
+    try {
+      final b = BookingModel.fromJson(widget.row);
+      final ref = b.clientReference ?? b.id;
+      switch (kind) {
+        case 'invoice':
+          await FlynoomPdf.printBytes(await FlynoomPdf.invoice(b), 'Invoice-$ref.pdf');
+          break;
+        case 'receipt':
+          await FlynoomPdf.printBytes(await FlynoomPdf.invoice(b, receipt: true), 'Receipt-$ref.pdf');
+          break;
+        case 'voucher':
+          await FlynoomPdf.printBytes(await FlynoomPdf.voucher(b), 'Voucher-$ref.pdf');
+          break;
+      }
+    } catch (e) {
+      if (mounted) _snack(_t(context, ar: 'تعذّر إنشاء الوثيقة: $e', en: 'Could not create the document: $e'));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   Widget _r(String label, dynamic value, {bool copy = false}) {
@@ -819,6 +858,48 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
           onPressed: _busy ? null : () => Navigator.pop(context, false),
           child: Text(_t(context, ar: 'إغلاق', en: 'Close')),
         ),
+        // الوثائق: لأي حجز دُفع (مؤكد/مكتمل/ملغى).
+        if (const ['confirmed', 'completed', 'cancelled'].contains(status) && (r['charge_amount'] != null))
+          PopupMenuButton<String>(
+            enabled: !_busy,
+            tooltip: _t(context, ar: 'الوثائق', en: 'Documents'),
+            onSelected: _document,
+            itemBuilder: (ctx) => [
+              PopupMenuItem(
+                value: 'invoice',
+                child: ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(_t(ctx, ar: 'الفاتورة (PDF)', en: 'Invoice (PDF)')),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'receipt',
+                child: ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.receipt_outlined),
+                  title: Text(_t(ctx, ar: 'الإيصال (PDF)', en: 'Receipt (PDF)')),
+                ),
+              ),
+              if (r['supplier_reference'] != null)
+                PopupMenuItem(
+                  value: 'voucher',
+                  child: ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.confirmation_number_outlined),
+                    title: Text(_t(ctx, ar: 'القسيمة (PDF)', en: 'Voucher (PDF)')),
+                  ),
+                ),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.print_outlined, size: 18),
+                const SizedBox(width: 6),
+                Text(_t(context, ar: 'الوثائق', en: 'Documents')),
+              ]),
+            ),
+          ),
         if (status == 'needs_attention' || status == 'processing')
           FilledButton.icon(
             onPressed: _busy ? null : _checkWithHotelBeds,
