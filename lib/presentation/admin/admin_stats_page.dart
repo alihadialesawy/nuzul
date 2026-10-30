@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -30,16 +32,36 @@ class _AdminStatsPageState extends State<AdminStatsPage> {
   String? _error;
   bool _loading = true;
 
+  /// تحديث تلقائي كل دقيقة ما دامت الشاشة مفتوحة (بدون إخفاء الأرقام).
+  static const _autoRefresh = Duration(seconds: 60);
+  Timer? _timer;
+  bool _refreshing = false;
+  DateTime? _updatedAt;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _timer = Timer.periodic(_autoRefresh, (_) => _load(silent: true));
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  /// [silent]: تحديث في الخلفية — تبقى الأرقام الحالية ظاهرة حتى تصل الجديدة،
+  /// وإن فشل التحديث تبقى القديمة.
+  Future<void> _load({bool silent = false}) async {
+    if (silent && (_loading || _refreshing)) return;
     setState(() {
-      _loading = true;
-      _error = null;
+      if (silent) {
+        _refreshing = true;
+      } else {
+        _loading = true;
+        _error = null;
+      }
     });
     try {
       final now = DateTime.now().toUtc();
@@ -52,12 +74,16 @@ class _AdminStatsPageState extends State<AdminStatsPage> {
       setState(() {
         _data = Map<String, dynamic>.from(res as Map);
         _loading = false;
+        _refreshing = false;
+        _error = null;
+        _updatedAt = DateTime.now();
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        if (!silent || _data == null) _error = '$e';
         _loading = false;
+        _refreshing = false;
       });
     }
   }
@@ -84,7 +110,8 @@ class _AdminStatsPageState extends State<AdminStatsPage> {
       appBar: AppBar(
         title: Text(_t(context, ar: 'إحصاءات المنصة', en: 'Platform stats')),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : _load),
+          _AutoRefreshBadge(updatedAt: _updatedAt, refreshing: _refreshing),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : () => _load()),
         ],
       ),
       body: Column(
@@ -429,6 +456,32 @@ class _Stat extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// "تحديث تلقائي · آخر تحديث 8:41:05 م" في شريط العنوان.
+class _AutoRefreshBadge extends StatelessWidget {
+  final DateTime? updatedAt;
+  final bool refreshing;
+  const _AutoRefreshBadge({required this.updatedAt, required this.refreshing});
+
+  @override
+  Widget build(BuildContext context) {
+    final ar = Localizations.localeOf(context).languageCode == 'ar';
+    final t = updatedAt == null ? '' : TimeOfDay.fromDateTime(updatedAt!).format(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        refreshing
+            ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.autorenew, size: 16, color: Color(0xFF00B894)),
+        const SizedBox(width: 6),
+        Text(
+          ar ? 'تحديث تلقائي${t.isEmpty ? '' : ' · $t'}' : 'Auto-refresh${t.isEmpty ? '' : ' · $t'}',
+          style: const TextStyle(fontSize: 12),
+        ),
+      ]),
     );
   }
 }

@@ -30,8 +30,8 @@ class _LegalSection {
 class PrivacyNoticePage extends StatelessWidget {
   const PrivacyNoticePage({super.key});
 
-  static const String _lastUpdatedEn = 'October 23, 2026';
-  static const String _lastUpdatedAr = '23 أكتوبر 2026';
+  static const String _lastUpdatedEn = 'October 29, 2026';
+  static const String _lastUpdatedAr = '29 أكتوبر 2026';
 
   /// بريد الخصوصية وحذف الحساب. يجب أن يكون بريدًا يصل فعلًا.
   static const String _contactEmail = 'support@flynoom.com';
@@ -52,7 +52,7 @@ class PrivacyNoticePage extends StatelessWidget {
       'Account information: your email address, name, phone number, and login details, or basic profile information from a sign-in provider you choose to use.\n\n'
           'Booking information: the lead guest\'s first and last name, email, and phone number; travel dates, destination, and room choices; the number of guests and the ages of any children (hotels require them); and any special requests.\n\n'
           'Payment information: card payments are entered directly into our payment processor, Stripe. We never receive or store your full card number. We keep limited records such as the amount, currency, payment status, and transaction identifiers.\n\n'
-          'Usage and device information: search history, pages viewed, device and browser type, IP address, and technical logs. If you allow it, we use your approximate location to suggest nearby cities.\n\n'
+          'Usage and device information: search history, pages viewed, device and browser type, IP address, and technical logs. If you allow it, we use your approximate location to suggest nearby cities. We also use your IP address to estimate your approximate country, state, and city, and the country and state of your card\'s billing address, to understand where our visitors and customers are; we use this only in aggregated statistics, and we do not store your IP address for this purpose.\n\n'
           'Mobile app information: if you use our Android or iPhone app, we also receive the app version, your device\'s operating system, and crash and performance diagnostics that help us fix problems. The app asks for your permission before it uses device features such as location, and you can change these permissions at any time in your device settings. Apple and Google handle app downloads and updates under their own terms and privacy policies; we receive only general statistics from them, such as the number of downloads.\n\n'
           'Community content: posts, trip journals, comments, reviews, and photos you share in the Community, along with your public profile name and picture. Photos you upload may contain location data (for example, GPS information); please remove it before posting if you do not want to share it.\n\n'
           'Communications: messages you send us by email or WhatsApp, and records of emails we send to you.\n\n'
@@ -61,7 +61,7 @@ class PrivacyNoticePage extends StatelessWidget {
       'معلومات الحساب: بريدك الإلكتروني واسمك ورقم هاتفك وبيانات الدخول، أو معلومات الملف الأساسية من مزود تسجيل الدخول الذي تختار استخدامه.\n\n'
           'معلومات الحجز: الاسم الأول والأخير للنزيل الرئيسي وبريده الإلكتروني ورقم هاتفه؛ وتواريخ السفر والوجهة والغرف المختارة؛ وعدد النزلاء وأعمار الأطفال إن وُجدوا (تطلبها الفنادق)؛ وأي طلبات خاصة.\n\n'
           'معلومات الدفع: تُدخَل بيانات البطاقة مباشرة لدى معالج الدفع لدينا Stripe، ولا نستلم رقم بطاقتك الكامل ولا نخزنه أبدًا. نحتفظ بسجلات محدودة مثل المبلغ والعملة وحالة الدفع ومعرّفات المعاملة.\n\n'
-          'معلومات الاستخدام والجهاز: سجل البحث، والصفحات التي تزورها، ونوع الجهاز والمتصفح، وعنوان IP، والسجلات التقنية. وإذا سمحت بذلك، نستخدم موقعك التقريبي لاقتراح المدن القريبة.\n\n'
+          'معلومات الاستخدام والجهاز: سجل البحث، والصفحات التي تزورها، ونوع الجهاز والمتصفح، وعنوان IP، والسجلات التقنية. وإذا سمحت بذلك، نستخدم موقعك التقريبي لاقتراح المدن القريبة. كما نستخدم عنوان IP لتقدير دولتك وولايتك ومدينتك التقريبية، ونستخدم دولة عنوان فاتورة بطاقتك وولايتها، لنعرف أماكن زوارنا وعملائنا؛ ولا نستخدم ذلك إلا في إحصاءات مجمّعة، ولا نخزّن عنوان IP لهذا الغرض.\n\n'
           'معلومات تطبيق الهاتف: إذا استخدمت تطبيقنا على Android أو iPhone، نتلقى أيضًا إصدار التطبيق ونظام تشغيل جهازك وتقارير الأعطال والأداء التي تساعدنا على إصلاح المشاكل. يطلب التطبيق إذنك قبل استخدام ميزات الجهاز مثل الموقع، ويمكنك تغيير هذه الأذونات في أي وقت من إعدادات جهازك. تتولى Apple وGoogle تنزيل التطبيق وتحديثاته وفق شروطهما وسياسات الخصوصية الخاصة بهما، ولا نتلقى منهما إلا إحصاءات عامة مثل عدد مرات التنزيل.\n\n'
           'محتوى المجتمع: المنشورات ويوميات الرحلات والتعليقات والتقييمات والصور التي تشاركها في قسم المجتمع، إلى جانب اسمك وصورتك في ملفك العام. قد تحتوي الصور التي ترفعها على بيانات الموقع (مثل معلومات GPS)، فاحذفها قبل النشر إن كنت لا تريد مشاركتها.\n\n'
           'المراسلات: الرسائل التي ترسلها إلينا عبر البريد الإلكتروني أو واتساب، وسجلات الرسائل التي نرسلها إليك.\n\n'
@@ -82,13 +82,13 @@ class PrivacyNoticePage extends StatelessWidget {
       titleAr: '4. كيف نشارك المعلومات',
       bodyEn:
       'To complete your booking, we must share booking information with the travel providers involved: HOTELBEDS (Hotelbeds Group, based in Spain) and the hotel you booked. These providers use your information under their own privacy policies.\n\n'
-          'We also use service providers who process information on our behalf: Stripe (payments), Supabase (account login and database), Netlify (website hosting), Resend (sending booking emails), Google (services such as sign-in and maps, where used), and WhatsApp, operated by Meta, if you choose to message us there.\n\n'
+          'We also use service providers who process information on our behalf: Stripe (payments), Supabase (account login and database), Netlify (website hosting), Resend (sending booking emails), Google (services such as sign-in and maps, where used), IPinfo (estimating approximate location from an IP address), and WhatsApp, operated by Meta, if you choose to message us there.\n\n'
           'Anything you post in the Community, together with your public profile name and picture, is visible to other users and may be visible to visitors who are not signed in. Please do not include booking references or other private details in public posts.\n\n'
           'We may disclose information when required by law or legal process, to protect the rights, safety, and property of our customers, Flynoom, or others, or as part of a merger, sale, or transfer of our business.\n\n'
           'We do not sell your personal information, and we do not share it for cross-context behavioral (targeted) advertising.',
       bodyAr:
       'لإتمام حجزك، يلزمنا مشاركة بيانات الحجز مع مزوّدي السفر المعنيين: مع HOTELBEDS (مجموعة Hotelbeds ومقرها إسبانيا) ومع الفندق الذي حجزته. يستخدم هؤلاء المزوّدون معلوماتك وفق سياسات الخصوصية الخاصة بهم.\n\n'
-          'كما نستعين بمزوّدي خدمات يعالجون المعلومات نيابة عنا: Stripe (المدفوعات)، وSupabase (تسجيل الدخول وقاعدة البيانات)، وNetlify (استضافة الموقع)، وResend (إرسال رسائل الحجز)، وGoogle (خدمات مثل تسجيل الدخول والخرائط، حيثما تُستخدم)، وواتساب التابع لشركة Meta إذا اخترت مراسلتنا عبره.\n\n'
+          'كما نستعين بمزوّدي خدمات يعالجون المعلومات نيابة عنا: Stripe (المدفوعات)، وSupabase (تسجيل الدخول وقاعدة البيانات)، وNetlify (استضافة الموقع)، وResend (إرسال رسائل الحجز)، وGoogle (خدمات مثل تسجيل الدخول والخرائط، حيثما تُستخدم)، وIPinfo (تقدير الموقع التقريبي من عنوان IP)، وواتساب التابع لشركة Meta إذا اخترت مراسلتنا عبره.\n\n'
           'كل ما تنشره في قسم المجتمع، مع اسمك وصورتك في ملفك العام، يراه المستخدمون الآخرون، وقد يراه الزوار غير المسجلين. يُرجى عدم وضع أرقام الحجز أو أي تفاصيل خاصة في المنشورات العامة.\n\n'
           'قد نفصح عن المعلومات عندما يُلزمنا القانون أو إجراء قانوني بذلك، أو لحماية حقوق عملائنا أو Flynoom أو غيرهم وسلامتهم وممتلكاتهم، أو في إطار اندماج أو بيع أو نقل لأعمالنا.\n\n'
           'لا نبيع معلوماتك الشخصية، ولا نشاركها لأغراض الإعلانات الموجهة عبر المواقع والتطبيقات.',

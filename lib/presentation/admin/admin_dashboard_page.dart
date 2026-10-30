@@ -8,10 +8,17 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/app_banner.dart';
 import 'admin_alerts_page.dart';
+import 'admin_analytics_page.dart';
 import 'admin_booking_desk_page.dart';
+import 'admin_disputes_page.dart';
 import 'admin_financial_report_page.dart';
 import 'admin_group_requests_page.dart';
 import 'admin_stats_page.dart';
+
+/// شاشتا النظام القديم (فنادق محلية تجريبية): Legacy Bookings و Manage Hotels.
+/// مخفيتان حتى لا يؤكد أحد حجزًا قديمًا أو يعدّل فندقًا وهميًا بالخطأ.
+/// المسارات نفسها ما زالت موجودة (للمدير فقط) إن احتجتها: /admin/bookings و /admin/hotels.
+const bool _kLegacyAdminEnabled = false;
 
 /// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني).
 String _t3(
@@ -206,6 +213,21 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         ),
       if (_isOwner)
         (
+        icon: Icons.public,
+        color: const Color(0xFF0984E3),
+        title: _t3(context, ar: 'التحليلات والانتشار', en: 'Analytics & Reach', es: 'Analítica y alcance'),
+        description: _t3(
+          context,
+          ar: 'رسوم بيانية للإيراد والزيارات والتسجيلات، وانتشار المنصة حسب الدول والولايات والمدن',
+          en: 'Charts for revenue, visits and sign-ups, and reach by country, state and city',
+          es: 'Gráficos de ingresos, visitas y registros, y alcance por país, estado y ciudad',
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AdminAnalyticsPage()),
+        ),
+        ),
+      if (_isOwner)
+        (
         icon: Icons.request_quote_outlined,
         color: const Color(0xFF2D3436),
         title: _t3(context, ar: 'التقارير المالية', en: 'Financial Reports', es: 'Informes financieros'),
@@ -220,6 +242,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         ),
         ),
       (
+      icon: Icons.gavel_outlined,
+      color: const Color(0xFFB71C1C),
+      title: _t3(context, ar: 'الاعتراضات على الدفع', en: 'Payment Disputes', es: 'Disputas de pago'),
+      description: _t3(
+        context,
+        ar: 'اعتراضات البطاقات (Chargebacks) من Stripe: الموعد النهائي، وملف أدلة PDF جاهز للرد',
+        en: 'Card chargebacks from Stripe: deadlines and a ready-made evidence PDF',
+        es: 'Contracargos de Stripe: plazos y PDF de pruebas',
+      ),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AdminDisputesPage()),
+      ),
+      ),
+      (
       icon: Icons.receipt_long_outlined,
       color: const Color(0xFF0984E3),
       title: _t3(context, ar: 'مكتب الحجوزات', en: 'Booking Desk', es: 'Mesa de Reservas'),
@@ -233,13 +269,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         MaterialPageRoute(builder: (_) => const AdminBookingDeskPage()),
       ),
       ),
-      (
-      icon: Icons.history_outlined,
-      color: const Color(0xFF636E72),
-      title: _t3(context, ar: 'الحجوزات القديمة', en: 'Legacy Bookings', es: 'Reservas Antiguas'),
-      description: bookingsDescription,
-      onTap: () => context.push(AppRoutes.adminBookings),
-      ),
+      if (_kLegacyAdminEnabled)
+        (
+        icon: Icons.history_outlined,
+        color: const Color(0xFF636E72),
+        title: _t3(context, ar: 'الحجوزات القديمة', en: 'Legacy Bookings', es: 'Reservas Antiguas'),
+        description: bookingsDescription,
+        onTap: () => context.push(AppRoutes.adminBookings),
+        ),
       (
       icon: Icons.groups_outlined,
       color: const Color(0xFFE17055),
@@ -254,18 +291,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         MaterialPageRoute(builder: (_) => const AdminGroupRequestsPage()),
       ),
       ),
-      (
-      icon: Icons.hotel_outlined,
-      color: const Color(0xFF00B894),
-      title: _t3(context, ar: 'إدارة الفنادق', en: 'Manage Hotels', es: 'Gestionar Hoteles'),
-      description: _t3(
-        context,
-        ar: 'إضافة، تعديل، أو حذف الفنادق والغرف المعروضة بالتطبيق',
-        en: 'Add, edit, or remove hotels and rooms shown in the app',
-        es: 'Añade, edita o elimina hoteles y habitaciones en la app',
-      ),
-      onTap: () => context.push(AppRoutes.adminHotels),
-      ),
+      if (_kLegacyAdminEnabled)
+        (
+        icon: Icons.hotel_outlined,
+        color: const Color(0xFF00B894),
+        title: _t3(context, ar: 'إدارة الفنادق', en: 'Manage Hotels', es: 'Gestionar Hoteles'),
+        description: _t3(
+          context,
+          ar: 'إضافة، تعديل، أو حذف الفنادق والغرف المعروضة بالتطبيق',
+          en: 'Add, edit, or remove hotels and rooms shown in the app',
+          es: 'Añade, edita o elimina hoteles y habitaciones en la app',
+        ),
+        onTap: () => context.push(AppRoutes.adminHotels),
+        ),
     ];
 
     return Scaffold(

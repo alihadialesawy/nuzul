@@ -5,4 +5,4 @@
 /// هنا بنفس التاريخ (YYYY-MM-DD). يُحفظ مع كل حجز في جدول booking_consents،
 /// فنعرف بالضبط أي نسخة وافق عليها العميل.
 const String kTermsVersion = '2026-10-23';
-const String kPrivacyVersion = '2026-10-23';
+const String kPrivacyVersion = '2026-10-29';

@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import 'admin_booking_desk_page.dart';
+import 'admin_disputes_page.dart';
 import 'admin_group_requests_page.dart';
 
 /// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني).
@@ -36,7 +37,7 @@ class AdminAlertsPage extends StatefulWidget {
       final r = await Supabase.instance.client.rpc('admin_alerts');
       if (r is! Map) return null;
       int n(String k) => (r[k] is List) ? (r[k] as List).length : 0;
-      return n('stuck') + n('arrivals') + n('free_cancel_ending') + n('group_requests') + n('deletions');
+      return n('disputes') + n('stuck') + n('arrivals') + n('free_cancel_ending') + n('group_requests') + n('deletions');
     } catch (_) {
       return null;
     }
@@ -88,6 +89,11 @@ class _AdminAlertsPageState extends State<AdminAlertsPage> {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => AdminBookingDeskPage(initialQuery: ref, initialFilter: 'all'),
     ));
+    if (mounted) _load();
+  }
+
+  Future<void> _openDisputes() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminDisputesPage()));
     if (mounted) _load();
   }
 
@@ -186,12 +192,13 @@ class _AdminAlertsPageState extends State<AdminAlertsPage> {
       );
     }
 
+    final disputes = _list('disputes');
     final stuck = _list('stuck');
     final arrivals = _list('arrivals');
     final freeCancel = _list('free_cancel_ending');
     final groups = _list('group_requests');
     final deletions = _list('deletions');
-    final total = stuck.length + arrivals.length + freeCancel.length + groups.length + deletions.length;
+    final total = disputes.length + stuck.length + arrivals.length + freeCancel.length + groups.length + deletions.length;
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -216,6 +223,26 @@ class _AdminAlertsPageState extends State<AdminAlertsPage> {
                         ),
                       ]),
                     ),
+
+                  // 0) اعتراضات على الدفع
+                  _SectionCard(
+                    icon: Icons.gavel_outlined,
+                    color: const Color(0xFFB71C1C),
+                    title: _t3(context, ar: 'اعتراضات على الدفع تحتاج ردًا', en: 'Payment disputes needing a response', es: 'Disputas que requieren respuesta'),
+                    hint: _t3(context,
+                        ar: 'جهّز ملف الأدلة وارفعه في Stripe قبل الموعد النهائي، وإلا يُخسر المبلغ تلقائيًا.',
+                        en: 'Prepare the evidence PDF and submit it in Stripe before the deadline, or the amount is lost.',
+                        es: 'Envía las pruebas en Stripe antes de la fecha límite.'),
+                    items: [
+                      for (final d in disputes)
+                        _AlertTile(
+                          title: '${d['client_reference'] ?? '—'} · \$${d['amount'] ?? '—'}',
+                          subtitle: '${d['reason'] ?? ''}',
+                          trailing: _hoursLeft(context, d['due']),
+                          onTap: _openDisputes,
+                        ),
+                    ],
+                  ),
 
                   // 1) عالقة
                   _SectionCard(

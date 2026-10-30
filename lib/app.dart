@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/config/features.dart';
+import 'core/services/visit_tracker.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/locale_provider.dart';
 import 'core/widgets/app_bottom_nav_bar.dart';
@@ -108,6 +109,9 @@ bool get _startIsPasswordRecovery =>
     kIsWeb && Uri.base.queryParameters['flow'] == 'recovery';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  // تسجيل الزيارة لشاشة التحليلات (مرة واحدة عند فتح التطبيق؛ لا يعمل في وضع التطوير).
+  VisitTracker.start();
+
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: _startIsPasswordRecovery ? AppRoutes.resetPassword : AppRoutes.home,

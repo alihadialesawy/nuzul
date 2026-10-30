@@ -66,29 +66,29 @@ class FlynoomPdf {
   static pw.Widget _brand(pw.MemoryImage? logo) => logo != null
       ? pw.Image(logo, height: 30)
       : pw.Text('FLYNOOM',
-          style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: _navy, letterSpacing: 2));
+      style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: _navy, letterSpacing: 2));
 
   static pw.Widget _label(String s) =>
       pw.Text(s.toUpperCase(), style: pw.TextStyle(fontSize: 8, color: _grey, letterSpacing: 1, fontWeight: pw.FontWeight.bold));
 
   static pw.Widget _kv(String k, String v, {bool bold = false, PdfColor? color}) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 2),
-        child: pw.Row(children: [
-          pw.SizedBox(width: 120, child: pw.Text(k, style: const pw.TextStyle(fontSize: 9, color: _grey))),
-          pw.Expanded(
-            child: pw.Text(v,
-                style: pw.TextStyle(fontSize: 9, fontWeight: bold ? pw.FontWeight.bold : null, color: color)),
-          ),
-        ]),
-      );
+    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+    child: pw.Row(children: [
+      pw.SizedBox(width: 120, child: pw.Text(k, style: const pw.TextStyle(fontSize: 9, color: _grey))),
+      pw.Expanded(
+        child: pw.Text(v,
+            style: pw.TextStyle(fontSize: 9, fontWeight: bold ? pw.FontWeight.bold : null, color: color)),
+      ),
+    ]),
+  );
 
   static pw.Widget _footer(pw.Context ctx, String note) => pw.Column(children: [
-        pw.Divider(color: _light),
-        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text(note, style: const pw.TextStyle(fontSize: 7, color: _grey)),
-          pw.Text('Page ${ctx.pageNumber} of ${ctx.pagesCount}', style: const pw.TextStyle(fontSize: 7, color: _grey)),
-        ]),
-      ]);
+    pw.Divider(color: _light),
+    pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+      pw.Text(note, style: const pw.TextStyle(fontSize: 7, color: _grey)),
+      pw.Text('Page ${ctx.pageNumber} of ${ctx.pagesCount}', style: const pw.TextStyle(fontSize: 7, color: _grey)),
+    ]),
+  ]);
 
   static int _nights(BookingModel b) => b.checkOut.difference(b.checkIn).inDays;
 
@@ -281,7 +281,7 @@ class FlynoomPdf {
         if (cancelled && b.cancelledAt != null)
           pw.Text(
             'Booking cancelled on ${_dayTime.format(b.cancelledAt!.toLocal())}'
-            '${b.cancellationReference != null ? ' (cancellation ref. ${b.cancellationReference})' : ''}.',
+                '${b.cancellationReference != null ? ' (cancellation ref. ${b.cancellationReference})' : ''}.',
             style: const pw.TextStyle(fontSize: 8, color: _grey),
           ),
 
@@ -299,7 +299,7 @@ class FlynoomPdf {
         pw.SizedBox(height: 24),
         pw.Text(
           'Prices include taxes and fees collected by Flynoom. The charge appears on the card statement as FLYNOOM. '
-          'Questions? support@flynoom.com',
+              'Questions? support@flynoom.com',
           style: const pw.TextStyle(fontSize: 8, color: _grey),
         ),
       ],
@@ -309,12 +309,12 @@ class FlynoomPdf {
   }
 
   static pw.Widget _totalRow(String k, String v, {bool bold = false, PdfColor? color}) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 2),
-        child: pw.Row(children: [
-          pw.Expanded(child: pw.Text(k, style: pw.TextStyle(fontSize: 9, fontWeight: bold ? pw.FontWeight.bold : null))),
-          pw.Text(v, style: pw.TextStyle(fontSize: bold ? 11 : 9, fontWeight: bold ? pw.FontWeight.bold : null, color: color)),
-        ]),
-      );
+    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+    child: pw.Row(children: [
+      pw.Expanded(child: pw.Text(k, style: pw.TextStyle(fontSize: 9, fontWeight: bold ? pw.FontWeight.bold : null))),
+      pw.Text(v, style: pw.TextStyle(fontSize: bold ? 11 : 9, fontWeight: bold ? pw.FontWeight.bold : null, color: color)),
+    ]),
+  );
 
   // ───────────────────────── القسيمة ─────────────────────────
 
@@ -377,8 +377,8 @@ class FlynoomPdf {
               if (r.boardName != null) pw.Text('Board: ${_title(r.boardName!)}', style: const pw.TextStyle(fontSize: 9)),
               pw.Text(
                 'Guests per room: ${r.adults} adult${r.adults == 1 ? '' : 's'}'
-                '${r.children > 0 ? ', ${r.children} child${r.children == 1 ? '' : 'ren'}' : ''}'
-                '${r.childAges.isNotEmpty ? ' (ages ${r.childAges.join(', ')})' : ''}',
+                    '${r.children > 0 ? ', ${r.children} child${r.children == 1 ? '' : 'ren'}' : ''}'
+                    '${r.childAges.isNotEmpty ? ' (ages ${r.childAges.join(', ')})' : ''}',
                 style: const pw.TextStyle(fontSize: 9),
               ),
             ]),
@@ -404,7 +404,7 @@ class FlynoomPdf {
         // العبارة الإلزامية من HotelBeds.
         pw.Text(
           'Payable through ${b.supplierName ?? 'HOTELBEDS'}, acting as agent for the service operating company, '
-          'details of which can be provided upon request. VAT: ${b.supplierVat ?? '—'} Reference: ${b.supplierReference ?? '—'}',
+              'details of which can be provided upon request. VAT: ${b.supplierVat ?? '—'} Reference: ${b.supplierReference ?? '—'}',
           style: const pw.TextStyle(fontSize: 8, color: _grey),
         ),
       ],
@@ -448,16 +448,16 @@ class FlynoomPdf {
     final doc = pw.Document(theme: theme, title: 'Financial report $periodLabel');
 
     pw.Widget box(String k, dynamic v, {bool money = true}) => pw.Expanded(
-          child: pw.Container(
-            margin: const pw.EdgeInsets.only(right: 6),
-            padding: const pw.EdgeInsets.all(6),
-            decoration: const pw.BoxDecoration(color: _light),
-            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-              pw.Text(k, style: const pw.TextStyle(fontSize: 7, color: _grey)),
-              pw.Text(money ? usd(v as num?) : '${v ?? 0}', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-            ]),
-          ),
-        );
+      child: pw.Container(
+        margin: const pw.EdgeInsets.only(right: 6),
+        padding: const pw.EdgeInsets.all(6),
+        decoration: const pw.BoxDecoration(color: _light),
+        child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          pw.Text(k, style: const pw.TextStyle(fontSize: 7, color: _grey)),
+          pw.Text(money ? usd(v as num?) : '${v ?? 0}', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+        ]),
+      ),
+    );
 
     doc.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.letter.landscape,
@@ -465,7 +465,7 @@ class FlynoomPdf {
       footer: (ctx) => _footer(
         ctx,
         '$_company · Management report generated ${_dayTime.format(DateTime.now())} · '
-        '*Stripe fees are estimated (2.9% + \$0.30). Use Stripe and HotelBeds statements as the official records.',
+            '*Stripe fees are estimated (2.9% + \$0.30). Use Stripe and HotelBeds statements as the official records.',
       ),
       build: (ctx) => [
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
@@ -558,6 +558,155 @@ class FlynoomPdf {
       ].join(','));
     }
     return Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(b.toString())]);
+  }
+
+  // ───────────────────────── ملف أدلة الاعتراض ─────────────────────────
+
+  /// ملف أدلة للرد على اعتراض البطاقة (Chargeback) في Stripe.
+  /// يجمع: ملخص الحجز، والدفع والبطاقة، وسجلات موافقة العميل (الوقت، IP،
+  /// المتصفح، نسخة الشروط)، وسياسة الإلغاء التي رآها، وتأكيد الفندق،
+  /// والإلغاء/الاسترداد إن وُجد. يُرفع كما هو في صفحة الاعتراض على Stripe.
+  static Future<Uint8List> disputeEvidence({
+    required BookingModel b,
+    required List<Map<String, dynamic>> consents,
+    required Map<String, dynamic> dispute,
+  }) async {
+    final theme = await _loadTheme();
+    final logo = await _loadLogo();
+    final doc = pw.Document(theme: theme, title: 'Dispute evidence ${b.clientReference ?? ''}');
+    final paid = b.chargeAmount ?? 0;
+    final cancelled = b.status == 'cancelled';
+    final rooms = b.voucherRooms;
+    final roomLine = rooms.isNotEmpty
+        ? rooms.map((r) => '${r.rooms} × ${_title(r.name)}${r.boardName != null ? ' · ${_title(r.boardName!)}' : ''}'
+        ' (${r.adults} adult${r.adults == 1 ? '' : 's'}${r.children > 0 ? ', ${r.children} child' : ''})').join('\n')
+        : [b.roomName, b.boardName].whereType<String>().map(_title).join(' · ');
+
+    String when(dynamic v) {
+      final d = DateTime.tryParse('${v ?? ''}')?.toUtc();
+      return d == null ? '—' : '${DateFormat('MMM d, yyyy HH:mm:ss', 'en_US').format(d)} UTC';
+    }
+
+    final policies = [...b.cancellationPolicies]..sort((x, y) => '${x['from']}'.compareTo('${y['from']}'));
+
+    pw.Widget section(String title, List<pw.Widget> children) => pw.Padding(
+      padding: const pw.EdgeInsets.only(top: 14),
+      child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+        pw.Text(title, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: _navy)),
+        pw.Divider(color: _light, height: 6),
+        ...children,
+      ]),
+    );
+
+    doc.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.letter,
+      margin: const pw.EdgeInsets.all(40),
+      footer: (ctx) => _footer(ctx, '$_company · Dispute ${dispute['id'] ?? ''} · ${b.clientReference ?? ''}'),
+      build: (ctx) => [
+        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+          _brand(logo),
+          pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+            pw.Text('DISPUTE EVIDENCE', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: _navy)),
+            pw.Text('Dispute ${dispute['id'] ?? ''}', style: const pw.TextStyle(fontSize: 9)),
+            pw.Text('Reason: ${dispute['reason'] ?? '—'}', style: const pw.TextStyle(fontSize: 9, color: _grey)),
+          ]),
+        ]),
+        pw.SizedBox(height: 10),
+        pw.Text(
+          'FLYNOOM LLC (flynoom.com) is an online travel agency. The cardholder booked a hotel stay on our website, '
+              'reviewed the final price and cancellation policy, accepted our Terms, and authorized the payment. The card was charged '
+              'only after the hotel confirmed the reservation. The records below were created automatically at the time of booking.',
+          style: const pw.TextStyle(fontSize: 9),
+        ),
+
+        section('1. Booking summary', [
+          _kv('Flynoom reference', b.clientReference ?? '—'),
+          _kv('Hotel confirmation (HotelBeds)', b.supplierReference ?? '—'),
+          _kv('Booked on', when(b.createdAt?.toIso8601String())),
+          _kv('Hotel', '${b.hotelName ?? ''}${(b.hotelCity ?? '').isNotEmpty ? ', ${b.hotelCity}' : ''}'),
+          if (b.hotelAddress != null) _kv('Hotel address', b.hotelAddress!),
+          _kv('Stay', '${_day.format(b.checkIn)} – ${_day.format(b.checkOut)} (${_nights(b)} nights)'),
+          if (roomLine.isNotEmpty) _kv('Room', roomLine),
+          _kv('Lead guest', b.holderFullName.isEmpty ? '—' : b.holderFullName),
+          _kv('Booking status', b.status.toUpperCase(), bold: true),
+        ]),
+
+        section('2. Customer and payment', [
+          _kv('Customer email', b.holderEmail ?? '—'),
+          if ((b.holderPhone ?? '').isNotEmpty) _kv('Customer phone', b.holderPhone!),
+          _kv('Amount charged', usd(paid)),
+          if (b.cardLast4 != null) _kv('Card', '${_cardBrand(b.cardBrand)} •••• ${b.cardLast4}'),
+          _kv('Disputed amount', usd(dispute['amount'] as num?)),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            'Payment flow: the card was first authorized (held) when the customer clicked "Agree and pay"; it was captured only after '
+                'the hotel supplier confirmed the booking. A booking confirmation email with the hotel voucher was sent to the customer\'s email above.',
+            style: const pw.TextStyle(fontSize: 8, color: _grey),
+          ),
+        ]),
+
+        section('3. Customer agreement records', [
+          if (consents.isEmpty)
+            pw.Text('No consent records found for this booking.', style: const pw.TextStyle(fontSize: 9, color: _red))
+          else
+            for (final c in consents)
+              pw.Container(
+                margin: const pw.EdgeInsets.only(bottom: 6),
+                padding: const pw.EdgeInsets.all(6),
+                decoration: const pw.BoxDecoration(color: _light),
+                child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                  pw.Text(
+                    c['kind'] == 'final_review'
+                        ? 'Final review: customer approved the final price and cancellation policy'
+                        : 'Checkout: customer accepted the Terms of Service and Privacy Notice',
+                    style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                  ),
+                  _kv('Time', when(c['accepted_at'])),
+                  _kv('IP address', '${c['ip'] ?? '—'}'),
+                  _kv('Browser', '${c['user_agent'] ?? '—'}'),
+                  if (c['terms_version'] != null) _kv('Terms version', '${c['terms_version']}'),
+                  if (c['amount_usd'] != null) _kv('Amount shown', usd(c['amount_usd'] as num?)),
+                  if ((c['consent_text'] ?? '').toString().isNotEmpty)
+                    pw.Text('Text accepted: "${c['consent_text']}"', style: const pw.TextStyle(fontSize: 8, color: _grey)),
+                ]),
+              ),
+        ]),
+
+        section('4. Cancellation policy shown before payment', [
+          if (policies.isEmpty)
+            pw.Text('Free cancellation.', style: const pw.TextStyle(fontSize: 9))
+          else
+            for (final p in policies)
+              pw.Text(
+                'From ${p['from']} (hotel local time): cancellation fee ${usd((p['customerFee'] ?? p['amountUsd']) as num?)}',
+                style: const pw.TextStyle(fontSize: 9),
+              ),
+          if ((b.rateComments ?? '').trim().isNotEmpty) ...[
+            pw.SizedBox(height: 4),
+            pw.Text('Hotel notes shown to the customer:', style: const pw.TextStyle(fontSize: 8, color: _grey)),
+            pw.Text(b.rateComments!.trim(), style: const pw.TextStyle(fontSize: 8, color: _grey)),
+          ],
+        ]),
+
+        section('5. Cancellation and refund', [
+          if (!cancelled)
+            pw.Text('The booking was not cancelled. The reservation remained confirmed at the hotel.', style: const pw.TextStyle(fontSize: 9))
+          else ...[
+            _kv('Cancelled on', when(b.cancelledAt?.toIso8601String())),
+            if (b.cancellationReference != null) _kv('Cancellation ref.', b.cancellationReference!),
+            _kv('Cancellation fee (per policy)', usd(b.cancellationFee)),
+            _kv('Refunded to card', usd(b.refundAmount)),
+          ],
+        ]),
+
+        pw.SizedBox(height: 16),
+        pw.Text(
+          'Contact: FLYNOOM LLC, Livonia, Michigan, USA · support@flynoom.com · flynoom.com',
+          style: const pw.TextStyle(fontSize: 8, color: _grey),
+        ),
+      ],
+    ));
+    return doc.save();
   }
 
   // ───────────────────────── العرض ─────────────────────────
