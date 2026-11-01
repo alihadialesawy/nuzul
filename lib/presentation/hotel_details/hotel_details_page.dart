@@ -1423,7 +1423,7 @@ _Amenity _parseAmenity(BuildContext context, String raw) {
         hi: count == 1 ? '1 रेस्टोरेंट' : '$count रेस्टोरेंट',
         ur: count == 1 ? '1 ریستوران' : '$count ریستوران',
         fr: count == 1 ? '1 restaurant' : '$count restaurants',
-        bn: count == 1 ? '১টি রেস্টুরেন্ট' : '$count টি রেস্টুরেন্ট',
+        bn: count == 1 ? '1টি রেস্টুরেন্ট' : '$count টি রেস্টুরেন্ট',
       );
       return _Amenity(Icons.restaurant, label);
     case 'front_desk_24h':
@@ -1433,7 +1433,7 @@ _Amenity _parseAmenity(BuildContext context, String raw) {
             hi: '24 घंटे फ्रंट डेस्क',
             ur: '24 گھنٹے فرنٹ ڈیسک',
             fr: 'Réception 24h/24',
-            bn: '২৪ ঘণ্টা ফ্রন্ট ডেস্ক'),
+            bn: '24 ঘণ্টা ফ্রন্ট ডেস্ক'),
       );
     case 'bar':
       return _Amenity(
@@ -1741,7 +1741,7 @@ class _PoliciesSection extends StatelessWidget {
                         hi: 'चेक-इन शुरू होने का समय: दोपहर 3:00 बजे; समाप्ति का समय: मध्यरात्रि',
                         ur: 'چیک ان شروع ہونے کا وقت: سہ پہر 3:00؛ ختم ہونے کا وقت: آدھی رات',
                         fr: 'Heure de début : 15h00 ; Heure limite : minuit',
-                        bn: 'চেক-ইন শুরুর সময়: বিকাল ৩:০০; শেষ সময়: মধ্যরাত'),
+                        bn: 'চেক-ইন শুরুর সময়: বিকাল 3:00; শেষ সময়: মধ্যরাত'),
                     _policyText(context, ar: 'تسجيل الوصول المبكر خاضع للتوفر', en: 'Early check-in subject to availability',
                         es: 'Entrada anticipada sujeta a disponibilidad', tr: 'Erken giriş uygunluğa bağlıdır',
                         id: 'Check-in awal tergantung ketersediaan', hi: 'जल्दी चेक-इन उपलब्धता के अधीन है',
@@ -1751,7 +1751,7 @@ class _PoliciesSection extends StatelessWidget {
                         es: 'Edad mínima para el registro: 21', tr: 'Asgari giriş yaşı: 21',
                         id: 'Usia minimum check-in: 21', hi: 'न्यूनतम चेक-इन आयु: 21',
                         ur: 'کم از کم چیک ان عمر: 21', fr: 'Âge minimum requis : 21 ans',
-                        bn: 'ন্যূনতম চেক-ইন বয়স: ২১'),
+                        bn: 'ন্যূনতম চেক-ইন বয়স: 21'),
                   ],
                 ),
                 const SizedBox(height: AppSizes.md),

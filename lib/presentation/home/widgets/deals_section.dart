@@ -26,7 +26,7 @@ const List<_Deal> _deals = [
     titleEn: 'Weekend Getaway',
     titleAr: 'عروض عطلة نهاية الأسبوع',
     subtitleEn: 'Save on stays this weekend',
-    subtitleAr: 'وفّر على إقامتك هذا الأسبوع',
+    subtitleAr: 'وفّر على إقامتك في عطلة نهاية الأسبوع',
     color: Color(0xFF0B6E4F),
   ),
   _Deal(
@@ -34,7 +34,7 @@ const List<_Deal> _deals = [
     titleEn: 'Early Bird Discount',
     titleAr: 'خصم الحجز المبكر',
     subtitleEn: 'Book ahead and save more',
-    subtitleAr: 'احجز مبكرًا ووفّر أكتر',
+    subtitleAr: 'احجز مبكرًا ووفّر أكثر',
     color: Color(0xFF1E5F74),
   ),
   _Deal(
@@ -47,23 +47,106 @@ const List<_Deal> _deals = [
   ),
 ];
 
+/// ترجمات القسم للغات السبع الأخرى.
+/// الترتيب: [عنوان القسم، "قريبًا"، ثم (عنوان، وصف) لكل عرض بنفس ترتيب _deals].
+/// ⚠️ عند إضافة عرض جديد أضف عنوانه ووصفه في آخر كل قائمة، وإلا سيظهر بالإنجليزية.
+const Map<String, List<String>> _i18n = {
+  'es': [
+    'Ofertas y promociones',
+    'Próximamente',
+    'Escapada de fin de semana',
+    'Ahorra en tu estancia este fin de semana',
+    'Descuento por reserva anticipada',
+    'Reserva con antelación y ahorra más',
+    'Estancias en familia',
+    'Grandes ofertas para viajes en familia',
+  ],
+  'tr': [
+    'Fırsatlar ve kampanyalar',
+    'Çok yakında',
+    'Hafta sonu kaçamağı',
+    'Bu hafta sonu konaklamada tasarruf edin',
+    'Erken rezervasyon indirimi',
+    'Erken rezervasyon yapın, daha çok tasarruf edin',
+    'Aile konaklamaları',
+    'Aile gezileri için harika fırsatlar',
+  ],
+  'id': [
+    'Penawaran & promo',
+    'Segera hadir',
+    'Liburan akhir pekan',
+    'Hemat menginap akhir pekan ini',
+    'Diskon pesan lebih awal',
+    'Pesan lebih awal dan hemat lebih banyak',
+    'Menginap bersama keluarga',
+    'Penawaran menarik untuk liburan keluarga',
+  ],
+  'hi': [
+    'डील्स और ऑफ़र',
+    'जल्द आ रहा है',
+    'वीकेंड गेटअवे',
+    'इस वीकेंड ठहरने पर बचत करें',
+    'अर्ली बर्ड छूट',
+    'पहले बुक करें और ज़्यादा बचाएँ',
+    'परिवार के साथ ठहराव',
+    'पारिवारिक यात्राओं के लिए बेहतरीन डील्स',
+  ],
+  'ur': [
+    'ڈیلز اور آفرز',
+    'جلد آ رہا ہے',
+    'ویک اینڈ کی سیر',
+    'اس ویک اینڈ قیام پر بچت کریں',
+    'پیشگی بکنگ رعایت',
+    'پہلے بک کریں اور زیادہ بچائیں',
+    'فیملی قیام',
+    'فیملی سفر کے لیے بہترین ڈیلز',
+  ],
+  'fr': [
+    'Offres et promotions',
+    'Bientôt disponible',
+    'Escapade du week-end',
+    'Économisez sur votre séjour ce week-end',
+    'Réduction réservation anticipée',
+    'Réservez tôt et économisez davantage',
+    'Séjours en famille',
+    'De belles offres pour voyager en famille',
+  ],
+  'bn': [
+    'অফার ও ছাড়',
+    'শীঘ্রই আসছে',
+    'সপ্তাহান্তের ছুটি',
+    'এই সপ্তাহান্তে থাকায় সাশ্রয় করুন',
+    'আগাম বুকিং ছাড়',
+    'আগে বুক করুন, আরও সাশ্রয় করুন',
+    'পরিবারের সঙ্গে থাকা',
+    'পারিবারিক ভ্রমণের জন্য দারুণ অফার',
+  ],
+};
+
 /// قسم "عروض وخصومات" ترويجي — العروض حاليًا شكلية (تعرض "قريبًا")
 /// إلى أن يُبنى نظام عروض فعلي مرتبط بقاعدة البيانات.
+/// يُستخدم في تبويب Stays وفي صفحة العروض الموسمية (seasonal_deals_page.dart).
 class DealsSection extends StatelessWidget {
   const DealsSection({super.key});
 
-  void _showComingSoon(BuildContext context, bool isArabic) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(isArabic ? 'قريبًا' : 'Coming soon'),
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final lang = Localizations.localeOf(context).languageCode;
+    final isArabic = lang == 'ar';
+    final tr = _i18n[lang];
+
+    // نص مترجم من _i18n إن وُجد، وإلا العربية أو الإنجليزية.
+    String pick(int i, String en, String ar) =>
+        (tr != null && i < tr.length) ? tr[i] : (isArabic ? ar : en);
+
+    void showComingSoon() {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(pick(1, 'Coming soon', 'قريبًا')),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.sm),
@@ -73,7 +156,7 @@ class DealsSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
             child: Text(
-              isArabic ? 'عروض وخصومات' : 'Deals & Offers',
+              pick(0, 'Deals & Offers', 'عروض وخصومات'),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ),
@@ -88,7 +171,7 @@ class DealsSection extends StatelessWidget {
               itemBuilder: (context, index) {
                 final deal = _deals[index];
                 return InkWell(
-                  onTap: () => _showComingSoon(context, isArabic),
+                  onTap: showComingSoon,
                   borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                   child: Container(
                     width: 220,
@@ -103,7 +186,9 @@ class DealsSection extends StatelessWidget {
                         Icon(deal.icon, color: Colors.white, size: 26),
                         const Spacer(),
                         Text(
-                          isArabic ? deal.titleAr : deal.titleEn,
+                          pick(2 + index * 2, deal.titleEn, deal.titleAr),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -112,8 +197,10 @@ class DealsSection extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          isArabic ? deal.subtitleAr : deal.subtitleEn,
-                          style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12),
+                          pick(3 + index * 2, deal.subtitleEn, deal.subtitleAr),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12),
                         ),
                       ],
                     ),

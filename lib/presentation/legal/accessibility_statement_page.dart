@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import 'accessibility_i18n.dart';
+import 'legal_i18n.dart';
 
 class _LegalSection {
   final String titleEn;
@@ -17,15 +19,22 @@ class _LegalSection {
   });
 }
 
-class AccessibilityStatementPage extends StatelessWidget {
+class AccessibilityStatementPage extends StatefulWidget {
   const AccessibilityStatementPage({super.key});
+
+  @override
+  State<AccessibilityStatementPage> createState() => _AccessibilityStatementPageState();
+}
+
+class _AccessibilityStatementPageState extends State<AccessibilityStatementPage> {
+  /// في اللغات المترجمة: عرض النص الإنجليزي المعتمد بدل الترجمة.
+  bool _showEnglish = false;
 
   static const String _lastUpdatedEn = 'October 12, 2026';
   static const String _lastUpdatedAr = '12 أكتوبر 2026';
 
-  /// بريد التواصل الخاص بإمكانية الوصول. غيّره هنا فقط إن اعتمدت بريدًا آخر
-  /// (مثل support@flynoom.com) وسيتغير في كل مكان بالصفحة.
-  static const String _contactEmail = 'ali@flynoom.com';
+  /// بريد خدمة العملاء (موحّد في كل الصفحات القانونية). يجب أن يصل فعلًا.
+  static const String _contactEmail = 'support@flynoom.com';
 
   static const List<_LegalSection> _sections = [
     _LegalSection(
@@ -81,10 +90,15 @@ class AccessibilityStatementPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final lang = legalTranslatedLang(context);
+    final doc = (lang != null && !_showEnglish) ? accessibilityI18n[lang] : null;
+    final title = doc?.title ?? (isArabic ? 'بيان إمكانية الوصول' : 'Accessibility Statement');
+    final sections = doc?.sections ??
+        [for (final s in _sections) (isArabic ? s.titleAr : s.titleEn, isArabic ? s.bodyAr : s.bodyEn)];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'بيان إمكانية الوصول' : 'Accessibility Statement'),
+        title: Text(title),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.md),
@@ -97,32 +111,40 @@ class AccessibilityStatementPage extends StatelessWidget {
                 Semantics(
                   header: true,
                   child: Text(
-                    isArabic ? 'بيان إمكانية الوصول' : 'Accessibility Statement',
+                    title,
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isArabic ? 'آخر تحديث: $_lastUpdatedAr' : 'Last updated: $_lastUpdatedEn',
+                  doc?.updated ?? (isArabic ? 'آخر تحديث: $_lastUpdatedAr' : 'Last updated: $_lastUpdatedEn'),
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
+                if (lang != null) ...[
+                  const SizedBox(height: 8),
+                  LegalTranslationNotice(
+                    lang: lang,
+                    showingEnglish: _showEnglish,
+                    onToggle: () => setState(() => _showEnglish = !_showEnglish),
+                  ),
+                ],
                 const SizedBox(height: AppSizes.lg),
-                for (final s in _sections) ...[
+                for (final s in sections) ...[
                   Semantics(
                     header: true,
                     child: Text(
-                      isArabic ? s.titleAr : s.titleEn,
+                      s.$1,
                       style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(height: 6),
                   SelectableText(
-                    isArabic ? s.bodyAr : s.bodyEn,
+                    s.$2,
                     style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: AppSizes.lg),
                 ],
-                _ContactCard(isArabic: isArabic, email: _contactEmail),
+                _ContactCard(isArabic: isArabic, email: _contactEmail, lang: doc == null ? null : lang),
                 const SizedBox(height: AppSizes.lg),
               ],
             ),
@@ -136,7 +158,8 @@ class AccessibilityStatementPage extends StatelessWidget {
 class _ContactCard extends StatelessWidget {
   final bool isArabic;
   final String email;
-  const _ContactCard({required this.isArabic, required this.email});
+  final String? lang; // لغة مترجمة (غير العربية والإنجليزية)
+  const _ContactCard({required this.isArabic, required this.email, this.lang});
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +174,9 @@ class _ContactCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isArabic ? 'تواصل معنا بشأن إمكانية الوصول' : 'Accessibility contact',
+            lang != null
+                ? accessibilityI18n[lang]!.extra['contact']!
+                : (isArabic ? 'تواصل معنا بشأن إمكانية الوصول' : 'Accessibility contact'),
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
@@ -161,12 +186,15 @@ class _ContactCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(child: SelectableText(email, style: const TextStyle(fontSize: 14))),
               IconButton(
-                tooltip: isArabic ? 'نسخ البريد' : 'Copy email',
+                tooltip: lang != null ? legalUi(lang!, 'copy_email') : (isArabic ? 'نسخ البريد' : 'Copy email'),
                 icon: const Icon(Icons.copy, size: 18),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: email));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(isArabic ? 'تم نسخ البريد' : 'Email copied')),
+                    SnackBar(
+                        content: Text(lang != null
+                            ? legalUi(lang!, 'email_copied')
+                            : (isArabic ? 'تم نسخ البريد' : 'Email copied'))),
                   );
                 },
               ),

@@ -21,6 +21,30 @@ class ErrorView extends StatelessWidget {
     this.onRetry,
   });
 
+  /// "إعادة المحاولة" بلغة المستخدم (كانت مكتوبة بالعربية لكل اللغات).
+  static String _retryLabel(BuildContext context) {
+    switch (Localizations.localeOf(context).languageCode) {
+      case 'ar':
+        return 'إعادة المحاولة';
+      case 'es':
+        return 'Reintentar';
+      case 'tr':
+        return 'Tekrar dene';
+      case 'id':
+        return 'Coba lagi';
+      case 'hi':
+        return 'फिर से कोशिश करें';
+      case 'ur':
+        return 'دوبارہ کوشش کریں';
+      case 'fr':
+        return 'Réessayer';
+      case 'bn':
+        return 'আবার চেষ্টা করুন';
+      default:
+        return 'Try again';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -48,7 +72,7 @@ class ErrorView extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('إعادة المحاولة'),
+                label: Text(_retryLabel(context)),
               ),
             ],
           ],

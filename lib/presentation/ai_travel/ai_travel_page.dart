@@ -395,7 +395,7 @@ class _AiTravelPageState extends ConsumerState<AiTravelPage> {
                             hi: '24/7 उपलब्ध',
                             ur: '24/7 دستیاب',
                             fr: 'Disponible 24h/24 et 7j/7',
-                            bn: '২৪/৭ উপলব্ধ'),
+                            bn: '24/7 উপলব্ধ'),
                         description: _t3(
                           context,
                           ar: 'يعمل مساعد الذكاء الاصطناعي على مدار الساعة، جاهز لتخطيط رحلتك في أي وقت دون انتظار',

@@ -328,7 +328,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
               hi: 'बुकिंग रद्द हो गई। ${_usd(r.refund)} का रिफ़ंड 5–10 कार्यदिवसों में आपके कार्ड पर आएगा।',
               ur: 'بکنگ منسوخ ہو گئی۔ ${_usd(r.refund)} کی واپسی 5–10 کاروباری دنوں میں آپ کے کارڈ پر آئے گی۔',
               fr: 'Réservation annulée. Votre remboursement de ${_usd(r.refund)} arrivera sur votre carte sous 5 à 10 jours ouvrés.',
-              bn: 'বুকিং বাতিল হয়েছে। ${_usd(r.refund)} ফেরত ৫–১০ কার্যদিবসে আপনার কার্ডে আসবে।')),
+              bn: 'বুকিং বাতিল হয়েছে। ${_usd(r.refund)} ফেরত 5–10 কার্যদিবসে আপনার কার্ডে আসবে।')),
         ));
         ref.invalidate(myBookingsProvider);
       },

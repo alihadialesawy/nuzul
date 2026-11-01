@@ -192,7 +192,7 @@ class FlightFiltersSidebar extends ConsumerWidget {
               if (maxObservedStops > 1)
                 _StopsRadioTile(
                   label: _t3(context, ar: 'توقف واحد أو أقل', en: '1 stop or fewer', es: '1 escala o menos', tr: '1 veya daha az aktarma',
-                      id: '1 transit atau kurang', hi: '1 या उससे कम ठहराव', ur: '1 یا اس سے کم رکاوٹ', fr: '1 escale ou moins', bn: '১টি বা তার কম যাত্রাবিরতি'),
+                      id: '1 transit atau kurang', hi: '1 या उससे कम ठहराव', ur: '1 یا اس سے کم رکاوٹ', fr: '1 escale ou moins', bn: '1টি বা তার কম যাত্রাবিরতি'),
                   selected: filters.maxStops == 1,
                   onTap: () => notifier.setMaxStops(1),
                 ),

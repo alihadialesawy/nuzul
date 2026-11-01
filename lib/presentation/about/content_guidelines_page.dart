@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../app.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import '../legal/legal_i18n.dart';
+import 'content_guidelines_i18n.dart';
 
 class _InfoSection {
   final String titleEn;
@@ -25,7 +27,8 @@ class _InfoSection {
 ///     عن أي مقابل، وعدم حذف التقييمات لأنها سلبية. ينطبق متى نشرنا تقييمات.
 ///   • قسم حقوق النشر: لحماية "Safe Harbor" في قانون DMCA يُنصح بتسجيل وكيل DMCA
 ///     لدى U.S. Copyright Office (رسوم رمزية) — اسأل المحامي.
-class ContentGuidelinesPage extends StatelessWidget {
+///   • الترجمات السبع الأخرى في content_guidelines_i18n.dart (الإنجليزية هي المعتمدة).
+class ContentGuidelinesPage extends StatefulWidget {
   const ContentGuidelinesPage({super.key});
 
   static const String _lastUpdatedEn = 'October 12, 2026';
@@ -117,12 +120,32 @@ class ContentGuidelinesPage extends StatelessWidget {
   ];
 
   @override
+  State<ContentGuidelinesPage> createState() => _ContentGuidelinesPageState();
+}
+
+class _ContentGuidelinesPageState extends State<ContentGuidelinesPage> {
+  bool _showEnglish = false;
+
+  @override
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final lang = legalTranslatedLang(context);
+    final doc = (lang != null && !_showEnglish) ? contentGuidelinesI18n[lang] : null;
+    // زر الإبلاغ يبقى بلغة المستخدم حتى عند عرض النص الإنجليزي.
+    final reportLabel = lang != null
+        ? contentGuidelinesI18n[lang]!.extra['report']!
+        : (isArabic ? 'الإبلاغ عن مشكلة' : 'Report an issue');
+    final title = doc?.title ??
+        (isArabic ? 'إرشادات المحتوى والتبليغ' : 'Content Guidelines and Reporting');
+    final sections = doc?.sections ??
+        [
+          for (final s in ContentGuidelinesPage._sections)
+            (isArabic ? s.titleAr : s.titleEn, isArabic ? s.bodyAr : s.bodyEn),
+        ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'إرشادات المحتوى والتبليغ' : 'Content Guidelines and Reporting'),
+        title: Text(title),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.md),
@@ -135,27 +158,38 @@ class ContentGuidelinesPage extends StatelessWidget {
                 Semantics(
                   header: true,
                   child: Text(
-                    isArabic ? 'إرشادات المحتوى والتبليغ' : 'Content Guidelines and Reporting',
+                    title,
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isArabic ? 'آخر تحديث: $_lastUpdatedAr' : 'Last updated: $_lastUpdatedEn',
+                  doc?.updated ??
+                      (isArabic
+                          ? 'آخر تحديث: ${ContentGuidelinesPage._lastUpdatedAr}'
+                          : 'Last updated: ${ContentGuidelinesPage._lastUpdatedEn}'),
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
+                if (lang != null) ...[
+                  const SizedBox(height: 8),
+                  LegalTranslationNotice(
+                    lang: lang,
+                    showingEnglish: _showEnglish,
+                    onToggle: () => setState(() => _showEnglish = !_showEnglish),
+                  ),
+                ],
                 const SizedBox(height: AppSizes.lg),
-                for (final s in _sections) ...[
+                for (final s in sections) ...[
                   Semantics(
                     header: true,
                     child: Text(
-                      isArabic ? s.titleAr : s.titleEn,
+                      s.$1,
                       style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(height: 6),
                   SelectableText(
-                    isArabic ? s.bodyAr : s.bodyEn,
+                    s.$2,
                     style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: AppSizes.lg),
@@ -163,7 +197,7 @@ class ContentGuidelinesPage extends StatelessWidget {
                 OutlinedButton.icon(
                   icon: const Icon(Icons.flag_outlined, size: 18),
                   onPressed: () => context.push(AppRoutes.support),
-                  label: Text(isArabic ? 'الإبلاغ عن مشكلة' : 'Report an issue'),
+                  label: Text(reportLabel),
                 ),
                 const SizedBox(height: AppSizes.lg),
               ],

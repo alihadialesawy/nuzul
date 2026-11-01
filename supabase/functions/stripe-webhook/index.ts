@@ -50,7 +50,16 @@ Deno.serve(async (req) => {
 
   try {
     if (event.type.startsWith('charge.dispute.')) {
-      const d: any = event.data.object;
+      // نجلب الحالة الحالية من Stripe بدل الاعتماد على نسخة الحدث: Stripe يعيد
+      // إرسال الأحداث القديمة الفاشلة لاحقًا، فقد تصل نسخة قديمة (needs_response)
+      // بعد نسخة أحدث (under_review) فتعيد الحالة إلى الخلف.
+      const evObj: any = event.data.object;
+      let d: any = evObj;
+      try {
+        d = await stripe.disputes.retrieve(evObj.id);
+      } catch (e) {
+        console.log('DISPUTE RETRIEVE FAILED, using event payload', evObj.id, String(e));
+      }
       const admin = adminClient();
       const { booking, isNew } = await upsertDispute(admin, d);
       console.log(`DISPUTE ${event.type} ${d.id} status=${d.status} booking=${booking?.client_reference ?? '-'}`);

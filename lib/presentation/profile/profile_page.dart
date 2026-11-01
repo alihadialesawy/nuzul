@@ -163,7 +163,8 @@ Future<void> _updateEmailDialog(BuildContext context, WidgetRef ref, User? user)
           controller: controller,
           keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
-            labelText: 'Email',
+            labelText: _t3(dialogContext, ar: 'البريد الإلكتروني', en: 'Email', es: 'Correo electrónico', tr: 'E-posta',
+                id: 'Email', hi: 'ईमेल', ur: 'ای میل', fr: 'E-mail', bn: 'ইমেইল'),
             prefixIcon: const Icon(Icons.email_outlined, color: _FieldColors.email),
             focusedBorder: OutlineInputBorder(
               borderSide: const BorderSide(color: _FieldColors.email, width: 2),
@@ -1666,7 +1667,7 @@ class _ProfileMainContent extends ConsumerWidget {
                     hi: 'आपका खाता, सहेजे गए यात्री, पसंदीदा, मूल्य अलर्ट और कम्युनिटी पोस्ट हटा दिए जाएंगे। इसे वापस नहीं किया जा सकता।\n\nहम बुकिंग और भुगतान रिकॉर्ड कानून द्वारा आवश्यक अवधि (आमतौर पर 7 वर्ष तक) रखते हैं। यदि आपकी कोई आगामी बुकिंग है, तो पहले उसे रद्द करें।',
                     ur: 'آپ کا اکاؤنٹ، محفوظ مسافر، پسندیدہ، قیمت کے الرٹس اور کمیونٹی پوسٹس حذف ہو جائیں گی۔ اسے واپس نہیں کیا جا سکتا۔\n\nہم بکنگ اور ادائیگی کے ریکارڈ قانون کے مطابق (عموماً 7 سال تک) رکھتے ہیں۔ اگر آپ کی کوئی آنے والی بکنگ ہے تو پہلے اسے منسوخ کریں۔',
                     fr: 'Votre compte, vos voyageurs enregistrés, favoris, alertes de prix et publications seront supprimés. Action irréversible.\n\nNous conservons les données de réservation et de paiement aussi longtemps que la loi l\'exige (généralement jusqu\'à 7 ans). Si vous avez une réservation à venir, annulez-la d\'abord.',
-                    bn: 'আপনার অ্যাকাউন্ট, সংরক্ষিত যাত্রী, পছন্দ, মূল্য সতর্কতা ও কমিউনিটি পোস্ট মুছে যাবে। এটি ফেরানো যাবে না।\n\nআমরা বুকিং ও পেমেন্টের রেকর্ড আইন অনুযায়ী (সাধারণত ৭ বছর পর্যন্ত) রাখি। আসন্ন বুকিং থাকলে আগে বাতিল করুন।'),
+                    bn: 'আপনার অ্যাকাউন্ট, সংরক্ষিত যাত্রী, পছন্দ, মূল্য সতর্কতা ও কমিউনিটি পোস্ট মুছে যাবে। এটি ফেরানো যাবে না।\n\nআমরা বুকিং ও পেমেন্টের রেকর্ড আইন অনুযায়ী (সাধারণত 7 বছর পর্যন্ত) রাখি। আসন্ন বুকিং থাকলে আগে বাতিল করুন।'),
                     style: const TextStyle(fontSize: 13, height: 1.4)),
                 const SizedBox(height: AppSizes.md),
                 Text(_t3(ctx, ar: 'للتأكيد اكتب DELETE', en: 'Type DELETE to confirm', es: 'Escribe DELETE para confirmar',
@@ -1716,7 +1717,7 @@ class _ProfileMainContent extends ConsumerWidget {
       final res = await Supabase.instance.client.functions.invoke('delete-account', body: {'confirm': 'DELETE'});
       final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : <String, dynamic>{};
       if (data['ok'] != true) {
-        errorMessage = '${data['error'] ?? data['message'] ?? 'Something went wrong.'}';
+        errorMessage = '${data['error'] ?? data['message'] ?? _t3(context, ar: 'حدث خطأ، حاول مرة أخرى.', en: 'Something went wrong.', es: 'Algo salió mal.', tr: 'Bir şeyler ters gitti.', id: 'Terjadi kesalahan.', hi: 'कुछ गलत हो गया।', ur: 'کچھ غلط ہو گیا۔', fr: 'Une erreur est survenue.', bn: 'কিছু ভুল হয়েছে।')}';
       }
     } on FunctionException catch (e) {
       final d = e.details;
@@ -1760,7 +1761,8 @@ class _ProfileMainContent extends ConsumerWidget {
             controller: controller,
             obscureText: true,
             decoration: InputDecoration(
-              labelText: 'Password',
+              labelText: _t3(dialogContext, ar: 'كلمة المرور', en: 'Password', es: 'Contraseña', tr: 'Şifre',
+                  id: 'Kata sandi', hi: 'पासवर्ड', ur: 'پاس ورڈ', fr: 'Mot de passe', bn: 'পাসওয়ার্ড'),
               prefixIcon: const Icon(Icons.lock_outline, color: _FieldColors.password),
               focusedBorder: OutlineInputBorder(
                 borderSide: const BorderSide(color: _FieldColors.password, width: 2),

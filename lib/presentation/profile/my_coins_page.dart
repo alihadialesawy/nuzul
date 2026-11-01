@@ -156,7 +156,7 @@ class MyCoinsPage extends ConsumerWidget {
                                           const SizedBox(height: 4),
                                           Text(
                                             _t3(context, ar: 'أكمل حجزًا واحدًا للترقية إلى المستوى الذهبي', en: 'Complete 1 booking to unlock Gold', es: 'Completa 1 reserva para desbloquear Oro', tr: '1 rezervasyon tamamlayarak Altın seviyeye ulaşın',
-                                                id: 'Selesaikan 1 pemesanan untuk membuka Emas', hi: 'गोल्ड अनलॉक करने के लिए 1 बुकिंग पूरी करें', ur: 'گولڈ کھولنے کے لیے 1 بکنگ مکمل کریں', fr: 'Effectuez 1 réservation pour débloquer Or', bn: 'গোল্ড আনলক করতে ১টি বুকিং সম্পন্ন করুন'),
+                                                id: 'Selesaikan 1 pemesanan untuk membuka Emas', hi: 'गोल्ड अनलॉक करने के लिए 1 बुकिंग पूरी करें', ur: 'گولڈ کھولنے کے لیے 1 بکنگ مکمل کریں', fr: 'Effectuez 1 réservation pour débloquer Or', bn: 'গোল্ড আনলক করতে 1টি বুকিং সম্পন্ন করুন'),
                                             style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                                           ),
                                           const SizedBox(height: 8),
@@ -311,14 +311,14 @@ class _TiersComparisonTable extends StatelessWidget {
       _t3(context, ar: 'اكسب عملات', en: 'Earn Coins', es: 'Gana monedas', tr: 'Puan Kazan', id: 'Dapatkan Koin', hi: 'कॉइन कमाएं', ur: 'کوائنز کمائیں', fr: 'Gagnez des points', bn: 'কয়েন অর্জন করুন'),
       [
         _t3(context, ar: 'اكسب عملات عادي', en: 'Earn Coins', es: 'Gana monedas', tr: 'Puan Kazan', id: 'Dapatkan Koin', hi: 'कॉइन कमाएं', ur: 'کوائنز کمائیں', fr: 'Gagnez des points', bn: 'কয়েন অর্জন করুন'),
-        _t3(context, ar: 'اكسب 20% أكثر', en: 'Earn 20% More', es: 'Gana 20% más', tr: '%20 Daha Fazla Kazan', id: 'Dapatkan 20% Lebih', hi: '20% अधिक कमाएं', ur: '20% زیادہ کمائیں', fr: 'Gagnez 20% de plus', bn: '২০% বেশি অর্জন করুন'),
-        _t3(context, ar: 'اكسب 50% أكثر', en: 'Earn 50% More', es: 'Gana 50% más', tr: '%50 Daha Fazla Kazan', id: 'Dapatkan 50% Lebih', hi: '50% अधिक कमाएं', ur: '50% زیادہ کمائیں', fr: 'Gagnez 50% de plus', bn: '৫০% বেশি অর্জন করুন'),
-        _t3(context, ar: 'اكسب 100% أكثر', en: 'Earn 100% More', es: 'Gana 100% más', tr: '%100 Daha Fazla Kazan', id: 'Dapatkan 100% Lebih', hi: '100% अधिक कमाएं', ur: '100% زیادہ کمائیں', fr: 'Gagnez 100% de plus', bn: '১০০% বেশি অর্জন করুন'),
+        _t3(context, ar: 'اكسب 20% أكثر', en: 'Earn 20% More', es: 'Gana 20% más', tr: '%20 Daha Fazla Kazan', id: 'Dapatkan 20% Lebih', hi: '20% अधिक कमाएं', ur: '20% زیادہ کمائیں', fr: 'Gagnez 20% de plus', bn: '20% বেশি অর্জন করুন'),
+        _t3(context, ar: 'اكسب 50% أكثر', en: 'Earn 50% More', es: 'Gana 50% más', tr: '%50 Daha Fazla Kazan', id: 'Dapatkan 50% Lebih', hi: '50% अधिक कमाएं', ur: '50% زیادہ کمائیں', fr: 'Gagnez 50% de plus', bn: '50% বেশি অর্জন করুন'),
+        _t3(context, ar: 'اكسب 100% أكثر', en: 'Earn 100% More', es: 'Gana 100% más', tr: '%100 Daha Fazla Kazan', id: 'Dapatkan 100% Lebih', hi: '100% अधिक कमाएं', ur: '100% زیادہ کمائیں', fr: 'Gagnez 100% de plus', bn: '100% বেশি অর্জন করুন'),
       ]
       ),
       (
       _t3(context, ar: 'دخول مجاني لصالة كبار الشخصيات بالمطار', en: 'Free Airport VIP Lounge Access', es: 'Acceso gratuito a sala VIP', tr: 'Ücretsiz Havaalanı VIP Salonu', id: 'Akses Lounge VIP Bandara Gratis', hi: 'मुफ़्त एयरपोर्ट VIP लाउंज', ur: 'مفت ایئرپورٹ وی آئی پی لاؤنج', fr: 'Accès salon VIP gratuit', bn: 'ফ্রি এয়ারপোর্ট ভিআইপি লাউঞ্জ'),
-      ['-', '-', _t3(context, ar: 'مرة واحدة', en: '1 time', es: '1 vez', tr: '1 kez', id: '1 kali', hi: '1 बार', ur: '1 مرتبہ', fr: '1 fois', bn: '১ বার'), _t3(context, ar: 'مرتان', en: '2 times', es: '2 veces', tr: '2 kez', id: '2 kali', hi: '2 बार', ur: '2 مرتبہ', fr: '2 fois', bn: '২ বার')]
+      ['-', '-', _t3(context, ar: 'مرة واحدة', en: '1 time', es: '1 vez', tr: '1 kez', id: '1 kali', hi: '1 बार', ur: '1 مرتبہ', fr: '1 fois', bn: '1 বার'), _t3(context, ar: 'مرتان', en: '2 times', es: '2 veces', tr: '2 kez', id: '2 kali', hi: '2 बार', ur: '2 مرتبہ', fr: '2 fois', bn: '2 বার')]
       ),
       (
       _t3(context, ar: 'باقة بيانات eSIM عالمية مجانية', en: 'Free Global eSIM Data Package', es: 'Paquete eSIM global gratuito', tr: 'Ücretsiz Global eSIM Paketi', id: 'Paket Data eSIM Global Gratis', hi: 'मुफ़्त ग्लोबल eSIM डेटा पैकेज', ur: 'مفت گلوبل eSIM ڈیٹا پیکج', fr: 'Forfait eSIM mondial gratuit', bn: 'ফ্রি গ্লোবাল eSIM ডেটা প্যাকেজ'),
@@ -326,7 +326,7 @@ class _TiersComparisonTable extends StatelessWidget {
       ),
       (
       _t3(context, ar: 'ترقية مركبة النقل من المطار', en: 'Airport Transfer Model Upgrade', es: 'Mejora de traslado al aeropuerto', tr: 'Havalimanı Transfer Yükseltmesi', id: 'Peningkatan Model Antar-Jemput', hi: 'एयरपोर्ट ट्रांसफर अपग्रेड', ur: 'ایئرپورٹ ٹرانسفر اپ گریڈ', fr: 'Surclassement transfert aéroport', bn: 'এয়ারপোর্ট ট্রান্সফার আপগ্রেড'),
-      ['-', '-', '-', _t3(context, ar: 'مرتان', en: '2 times', es: '2 veces', tr: '2 kez', id: '2 kali', hi: '2 बार', ur: '2 مرتبہ', fr: '2 fois', bn: '২ বার')]
+      ['-', '-', '-', _t3(context, ar: 'مرتان', en: '2 times', es: '2 veces', tr: '2 kez', id: '2 kali', hi: '2 बार', ur: '2 مرتبہ', fr: '2 fois', bn: '2 বার')]
       ),
       (
       _t3(context, ar: 'بدون رسوم إدارية على استرداد الحجوزات', en: 'No Admin Fee for Trip Refunds', es: 'Sin cargo administrativo en reembolsos', tr: 'İptal İadelerinde Yönetim Ücreti Yok', id: 'Tanpa Biaya Admin untuk Refund', hi: 'रिफंड पर कोई एडमिन शुल्क नहीं', ur: 'ریفنڈ پر کوئی ایڈمن فیس نہیں', fr: 'Aucun frais de gestion sur les remboursements', bn: 'রিফান্ডে কোনো অ্যাডমিন ফি নেই'),
@@ -446,7 +446,7 @@ class _FaqSectionState extends State<_FaqSection> {
               hi: 'पिछले 12 महीनों में पूरी की गई बुकिंग की संख्या के आधार पर स्तरों का सालाना पुनर्मूल्यांकन किया जाता है।',
               ur: 'گزشتہ 12 مہینوں میں مکمل کی گئی بکنگز کی تعداد کی بنیاد پر ٹیئرز کا سالانہ دوبارہ جائزہ لیا جاتا ہے۔',
               fr: 'Les niveaux sont réévalués chaque année en fonction du nombre de réservations effectuées au cours des 12 derniers mois.',
-              bn: 'বিগত ১২ মাসে সম্পন্ন বুকিং সংখ্যার ভিত্তিতে স্তরসমূহ বার্ষিক পুনর্মূল্যায়ন করা হয়।'),
+              bn: 'বিগত 12 মাসে সম্পন্ন বুকিং সংখ্যার ভিত্তিতে স্তরসমূহ বার্ষিক পুনর্মূল্যায়ন করা হয়।'),
           ),
           (
           q: _t3(context, ar: 'إزاي بتتحسب الحجوزات والمبالغ المصروفة؟', en: 'How are bookings and spending amounts calculated?', es: '¿Cómo se calculan las reservas y los gastos?', tr: 'Rezervasyonlar ve harcamalar nasıl hesaplanır?',
@@ -609,7 +609,7 @@ class _FaqSectionState extends State<_FaqSection> {
               hi: 'वर्तमान में Flynoom Rewards के 4 स्तर हैं: सिल्वर, गोल्ड, प्लैटिनम और डायमंड। जितनी अधिक बुकिंग, उतना ऊँचा स्तर, उतना बड़ा रिवॉर्ड।',
               ur: 'اس وقت Flynoom Rewards کے 4 ٹیئرز ہیں: سلور، گولڈ، پلاٹینم، اور ڈائمنڈ۔ جتنی زیادہ بکنگز، اتنا بلند ٹیئر، اتنا بڑا انعام۔',
               fr: 'Il existe actuellement 4 niveaux Flynoom Rewards : Argent, Or, Platine et Diamant. Plus de réservations, niveaux plus élevés, récompenses plus importantes.',
-              bn: 'বর্তমানে ৪টি Flynoom Rewards স্তর রয়েছে: সিলভার, গোল্ড, প্ল্যাটিনাম, এবং ডায়মন্ড। বেশি বুকিং, উঁচু স্তর, বড় পুরস্কার।',
+              bn: 'বর্তমানে 4টি Flynoom Rewards স্তর রয়েছে: সিলভার, গোল্ড, প্ল্যাটিনাম, এবং ডায়মন্ড। বেশি বুকিং, উঁচু স্তর, বড় পুরস্কার।',
             ),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),

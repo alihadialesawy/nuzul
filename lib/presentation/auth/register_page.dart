@@ -9,16 +9,21 @@ import '../../core/utils/validators.dart';
 import '../../core/widgets/app_banner.dart';
 import '../../localization/app_localizations.dart';
 import 'controllers/auth_controller.dart';
+import '../../core/i18n/auth_strings.dart';
 
 /// نص حسب اللغة (عربي/إنجليزي/إسباني، والباقي إنجليزي).
 String _t3(BuildContext context, {required String ar, required String en, required String es}) {
-  switch (Localizations.localeOf(context).languageCode) {
+  final lang = Localizations.localeOf(context).languageCode;
+  switch (lang) {
     case 'ar':
       return ar;
     case 'es':
       return es;
-    default:
+    case 'en':
       return en;
+    default:
+    // التركية، الإندونيسية، الهندية، الأردية، الفرنسية، البنغالية.
+      return AuthStrings.lookup(en, lang) ?? en;
   }
 }
 

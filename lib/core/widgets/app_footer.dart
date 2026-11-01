@@ -308,7 +308,7 @@ class AppFooter extends StatelessWidget {
       'hi' => '© 2026 $legalName. सर्वाधिकार सुरक्षित।',
       'ur' => '© 2026 $legalName. جملہ حقوق محفوظ ہیں۔',
       'fr' => '© 2026 $legalName. Tous droits réservés.',
-      'bn' => '© ২০২৬ $legalName. সর্বস্বত্ব সংরক্ষিত।',
+      'bn' => '© 2026 $legalName. সর্বস্বত্ব সংরক্ষিত।',
       _ => '© 2026 $legalName. All rights reserved.',
     };
   }

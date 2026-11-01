@@ -198,9 +198,9 @@ class _SupportPageState extends State<SupportPage> {
             fr: '1. Si vous êtes en danger, appelez d\'abord les services d\'urgence locaux.\n\n'
                 '2. Pour un problème de chambre ou d\'arrivée, contactez directement l\'hôtel. Son numéro figure dans votre e-mail de confirmation, avec la référence de réservation que l\'hôtel vous demandera.\n\n'
                 '3. Ensuite, envoyez-nous votre référence de réservation et ce qui s\'est passé, et nous assurerons le suivi avec l\'hôtel.',
-            bn: '১. আপনি বিপদে থাকলে প্রথমে স্থানীয় জরুরি সেবায় কল করুন।\n\n'
-                '২. রুম বা চেক-ইনের সমস্যার জন্য সরাসরি হোটেলের সাথে যোগাযোগ করুন। হোটেলের ফোন নম্বর আপনার নিশ্চিতকরণ ইমেইলে আছে, সাথে সেই বুকিং নম্বরও যা হোটেল চাইবে।\n\n'
-                '৩. তারপর আমাদের বুকিং নম্বর ও সমস্যাটি ইমেইল করুন, আমরা হোটেলের সাথে কথা বলব।',
+            bn: '1. আপনি বিপদে থাকলে প্রথমে স্থানীয় জরুরি সেবায় কল করুন।\n\n'
+                '2. রুম বা চেক-ইনের সমস্যার জন্য সরাসরি হোটেলের সাথে যোগাযোগ করুন। হোটেলের ফোন নম্বর আপনার নিশ্চিতকরণ ইমেইলে আছে, সাথে সেই বুকিং নম্বরও যা হোটেল চাইবে।\n\n'
+                '3. তারপর আমাদের বুকিং নম্বর ও সমস্যাটি ইমেইল করুন, আমরা হোটেলের সাথে কথা বলব।',
           ),
           style: const TextStyle(height: 1.5),
         ),
@@ -429,7 +429,7 @@ class _SupportPageState extends State<SupportPage> {
             hi: 'मुझे 5 या अधिक कमरे चाहिए',
             ur: 'مجھے 5 یا زیادہ کمرے چاہئیں',
             fr: 'J\'ai besoin de 5 chambres ou plus',
-            bn: 'আমার ৫ বা তার বেশি রুম দরকার'),
+            bn: 'আমার 5 বা তার বেশি রুম দরকার'),
         _t3(context,
             ar: 'استخدم تبويب "Group stays" وأرسل طلبك، وسنرسل لك عرض سعر بالبريد. الطلب لا يُلزمك بشيء ولا يُسحب أي مبلغ.',
             en: 'Use the "Group stays" tab to send a request, and we will email you a quote. The request is free and nothing is charged.',

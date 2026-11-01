@@ -1,8 +1,9 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart'; // أضف image_picker في pubspec.yaml لو مش موجودة
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
@@ -46,6 +47,261 @@ String _t3(
     default:
       return en;
   }
+}
+
+/// نصوص ضوابط المحتوى باللغات التسع. الترتيب: [en, ar, es, tr, id, hi, ur, fr, bn].
+const Map<String, List<String>> _strings = {
+  'report': ['Report', 'إبلاغ', 'Denunciar', 'Şikâyet et', 'Laporkan', 'रिपोर्ट करें', 'رپورٹ کریں', 'Signaler', 'রিপোর্ট করুন'],
+  'block': ['Block user', 'حظر المستخدم', 'Bloquear usuario', 'Kullanıcıyı engelle', 'Blokir pengguna', 'उपयोगकर्ता को ब्लॉक करें', 'صارف کو بلاک کریں', 'Bloquer l\'utilisateur', 'ব্যবহারকারীকে ব্লক করুন'],
+  'delete': ['Delete post', 'حذف المنشور', 'Eliminar publicación', 'Gönderiyi sil', 'Hapus postingan', 'पोस्ट हटाएं', 'پوسٹ حذف کریں', 'Supprimer la publication', 'পোস্ট মুছুন'],
+  'report_title': ['Report content', 'الإبلاغ عن محتوى', 'Denunciar contenido', 'İçeriği şikâyet et', 'Laporkan konten', 'सामग्री की रिपोर्ट करें', 'مواد کی رپورٹ کریں', 'Signaler le contenu', 'কনটেন্ট রিপোর্ট করুন'],
+  'report_why': ['Why are you reporting this?', 'لماذا تبلّغ عن هذا المحتوى؟', '¿Por qué lo denuncias?', 'Bunu neden şikâyet ediyorsunuz?', 'Mengapa Anda melaporkan ini?', 'आप इसकी रिपोर्ट क्यों कर रहे हैं?', 'آپ اس کی رپورٹ کیوں کر رہے ہیں؟', 'Pourquoi signalez-vous ce contenu ?', 'কেন রিপোর্ট করছেন?'],
+  'r_spam': ['Spam or advertising', 'رسائل مزعجة أو إعلانات', 'Spam o publicidad', 'Spam veya reklam', 'Spam atau iklan', 'स्पैम या विज्ञापन', 'اسپام یا اشتہار', 'Spam ou publicité', 'স্প্যাম বা বিজ্ঞাপন'],
+  'r_harassment': ['Harassment or hate', 'تحرّش أو كراهية', 'Acoso u odio', 'Taciz veya nefret', 'Pelecehan atau kebencian', 'उत्पीड़न या नफ़रत', 'ہراسانی یا نفرت', 'Harcèlement ou haine', 'হয়রানি বা বিদ্বেষ'],
+  'r_sexual': ['Sexual content or nudity', 'محتوى جنسي أو عُري', 'Contenido sexual o desnudos', 'Cinsel içerik veya çıplaklık', 'Konten seksual atau ketelanjangan', 'यौन सामग्री या नग्नता', 'جنسی مواد یا عریانی', 'Contenu sexuel ou nudité', 'যৌন কনটেন্ট বা নগ্নতা'],
+  'r_violence': ['Violence or dangerous content', 'عنف أو محتوى خطير', 'Violencia o contenido peligroso', 'Şiddet veya tehlikeli içerik', 'Kekerasan atau konten berbahaya', 'हिंसा या खतरनाक सामग्री', 'تشدد یا خطرناک مواد', 'Violence ou contenu dangereux', 'সহিংসতা বা বিপজ্জনক কনটেন্ট'],
+  'r_scam': ['Scam or false information', 'احتيال أو معلومات كاذبة', 'Estafa o información falsa', 'Dolandırıcılık veya yanlış bilgi', 'Penipuan atau informasi palsu', 'धोखाधड़ी या गलत जानकारी', 'دھوکہ یا غلط معلومات', 'Arnaque ou fausse information', 'প্রতারণা বা মিথ্যা তথ্য'],
+  'r_other': ['Something else', 'سبب آخر', 'Otro motivo', 'Başka bir şey', 'Lainnya', 'कुछ और', 'کچھ اور', 'Autre chose', 'অন্য কিছু'],
+  'details': ['Details (optional)', 'تفاصيل (اختياري)', 'Detalles (opcional)', 'Ayrıntılar (isteğe bağlı)', 'Detail (opsional)', 'विवरण (वैकल्पिक)', 'تفصیلات (اختیاری)', 'Détails (facultatif)', 'বিস্তারিত (ঐচ্ছিক)'],
+  'cancel': ['Cancel', 'إلغاء', 'Cancelar', 'Vazgeç', 'Batal', 'रद्द करें', 'منسوخ کریں', 'Annuler', 'বাতিল'],
+  'send_report': ['Send report', 'إرسال البلاغ', 'Enviar denuncia', 'Şikâyeti gönder', 'Kirim laporan', 'रिपोर्ट भेजें', 'رپورٹ بھیجیں', 'Envoyer le signalement', 'রিপোর্ট পাঠান'],
+  'reported_ok': [
+    'Thank you. We review reports within 24 hours. This content is now hidden for you.',
+    'شكرًا لك. نراجع البلاغات خلال 24 ساعة، وأُخفي هذا المحتوى عنك.',
+    'Gracias. Revisamos las denuncias en 24 horas. Este contenido ya está oculto para ti.',
+    'Teşekkürler. Şikâyetleri 24 saat içinde inceliyoruz. Bu içerik artık size gösterilmiyor.',
+    'Terima kasih. Kami meninjau laporan dalam 24 jam. Konten ini kini disembunyikan untuk Anda.',
+    'धन्यवाद। हम 24 घंटे में रिपोर्ट की समीक्षा करते हैं। यह सामग्री अब आपसे छिपा दी गई है।',
+    'شکریہ۔ ہم 24 گھنٹوں میں رپورٹس کا جائزہ لیتے ہیں۔ یہ مواد اب آپ سے چھپا دیا گیا ہے۔',
+    'Merci. Nous examinons les signalements sous 24 heures. Ce contenu est désormais masqué pour vous.',
+    'ধন্যবাদ। আমরা 24 ঘণ্টার মধ্যে রিপোর্ট পর্যালোচনা করি। এই কনটেন্ট এখন আপনার কাছে লুকানো।',
+  ],
+  'report_own': ['You can\'t report your own content.', 'لا يمكنك الإبلاغ عن محتواك.', 'No puedes denunciar tu propio contenido.', 'Kendi içeriğinizi şikâyet edemezsiniz.', 'Anda tidak bisa melaporkan konten sendiri.', 'आप अपनी सामग्री की रिपोर्ट नहीं कर सकते।', 'آپ اپنے مواد کی رپورٹ نہیں کر سکتے۔', 'Vous ne pouvez pas signaler votre propre contenu.', 'নিজের কনটেন্ট রিপোর্ট করা যায় না।'],
+  'block_title': ['Block this user?', 'حظر هذا المستخدم؟', '¿Bloquear a este usuario?', 'Bu kullanıcı engellensin mi?', 'Blokir pengguna ini?', 'इस उपयोगकर्ता को ब्लॉक करें?', 'اس صارف کو بلاک کریں؟', 'Bloquer cet utilisateur ?', 'এই ব্যবহারকারীকে ব্লক করবেন?'],
+  'block_body': [
+    'You will no longer see their posts or comments. They will not be notified.',
+    'لن ترى منشوراته أو تعليقاته بعد الآن، ولن يصله أي إشعار بذلك.',
+    'Ya no verás sus publicaciones ni comentarios. No se le notificará.',
+    'Artık gönderilerini veya yorumlarını görmeyeceksiniz. Kendisine bildirilmez.',
+    'Anda tidak akan lagi melihat postingan atau komentarnya. Ia tidak akan diberi tahu.',
+    'अब आपको उनकी पोस्ट या टिप्पणियाँ नहीं दिखेंगी। उन्हें इसकी सूचना नहीं दी जाएगी।',
+    'آپ کو اب ان کی پوسٹس یا تبصرے نظر نہیں آئیں گے۔ انہیں اطلاع نہیں دی جائے گی۔',
+    'Vous ne verrez plus ses publications ni ses commentaires. Il ne sera pas prévenu.',
+    'আপনি আর তার পোস্ট বা মন্তব্য দেখবেন না। তাকে জানানো হবে না।',
+  ],
+  'block_btn': ['Block', 'حظر', 'Bloquear', 'Engelle', 'Blokir', 'ब्लॉक करें', 'بلاک کریں', 'Bloquer', 'ব্লক করুন'],
+  'blocked_ok': ['User blocked.', 'تم حظر المستخدم.', 'Usuario bloqueado.', 'Kullanıcı engellendi.', 'Pengguna diblokir.', 'उपयोगकर्ता ब्लॉक किया गया।', 'صارف بلاک کر دیا گیا۔', 'Utilisateur bloqué.', 'ব্যবহারকারী ব্লক করা হয়েছে।'],
+  'delete_title': ['Delete this post?', 'حذف هذا المنشور؟', '¿Eliminar esta publicación?', 'Bu gönderi silinsin mi?', 'Hapus postingan ini?', 'यह पोस्ट हटाएं?', 'یہ پوسٹ حذف کریں؟', 'Supprimer cette publication ?', 'এই পোস্টটি মুছবেন?'],
+  'delete_btn': ['Delete', 'حذف', 'Eliminar', 'Sil', 'Hapus', 'हटाएं', 'حذف کریں', 'Supprimer', 'মুছুন'],
+  'deleted_ok': ['Post deleted.', 'تم حذف المنشور.', 'Publicación eliminada.', 'Gönderi silindi.', 'Postingan dihapus.', 'पोस्ट हटा दी गई।', 'پوسٹ حذف ہو گئی۔', 'Publication supprimée.', 'পোস্ট মুছে ফেলা হয়েছে।'],
+  'rules_title': ['Community rules', 'قواعد المجتمع', 'Normas de la comunidad', 'Topluluk kuralları', 'Aturan komunitas', 'समुदाय के नियम', 'کمیونٹی کے قواعد', 'Règles de la communauté', 'কমিউনিটির নিয়ম'],
+  'rules_body': [
+    'To keep the community safe, do not post:\n• hateful, harassing or threatening content\n• sexual content or nudity\n• violence or dangerous acts\n• spam, ads or scams\n• other people\'s private information\n\nWe review reports within 24 hours, remove content that breaks these rules, and may suspend accounts. By continuing, you agree to these rules and to our Terms of Service.',
+    'حفاظًا على المجتمع، لا تنشر:\n• محتوى فيه كراهية أو تحرّش أو تهديد\n• محتوى جنسيًا أو عُريًا\n• عنفًا أو أفعالًا خطيرة\n• رسائل مزعجة أو إعلانات أو احتيالًا\n• معلومات خاصة بأشخاص آخرين\n\nنراجع البلاغات خلال 24 ساعة، ونحذف ما يخالف هذه القواعد، وقد نوقف الحسابات المخالفة. بالمتابعة توافق على هذه القواعد وعلى شروط الاستخدام.',
+    'Para mantener la comunidad segura, no publiques:\n• contenido de odio, acoso o amenazas\n• contenido sexual o desnudos\n• violencia o actos peligrosos\n• spam, anuncios o estafas\n• información privada de otras personas\n\nRevisamos las denuncias en 24 horas, eliminamos el contenido que incumple estas normas y podemos suspender cuentas. Al continuar, aceptas estas normas y nuestros Términos de servicio.',
+    'Topluluğu güvende tutmak için şunları paylaşmayın:\n• nefret, taciz veya tehdit içeren içerik\n• cinsel içerik veya çıplaklık\n• şiddet veya tehlikeli davranışlar\n• spam, reklam veya dolandırıcılık\n• başkalarının özel bilgileri\n\nŞikâyetleri 24 saat içinde inceler, kurallara aykırı içeriği kaldırır ve hesapları askıya alabiliriz. Devam ederek bu kuralları ve Hizmet Şartlarımızı kabul edersiniz.',
+    'Agar komunitas tetap aman, jangan memposting:\n• konten kebencian, pelecehan, atau ancaman\n• konten seksual atau ketelanjangan\n• kekerasan atau tindakan berbahaya\n• spam, iklan, atau penipuan\n• informasi pribadi orang lain\n\nKami meninjau laporan dalam 24 jam, menghapus konten yang melanggar aturan, dan dapat menangguhkan akun. Dengan melanjutkan, Anda menyetujui aturan ini dan Ketentuan Layanan kami.',
+    'समुदाय को सुरक्षित रखने के लिए यह पोस्ट न करें:\n• नफ़रत, उत्पीड़न या धमकी वाली सामग्री\n• यौन सामग्री या नग्नता\n• हिंसा या खतरनाक काम\n• स्पैम, विज्ञापन या धोखाधड़ी\n• दूसरों की निजी जानकारी\n\nहम 24 घंटे में रिपोर्ट की समीक्षा करते हैं, नियम तोड़ने वाली सामग्री हटाते हैं और खाते निलंबित कर सकते हैं। जारी रखकर आप इन नियमों और हमारी सेवा की शर्तों से सहमत होते हैं।',
+    'کمیونٹی کو محفوظ رکھنے کے لیے یہ پوسٹ نہ کریں:\n• نفرت، ہراسانی یا دھمکی والا مواد\n• جنسی مواد یا عریانی\n• تشدد یا خطرناک حرکات\n• اسپام، اشتہارات یا دھوکہ\n• دوسروں کی نجی معلومات\n\nہم 24 گھنٹوں میں رپورٹس کا جائزہ لیتے ہیں، قواعد توڑنے والا مواد ہٹاتے ہیں اور اکاؤنٹ معطل کر سکتے ہیں۔ جاری رکھ کر آپ ان قواعد اور ہماری سروس کی شرائط سے اتفاق کرتے ہیں۔',
+    'Pour que la communauté reste sûre, ne publiez pas :\n• de contenu haineux, harcelant ou menaçant\n• de contenu sexuel ou de nudité\n• de violence ou d\'actes dangereux\n• de spam, de publicité ou d\'arnaques\n• d\'informations privées sur d\'autres personnes\n\nNous examinons les signalements sous 24 heures, retirons les contenus contraires à ces règles et pouvons suspendre des comptes. En continuant, vous acceptez ces règles et nos Conditions d\'utilisation.',
+    'কমিউনিটি নিরাপদ রাখতে যা পোস্ট করবেন না:\n• বিদ্বেষ, হয়রানি বা হুমকিমূলক কনটেন্ট\n• যৌন কনটেন্ট বা নগ্নতা\n• সহিংসতা বা বিপজ্জনক কাজ\n• স্প্যাম, বিজ্ঞাপন বা প্রতারণা\n• অন্যের ব্যক্তিগত তথ্য\n\nআমরা 24 ঘণ্টার মধ্যে রিপোর্ট পর্যালোচনা করি, নিয়ম ভঙ্গকারী কনটেন্ট সরাই এবং অ্যাকাউন্ট স্থগিত করতে পারি। চালিয়ে গেলে আপনি এই নিয়ম ও আমাদের পরিষেবার শর্তাবলিতে সম্মত হন।',
+  ],
+  'rules_agree': ['I agree', 'أوافق', 'Acepto', 'Kabul ediyorum', 'Saya setuju', 'मैं सहमत हूँ', 'میں متفق ہوں', 'J\'accepte', 'আমি সম্মত'],
+  'banned': [
+    'Your account can\'t post in the community. Contact support@flynoom.com.',
+    'حسابك موقوف عن النشر في المجتمع. تواصل معنا على support@flynoom.com.',
+    'Tu cuenta no puede publicar en la comunidad. Escríbenos a support@flynoom.com.',
+    'Hesabınız toplulukta paylaşım yapamaz. support@flynoom.com adresine yazın.',
+    'Akun Anda tidak dapat memposting di komunitas. Hubungi support@flynoom.com.',
+    'आपका खाता समुदाय में पोस्ट नहीं कर सकता। support@flynoom.com पर संपर्क करें।',
+    'آپ کا اکاؤنٹ کمیونٹی میں پوسٹ نہیں کر سکتا۔ support@flynoom.com پر رابطہ کریں۔',
+    'Votre compte ne peut pas publier dans la communauté. Écrivez à support@flynoom.com.',
+    'আপনার অ্যাকাউন্ট কমিউনিটিতে পোস্ট করতে পারবে না। support@flynoom.com-এ যোগাযোগ করুন।',
+  ],
+  'sign_in': ['Please sign in first.', 'سجّل الدخول أولًا.', 'Inicia sesión primero.', 'Lütfen önce giriş yapın.', 'Silakan masuk terlebih dahulu.', 'कृपया पहले साइन इन करें।', 'براہِ کرم پہلے سائن ان کریں۔', 'Veuillez d\'abord vous connecter.', 'অনুগ্রহ করে আগে সাইন ইন করুন।'],
+  'error': ['Something went wrong. Please try again.', 'حدث خطأ. حاول مرة أخرى.', 'Algo salió mal. Inténtalo de nuevo.', 'Bir sorun oluştu. Lütfen tekrar deneyin.', 'Terjadi kesalahan. Silakan coba lagi.', 'कुछ गलत हो गया। कृपया फिर से कोशिश करें।', 'کچھ غلط ہو گیا۔ دوبارہ کوشش کریں۔', 'Une erreur s\'est produite. Veuillez réessayer.', 'কিছু ভুল হয়েছে। আবার চেষ্টা করুন।'],
+  'more': ['More options', 'خيارات أخرى', 'Más opciones', 'Diğer seçenekler', 'Opsi lainnya', 'और विकल्प', 'مزید اختیارات', 'Plus d\'options', 'আরও বিকল্প'],
+};
+
+String _c(BuildContext context, String key) {
+  const langs = ['en', 'ar', 'es', 'tr', 'id', 'hi', 'ur', 'fr', 'bn'];
+  final i = langs.indexOf(Localizations.localeOf(context).languageCode);
+  final v = _strings[key]!;
+  return v[i < 0 ? 0 : i];
+}
+
+void _snack(BuildContext context, String text) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+}
+
+/// رفض الكتابة من قاعدة البيانات (سياسة الإيقاف) → رسالة "حسابك موقوف".
+bool _isBanError(String message) =>
+    message.contains('row-level security') || message.contains('42501');
+
+/// قبل النشر أو التعليق: تسجيل الدخول، الإيقاف، والموافقة على قواعد المجتمع.
+/// ترجع true إن جاز المتابعة.
+Future<bool> _ensureCanPost(BuildContext context, WidgetRef ref) async {
+  if (Supabase.instance.client.auth.currentUser == null) {
+    _snack(context, _c(context, 'sign_in'));
+    return false;
+  }
+  final repo = ref.read(communityRepositoryProvider);
+  if (await repo.isBannedFromCommunity()) {
+    if (context.mounted) _snack(context, _c(context, 'banned'));
+    return false;
+  }
+  if (await repo.hasAcceptedCommunityTerms()) return true;
+  if (!context.mounted) return false;
+
+  final agreed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(_c(ctx, 'rules_title')),
+      content: SingleChildScrollView(child: Text(_c(ctx, 'rules_body'), style: const TextStyle(height: 1.5))),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_c(ctx, 'cancel'))),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(_c(ctx, 'rules_agree'))),
+      ],
+    ),
+  );
+  if (agreed != true) return false;
+  final result = await repo.acceptCommunityTerms();
+  var ok = false;
+  result.when(success: (_) => ok = true, failure: (_) => ok = false);
+  if (!ok && context.mounted) _snack(context, _c(context, 'error'));
+  return ok;
+}
+
+/// نافذة الإبلاغ: سبب + تفاصيل اختيارية. ترجع (reason, details) أو null.
+Future<(String, String?)?> _askReportReason(BuildContext context) {
+  return showDialog<(String, String?)>(
+    context: context,
+    builder: (_) => const _ReportDialog(),
+  );
+}
+
+class _ReportDialog extends StatefulWidget {
+  const _ReportDialog();
+
+  @override
+  State<_ReportDialog> createState() => _ReportDialogState();
+}
+
+class _ReportDialogState extends State<_ReportDialog> {
+  static const _reasons = ['spam', 'harassment', 'sexual', 'violence', 'scam', 'other'];
+  String? _reason;
+  final _details = TextEditingController();
+
+  @override
+  void dispose() {
+    _details.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_c(context, 'report_title')),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_c(context, 'report_why'), style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              for (final r in _reasons)
+                RadioListTile<String>(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  value: r,
+                  groupValue: _reason,
+                  onChanged: (v) => setState(() => _reason = v),
+                  title: Text(_c(context, 'r_$r')),
+                ),
+              TextField(
+                controller: _details,
+                maxLines: 3,
+                maxLength: 500,
+                decoration: InputDecoration(labelText: _c(context, 'details')),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(_c(context, 'cancel'))),
+        FilledButton(
+          onPressed: _reason == null
+              ? null
+              : () => Navigator.pop(context, (_reason!, _details.text.trim().isEmpty ? null : _details.text.trim())),
+          child: Text(_c(context, 'send_report')),
+        ),
+      ],
+    );
+  }
+}
+
+/// إبلاغ عن منشور أو تعليق (مع رسائل النتيجة).
+Future<bool> _report(BuildContext context, WidgetRef ref, {String? postId, String? commentId}) async {
+  if (Supabase.instance.client.auth.currentUser == null) {
+    _snack(context, _c(context, 'sign_in'));
+    return false;
+  }
+  final answer = await _askReportReason(context);
+  if (answer == null || !context.mounted) return false;
+  final result = await ref.read(communityRepositoryProvider).reportContent(
+    postId: postId,
+    commentId: commentId,
+    reason: answer.$1,
+    details: answer.$2,
+  );
+  if (!context.mounted) return false;
+  var ok = false;
+  result.when(
+    success: (_) {
+      ok = true;
+      _snack(context, _c(context, 'reported_ok'));
+    },
+    failure: (m) => _snack(context, _c(context, m.contains('own_content') ? 'report_own' : 'error')),
+  );
+  return ok;
+}
+
+/// حظر كاتب منشور أو تعليق (بعد التأكيد).
+Future<bool> _block(BuildContext context, WidgetRef ref, {String? postId, String? commentId}) async {
+  if (Supabase.instance.client.auth.currentUser == null) {
+    _snack(context, _c(context, 'sign_in'));
+    return false;
+  }
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(_c(ctx, 'block_title')),
+      content: Text(_c(ctx, 'block_body')),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_c(ctx, 'cancel'))),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: Text(_c(ctx, 'block_btn')),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return false;
+  final result = await ref.read(communityRepositoryProvider).blockAuthor(postId: postId, commentId: commentId);
+  if (!context.mounted) return false;
+  var ok = false;
+  result.when(
+    success: (_) {
+      ok = true;
+      _snack(context, _c(context, 'blocked_ok'));
+    },
+    failure: (_) => _snack(context, _c(context, 'error')),
+  );
+  return ok;
 }
 
 class CommunityPage extends ConsumerWidget {
@@ -140,7 +396,9 @@ class CommunityPage extends ConsumerWidget {
     );
   }
 
-  void _openCreatePostSheet(BuildContext context, WidgetRef ref) {
+  Future<void> _openCreatePostSheet(BuildContext context, WidgetRef ref) async {
+    if (!await _ensureCanPost(context, ref)) return;
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -164,8 +422,48 @@ class _PostCard extends ConsumerWidget {
     );
   }
 
+  Future<void> _onMenu(BuildContext context, WidgetRef ref, String action) async {
+    switch (action) {
+      case 'report':
+        if (await _report(context, ref, postId: post.id)) ref.invalidate(communityFeedProvider);
+        break;
+      case 'block':
+        if (await _block(context, ref, postId: post.id)) ref.invalidate(communityFeedProvider);
+        break;
+      case 'delete':
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(_c(ctx, 'delete_title')),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_c(ctx, 'cancel'))),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(_c(ctx, 'delete_btn')),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true || !context.mounted) return;
+        final result = await ref.read(communityRepositoryProvider).deletePost(post.id);
+        if (!context.mounted) return;
+        result.when(
+          success: (_) {
+            _snack(context, _c(context, 'deleted_ok'));
+            ref.invalidate(communityFeedProvider);
+          },
+          failure: (_) => _snack(context, _c(context, 'error')),
+        );
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final String? authorId = post.userId;
+    final me = Supabase.instance.client.auth.currentUser?.id;
+    final isMine = me != null && authorId != null && authorId.isNotEmpty && authorId == me;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -232,6 +530,44 @@ class _PostCard extends ConsumerWidget {
                       ],
                     ),
                   ),
+                // قائمة ⋮: إبلاغ/حظر لمنشورات الآخرين، وحذف لمنشوراتي.
+                PopupMenuButton<String>(
+                  tooltip: _c(context, 'more'),
+                  icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
+                  onSelected: (a) => _onMenu(context, ref, a),
+                  itemBuilder: (ctx) => isMine
+                      ? [
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.delete_outline, color: AppColors.error),
+                        title: Text(_c(ctx, 'delete')),
+                      ),
+                    ),
+                  ]
+                      : [
+                    PopupMenuItem(
+                      value: 'report',
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.flag_outlined),
+                        title: Text(_c(ctx, 'report')),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'block',
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.block, color: AppColors.error),
+                        title: Text(_c(ctx, 'block')),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -407,6 +743,8 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
   Future<void> _submitComment() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
+    if (!await _ensureCanPost(context, ref)) return;
+    if (!mounted) return;
 
     setState(() => _sending = true);
     final repo = ref.read(communityRepositoryProvider);
@@ -423,9 +761,35 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
       },
       failure: (message) {
         setState(() => _sending = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        _snack(context, _c(context, _isBanError(message) ? 'banned' : 'error'));
       },
     );
+  }
+
+  /// كاتب التعليق (إن كان النموذج يحوي userId). عند الغياب يظهر الخيار للجميع
+  /// والخادم يرفض الإبلاغ عن محتوى الشخص نفسه.
+  bool _isMine(CommunityCommentModel c) {
+    final me = Supabase.instance.client.auth.currentUser?.id;
+    if (me == null) return false;
+    try {
+      return (c as dynamic).userId == me;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _onCommentMenu(CommunityCommentModel c, String action) async {
+    final done = action == 'report'
+        ? await _report(context, ref, commentId: c.id)
+        : await _block(context, ref, commentId: c.id);
+    if (done && mounted) {
+      // إخفاء التعليق فورًا؛ وعند الحظر تُخفى كل تعليقات الكاتب في التحميل التالي.
+      setState(() => _comments = _comments?.where((x) => x.id != c.id).toList());
+      if (action == 'block') {
+        ref.invalidate(communityFeedProvider);
+        _loadComments();
+      }
+    }
   }
 
   @override
@@ -505,6 +869,17 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
                               ],
                             ),
                           ),
+                          if (!_isMine(c))
+                            PopupMenuButton<String>(
+                              tooltip: _c(context, 'more'),
+                              iconSize: 18,
+                              icon: const Icon(Icons.more_vert, size: 18, color: AppColors.textHint),
+                              onSelected: (a) => _onCommentMenu(c, a),
+                              itemBuilder: (ctx) => [
+                                PopupMenuItem(value: 'report', child: Text(_c(ctx, 'report'))),
+                                PopupMenuItem(value: 'block', child: Text(_c(ctx, 'block'))),
+                              ],
+                            ),
                         ],
                       ),
                     );
@@ -562,18 +937,21 @@ class _CreatePostSheet extends ConsumerStatefulWidget {
 class _CreatePostSheetState extends ConsumerState<_CreatePostSheet> {
   final _captionController = TextEditingController();
   final _cityController = TextEditingController();
-  final List<File> _images = [];
+  /// الصور كبايتات (تعمل على الويب والموبايل؛ dart:io File لا يعمل على الويب).
+  final List<Uint8List> _images = [];
   int? _rating;
   bool _submitting = false;
 
   Future<void> _pickImages() async {
     final picker = ImagePicker();
     final picked = await picker.pickMultiImage(imageQuality: 80);
-    if (picked.isNotEmpty) {
-      setState(() {
-        _images.addAll(picked.map((x) => File(x.path)).take(5 - _images.length));
-      });
+    if (picked.isEmpty) return;
+    final room = 5 - _images.length;
+    final bytes = <Uint8List>[];
+    for (final x in picked.take(room)) {
+      bytes.add(await x.readAsBytes());
     }
+    if (mounted) setState(() => _images.addAll(bytes));
   }
 
   Future<void> _submit() async {
@@ -612,10 +990,10 @@ class _CreatePostSheetState extends ConsumerState<_CreatePostSheet> {
         Navigator.of(context).pop();
       },
       failure: (message) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        _snack(context, _c(context, _isBanError(message) ? 'banned' : 'error'));
       },
     );
-    setState(() => _submitting = false);
+    if (mounted) setState(() => _submitting = false);
   }
 
   @override
@@ -645,11 +1023,11 @@ class _CreatePostSheetState extends ConsumerState<_CreatePostSheet> {
                 scrollDirection: Axis.horizontal,
                 children: [
                   ..._images.map(
-                        (file) => Padding(
-                      padding: const EdgeInsets.only(left: 8),
+                        (bytes) => Padding(
+                      padding: const EdgeInsetsDirectional.only(end: 8),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.file(file, width: 90, height: 90, fit: BoxFit.cover),
+                        child: Image.memory(bytes, width: 90, height: 90, fit: BoxFit.cover),
                       ),
                     ),
                   ),

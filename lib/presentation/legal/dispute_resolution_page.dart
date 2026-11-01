@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import 'dispute_resolution_i18n.dart';
+import 'legal_i18n.dart';
 
 class _LegalSection {
   final String titleEn;
@@ -26,11 +28,19 @@ class _LegalSection {
 ///   • هل نضيف بندًا للتحكيم الجماعي (mass arbitration / batching)؟
 ///   • هل يكفي عرض الشروط برابط، أم نضيف مربع موافقة صريح عند الحجز
 ///     ("I agree to the Terms, including the arbitration agreement")؟ ← مستحسن.
-class DisputeResolutionPage extends StatelessWidget {
+class DisputeResolutionPage extends StatefulWidget {
   const DisputeResolutionPage({super.key});
 
-  static const String _lastUpdatedEn = 'October 12, 2026';
-  static const String _lastUpdatedAr = '12 أكتوبر 2026';
+  @override
+  State<DisputeResolutionPage> createState() => _DisputeResolutionPageState();
+}
+
+class _DisputeResolutionPageState extends State<DisputeResolutionPage> {
+  /// في اللغات المترجمة: عرض النص الإنجليزي المعتمد بدل الترجمة.
+  bool _showEnglish = false;
+
+  static const String _lastUpdatedEn = 'October 21, 2026';
+  static const String _lastUpdatedAr = '21 أكتوبر 2026';
 
   /// بريد خدمة العملاء (موحّد في كل الصفحات القانونية). يجب أن يصل فعلًا.
   static const String _contactEmail = 'support@flynoom.com';
@@ -56,9 +66,11 @@ class DisputeResolutionPage extends StatelessWidget {
       titleEn: '3. Binding Individual Arbitration',
       titleAr: '3. التحكيم الفردي الملزم',
       bodyEn:
-      'If the dispute is not resolved within 60 days, you and FLYNOOM LLC agree that any dispute arising from or relating to the Service, any booking, or these Terms will be resolved by binding arbitration on an individual basis, except as stated in Section 6. The arbitration will be administered by the American Arbitration Association (AAA) under its Consumer Arbitration Rules. Unless we both agree otherwise, the arbitration will be conducted by phone, video, or written submissions, or in person in the county where you live. The arbitrator may award the same individual relief that a court could award. YOU AND FLYNOOM ARE EACH GIVING UP THE RIGHT TO A TRIAL IN COURT BEFORE A JUDGE OR JURY.',
+      'If the dispute is not resolved within 60 days, you and FLYNOOM LLC agree that any dispute arising from or relating to the Service, any booking, or these Terms will be resolved by binding arbitration on an individual basis, except as stated in Section 6. The arbitration will be administered by the American Arbitration Association (AAA) under its Consumer Arbitration Rules. Unless we both agree otherwise, the arbitration will be conducted by phone, video, or written submissions, or in person in the county where you live. The arbitrator may award the same individual relief that a court could award. YOU AND FLYNOOM ARE EACH GIVING UP THE RIGHT TO A TRIAL IN COURT BEFORE A JUDGE OR JURY.\n\n'
+          'Mass filings: if 25 or more similar arbitration demands are filed against FLYNOOM LLC within 90 days by, or with the help of, the same law firm or organization, the demands will be administered in batches of up to 25 under the AAA Mass Arbitration Supplementary Rules, and you and Flynoom agree to this batching. The time limit for bringing a claim is paused for demands that are waiting in a later batch. This does not affect your right to opt out (Section 7) or to use small claims court (Section 6).',
       bodyAr:
-      'إذا لم يُحل النزاع خلال 60 يومًا، فإنك وشركة FLYNOOM LLC توافقان على حل أي نزاع ناشئ عن الخدمة أو عن أي حجز أو عن هذه الشروط أو متعلق بها عبر التحكيم الملزم بصفة فردية، باستثناء ما ورد في البند 6. تتولى إدارة التحكيم جمعية التحكيم الأمريكية (AAA) وفق قواعدها لتحكيم المستهلكين. وما لم نتفق على غير ذلك، يُجرى التحكيم عبر الهاتف أو الفيديو أو المستندات المكتوبة، أو حضوريًا في المقاطعة التي تقيم فيها. ويجوز للمحكّم أن يقضي بالتعويض الفردي نفسه الذي يمكن أن تقضي به المحكمة. وبذلك يتنازل كل منك ومن Flynoom عن الحق في المحاكمة أمام قاضٍ أو هيئة محلفين.',
+      'إذا لم يُحل النزاع خلال 60 يومًا، فإنك وشركة FLYNOOM LLC توافقان على حل أي نزاع ناشئ عن الخدمة أو عن أي حجز أو عن هذه الشروط أو متعلق بها عبر التحكيم الملزم بصفة فردية، باستثناء ما ورد في البند 6. تتولى إدارة التحكيم جمعية التحكيم الأمريكية (AAA) وفق قواعدها لتحكيم المستهلكين. وما لم نتفق على غير ذلك، يُجرى التحكيم عبر الهاتف أو الفيديو أو المستندات المكتوبة، أو حضوريًا في المقاطعة التي تقيم فيها. ويجوز للمحكّم أن يقضي بالتعويض الفردي نفسه الذي يمكن أن تقضي به المحكمة. وبذلك يتنازل كل منك ومن Flynoom عن الحق في المحاكمة أمام قاضٍ أو هيئة محلفين.\n\n'
+          'الطلبات الجماعية: إذا قُدّم ضد شركة FLYNOOM LLC خلال 90 يومًا 25 طلب تحكيم متشابهًا أو أكثر من مكتب محاماة واحد أو جهة واحدة أو بمساعدتهما، تُدار هذه الطلبات على دفعات لا تزيد كل منها على 25 طلبًا وفق القواعد التكميلية للتحكيم الجماعي لدى جمعية التحكيم الأمريكية (AAA)، وتوافق أنت وFlynoom على هذا التقسيم. وتتوقف مدة التقادم للطلبات التي تنتظر دورها في دفعة لاحقة. ولا يؤثر ذلك على حقك في الانسحاب من التحكيم (البند 7) أو في اللجوء إلى محكمة الدعاوى الصغيرة (البند 6).',
     ),
     _LegalSection(
       titleEn: '4. Arbitration Costs',
@@ -113,10 +125,15 @@ class DisputeResolutionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final lang = legalTranslatedLang(context);
+    final doc = (lang != null && !_showEnglish) ? disputeResolutionI18n[lang] : null;
+    final title = doc?.title ?? (isArabic ? 'حل النزاعات' : 'Dispute Resolution');
+    final sections = doc?.sections ??
+        [for (final s in _sections) (isArabic ? s.titleAr : s.titleEn, isArabic ? s.bodyAr : s.bodyEn)];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'حل النزاعات' : 'Dispute Resolution'),
+        title: Text(title),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.md),
@@ -129,13 +146,13 @@ class DisputeResolutionPage extends StatelessWidget {
                 Semantics(
                   header: true,
                   child: Text(
-                    isArabic ? 'حل النزاعات' : 'Dispute Resolution',
+                    title,
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isArabic ? 'آخر تحديث: $_lastUpdatedAr' : 'Last updated: $_lastUpdatedEn',
+                  doc?.updated ?? (isArabic ? 'آخر تحديث: $_lastUpdatedAr' : 'Last updated: $_lastUpdatedEn'),
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
                 if (isArabic) ...[
@@ -145,20 +162,28 @@ class DisputeResolutionPage extends StatelessWidget {
                     style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontStyle: FontStyle.italic),
                   ),
                 ],
+                if (lang != null) ...[
+                  const SizedBox(height: 8),
+                  LegalTranslationNotice(
+                    lang: lang,
+                    showingEnglish: _showEnglish,
+                    onToggle: () => setState(() => _showEnglish = !_showEnglish),
+                  ),
+                ],
                 const SizedBox(height: AppSizes.md),
-                _ImportantNotice(isArabic: isArabic),
+                _ImportantNotice(isArabic: isArabic, translated: doc?.extra['important']),
                 const SizedBox(height: AppSizes.lg),
-                for (final s in _sections) ...[
+                for (final s in sections) ...[
                   Semantics(
                     header: true,
                     child: Text(
-                      isArabic ? s.titleAr : s.titleEn,
+                      s.$1,
                       style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(height: 6),
                   SelectableText(
-                    isArabic ? s.bodyAr : s.bodyEn,
+                    s.$2,
                     style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: AppSizes.lg),
@@ -175,7 +200,8 @@ class DisputeResolutionPage extends StatelessWidget {
 /// تنبيه بارز في أعلى الصفحة: بند التحكيم يجب أن يكون واضحًا للعميل.
 class _ImportantNotice extends StatelessWidget {
   final bool isArabic;
-  const _ImportantNotice({required this.isArabic});
+  final String? translated; // نص التنبيه في اللغات المترجمة
+  const _ImportantNotice({required this.isArabic, this.translated});
 
   @override
   Widget build(BuildContext context) {
@@ -194,9 +220,9 @@ class _ImportantNotice extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isArabic
+              translated ?? (isArabic
                   ? 'يُرجى القراءة بعناية. تتضمن هذه الصفحة اتفاقية تحكيم ملزم وتنازلًا عن الدعوى الجماعية وعن المحاكمة أمام هيئة محلفين، وهي تؤثر على حقوقك القانونية. يمكنك الانسحاب من التحكيم خلال 30 يومًا (البند 7).'
-                  : 'PLEASE READ CAREFULLY. This page contains a binding arbitration agreement and a waiver of class actions and jury trials, which affect your legal rights. You may opt out of arbitration within 30 days (Section 7).',
+                  : 'PLEASE READ CAREFULLY. This page contains a binding arbitration agreement and a waiver of class actions and jury trials, which affect your legal rights. You may opt out of arbitration within 30 days (Section 7).'),
               style: const TextStyle(fontSize: 14, height: 1.5, fontWeight: FontWeight.w600),
             ),
           ),

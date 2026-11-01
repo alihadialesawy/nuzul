@@ -243,7 +243,7 @@ List<PromoSlide> defaultStaysPromoSlides(BuildContext context) {
           hi: '5 या अधिक कमरे? Group stays में कोटेशन मांगें',
           ur: '5 یا زیادہ کمرے؟ Group stays میں قیمت کی درخواست کریں',
           fr: '5 chambres ou plus ? Demandez un devis dans Group stays',
-          bn: '৫ বা তার বেশি রুম? Group stays-এ কোটেশন চান'),
+          bn: '5 বা তার বেশি রুম? Group stays-এ কোটেশন চান'),
     ),
     PromoSlide(
       imageAsset: 'assets/images/promos/weekend_getaway.jpg',

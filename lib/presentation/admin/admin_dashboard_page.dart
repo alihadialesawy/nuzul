@@ -10,6 +10,7 @@ import '../../core/widgets/app_banner.dart';
 import 'admin_alerts_page.dart';
 import 'admin_analytics_page.dart';
 import 'admin_booking_desk_page.dart';
+import 'admin_community_reports_page.dart';
 import 'admin_customer_lookup_page.dart';
 import 'admin_disputes_page.dart';
 import 'admin_financial_report_page.dart';
@@ -282,6 +283,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       ),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const AdminCustomerLookupPage()),
+      ),
+      ),
+      (
+      icon: Icons.flag_outlined,
+      color: const Color(0xFFC2185B),
+      title: _t3(context, ar: 'بلاغات المجتمع', en: 'Community Reports', es: 'Denuncias de la comunidad'),
+      description: _t3(
+        context,
+        ar: 'منشورات وتعليقات أبلغ عنها المستخدمون: تجاهل، حذف، أو إيقاف الكاتب (خلال 24 ساعة)',
+        en: 'Posts and comments reported by users: dismiss, remove, or ban the author (within 24 hours)',
+        es: 'Publicaciones y comentarios denunciados: descartar, eliminar o suspender',
+      ),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AdminCommunityReportsPage()),
       ),
       ),
       if (_kLegacyAdminEnabled)

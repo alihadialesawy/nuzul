@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import 'legal_i18n.dart';
+import 'terms_i18n.dart';
 
 class _LegalSection {
   final String titleEn;
@@ -24,8 +26,9 @@ class _LegalSection {
 ///   • 14 (إخلاء المسؤولية) و 15 (حدود المسؤولية) و 16 (التعويض)
 ///   • 17 (حل النزاعات) و 18 (القانون الحاكم)
 ///
-/// النسخة الإنجليزية هي المعتمدة (البند 21). أي لغة غير العربية تعرض الإنجليزية.
-class TermsOfServicePage extends StatelessWidget {
+/// النسخة الإنجليزية هي المعتمدة (البند 22). اللغات السبع الأخرى في terms_i18n.dart
+/// وتُعرض معها ملاحظة "ترجمة للتيسير" وزر لعرض الإنجليزية.
+class TermsOfServicePage extends StatefulWidget {
   const TermsOfServicePage({super.key});
 
   static const String _lastUpdatedEn = 'October 23, 2026';
@@ -242,12 +245,27 @@ class TermsOfServicePage extends StatelessWidget {
   ];
 
   @override
+  State<TermsOfServicePage> createState() => _TermsOfServicePageState();
+}
+
+class _TermsOfServicePageState extends State<TermsOfServicePage> {
+  bool _showEnglish = false;
+
+  @override
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final lang = legalTranslatedLang(context);
+    final doc = (lang != null && !_showEnglish) ? termsI18n[lang] : null;
+    final title = doc?.title ?? (isArabic ? 'شروط الخدمة' : 'Terms of Service');
+    final sections = doc?.sections ??
+        [
+          for (final s in TermsOfServicePage._sections)
+            (isArabic ? s.titleAr : s.titleEn, isArabic ? s.bodyAr : s.bodyEn),
+        ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'شروط الخدمة' : 'Terms of Service'),
+        title: Text(title),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.md),
@@ -260,13 +278,16 @@ class TermsOfServicePage extends StatelessWidget {
                 Semantics(
                   header: true,
                   child: Text(
-                    isArabic ? 'شروط الخدمة' : 'Terms of Service',
+                    title,
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isArabic ? 'آخر تحديث: $_lastUpdatedAr' : 'Last updated: $_lastUpdatedEn',
+                  doc?.updated ??
+                      (isArabic
+                          ? 'آخر تحديث: ${TermsOfServicePage._lastUpdatedAr}'
+                          : 'Last updated: ${TermsOfServicePage._lastUpdatedEn}'),
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
                 if (isArabic) ...[
@@ -276,18 +297,26 @@ class TermsOfServicePage extends StatelessWidget {
                     style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontStyle: FontStyle.italic),
                   ),
                 ],
+                if (lang != null) ...[
+                  const SizedBox(height: 8),
+                  LegalTranslationNotice(
+                    lang: lang,
+                    showingEnglish: _showEnglish,
+                    onToggle: () => setState(() => _showEnglish = !_showEnglish),
+                  ),
+                ],
                 const SizedBox(height: AppSizes.lg),
-                for (final s in _sections) ...[
+                for (final s in sections) ...[
                   Semantics(
                     header: true,
                     child: Text(
-                      isArabic ? s.titleAr : s.titleEn,
+                      s.$1,
                       style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(height: 6),
                   SelectableText(
-                    isArabic ? s.bodyAr : s.bodyEn,
+                    s.$2,
                     style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: AppSizes.lg),

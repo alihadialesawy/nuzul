@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import 'legal_i18n.dart';
+import 'privacy_i18n.dart';
 
 class _LegalSection {
   final String titleEn;
@@ -27,8 +29,16 @@ class _LegalSection {
 ///   • البند 11: الحذف من داخل التطبيق (أمان الحساب ← حذف الحساب، دالة delete-account)،
 ///     والبريد بديل. بريد حذف الحساب هو نفسه المسجّل في Google Play Console
 ///     (Data safety → Delete account URL)، ويجب أن يصل فعلًا (تحويل في Namecheap).
-class PrivacyNoticePage extends StatelessWidget {
+class PrivacyNoticePage extends StatefulWidget {
   const PrivacyNoticePage({super.key});
+
+  @override
+  State<PrivacyNoticePage> createState() => _PrivacyNoticePageState();
+}
+
+class _PrivacyNoticePageState extends State<PrivacyNoticePage> {
+  /// في اللغات المترجمة: عرض النص الإنجليزي المعتمد بدل الترجمة.
+  bool _showEnglish = false;
 
   static const String _lastUpdatedEn = 'October 29, 2026';
   static const String _lastUpdatedAr = '29 أكتوبر 2026';
@@ -170,10 +180,15 @@ class PrivacyNoticePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final lang = legalTranslatedLang(context);
+    final doc = (lang != null && !_showEnglish) ? privacyI18n[lang] : null;
+    final title = doc?.title ?? (isArabic ? 'إشعار الخصوصية' : 'Privacy Notice');
+    final sections = doc?.sections ??
+        [for (final s in _sections) (isArabic ? s.titleAr : s.titleEn, isArabic ? s.bodyAr : s.bodyEn)];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'إشعار الخصوصية' : 'Privacy Notice'),
+        title: Text(title),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.md),
@@ -186,13 +201,13 @@ class PrivacyNoticePage extends StatelessWidget {
                 Semantics(
                   header: true,
                   child: Text(
-                    isArabic ? 'إشعار الخصوصية' : 'Privacy Notice',
+                    title,
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isArabic ? 'آخر تحديث: $_lastUpdatedAr' : 'Last updated: $_lastUpdatedEn',
+                  doc?.updated ?? (isArabic ? 'آخر تحديث: $_lastUpdatedAr' : 'Last updated: $_lastUpdatedEn'),
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
                 if (isArabic) ...[
@@ -202,18 +217,26 @@ class PrivacyNoticePage extends StatelessWidget {
                     style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontStyle: FontStyle.italic),
                   ),
                 ],
+                if (lang != null) ...[
+                  const SizedBox(height: 8),
+                  LegalTranslationNotice(
+                    lang: lang,
+                    showingEnglish: _showEnglish,
+                    onToggle: () => setState(() => _showEnglish = !_showEnglish),
+                  ),
+                ],
                 const SizedBox(height: AppSizes.lg),
-                for (final s in _sections) ...[
+                for (final s in sections) ...[
                   Semantics(
                     header: true,
                     child: Text(
-                      isArabic ? s.titleAr : s.titleEn,
+                      s.$1,
                       style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(height: 6),
                   SelectableText(
-                    isArabic ? s.bodyAr : s.bodyEn,
+                    s.$2,
                     style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: AppSizes.lg),

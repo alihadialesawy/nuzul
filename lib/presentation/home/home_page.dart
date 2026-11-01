@@ -1063,7 +1063,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     hi: '1 रात',
                     ur: '1 رات',
                     fr: '1 nuit',
-                    bn: '১ রাত'))
+                    bn: '1 রাত'))
                     : (_t3(context, ar: '$nights ليالٍ', en: '$nights nights', es: '$nights noches', tr: '$nights gece', id: '$nights malam',
                     hi: '$nights रातें',
                     ur: '$nights راتیں',
@@ -1163,7 +1163,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 hi: '1 कमरा, $_guests वयस्क',
                 ur: '1 کمرہ, $_guests بالغ',
                 fr: '1 chambre, $_guests ${_guests == 1 ? 'adulte' : 'adultes'}',
-                bn: '১টি রুম, $_guests জন প্রাপ্তবয়স্ক',
+                bn: '1টি রুম, $_guests জন প্রাপ্তবয়স্ক',
               ),
               style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
             ),
@@ -1523,7 +1523,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   hi: '5 या अधिक कमरे बुक कर रहे हैं? अनुरोध भेजें, हम ईमेल से विशेष कोटेशन भेजेंगे।',
                   ur: '5 یا زیادہ کمرے؟ درخواست بھیجیں، ہم ای میل پر خصوصی قیمت بھیجیں گے۔',
                   fr: 'Vous réservez 5 chambres ou plus ? Envoyez votre demande et nous vous enverrons un devis par e-mail.',
-                  bn: '৫ বা তার বেশি রুম? অনুরোধ পাঠান, আমরা ইমেলে বিশেষ মূল্য পাঠাব।'),
+                  bn: '5 বা তার বেশি রুম? অনুরোধ পাঠান, আমরা ইমেলে বিশেষ মূল্য পাঠাব।'),
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.4),
             ),
           ),
@@ -1935,7 +1935,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             hi: '1 रात',
                             ur: '1 رات',
                             fr: '1 nuit',
-                            bn: '১ রাত'))
+                            bn: '1 রাত'))
                             : (_t3(context, ar: '$nights ليالٍ', en: '$nights nights', es: '$nights noches', tr: '$nights gece', id: '$nights malam',
                             hi: '$nights रातें',
                             ur: '$nights راتیں',
@@ -2027,7 +2027,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         hi: '1 कमरा, $_guests वयस्क',
                         ur: '1 کمرہ, $_guests بالغ',
                         fr: '1 chambre, $_guests ${_guests == 1 ? 'adulte' : 'adultes'}',
-                        bn: '১টি রুম, $_guests জন প্রাপ্তবয়স্ক',
+                        bn: '1টি রুম, $_guests জন প্রাপ্তবয়স্ক',
                       ),
                       style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
                     ),
@@ -3393,7 +3393,7 @@ class _CarTrustSection extends StatelessWidget {
         hi: 'हम आमतौर पर आपकी कॉल का जवाब 30 सेकंड के भीतर देते हैं, जिससे आपके किराए की पूरी अवधि में भरोसेमंद सहायता मिलती है',
         ur: 'ہم عام طور پر آپ کی کال کا جواب 30 سیکنڈ کے اندر دیتے ہیں، جس سے آپ کے کرایہ کی پوری مدت میں قابل اعتماد سپورٹ یقینی بنتی ہے',
         fr: 'Nous répondons généralement à votre appel en 30 secondes, garantissant une assistance fiable tout au long de votre location',
-        bn: 'আমরা সাধারণত ৩০ সেকেন্ডের মধ্যে আপনার কল ধরি, যা আপনার ভাড়ার পুরো সময় নির্ভরযোগ্য সহায়তা নিশ্চিত করে',
+        bn: 'আমরা সাধারণত 30 সেকেন্ডের মধ্যে আপনার কল ধরি, যা আপনার ভাড়ার পুরো সময় নির্ভরযোগ্য সহায়তা নিশ্চিত করে',
       ),
       ),
     ];
@@ -4111,7 +4111,7 @@ class _UmrahEntryNotice extends StatelessWidget {
                 hi: 'समूह उमरा (5+ कमरे)',
                 ur: 'گروپ عمرہ (5+ کمرے)',
                 fr: 'Omra en groupe (5+ chambres)',
-                bn: 'গ্রুপ উমরাহ (৫+ রুম)'),
+                bn: 'গ্রুপ উমরাহ (5+ রুম)'),
             onPressed: onGroupStays!,
           ),
       ],

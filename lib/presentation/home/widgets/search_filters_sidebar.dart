@@ -58,13 +58,13 @@ String _labelText(BuildContext context, String key) {
           id: 'Termasuk sarapan', hi: 'नाश्ता शामिल', ur: 'ناشتہ شامل', fr: 'Petit-déjeuner inclus', bn: 'নাস্তা অন্তর্ভুক্ত');
     case 'Very Good: 8+':
       return _t3(context, ar: 'جيد جدًا: +8', en: 'Very Good: 8+', es: 'Muy bueno: 8+', tr: 'Çok İyi: 8+',
-          id: 'Sangat Baik: 8+', hi: 'बहुत अच्छा: 8+', ur: 'بہت اچھا: +8', fr: 'Très bien : 8+', bn: 'অতি ভালো: ৮+');
+          id: 'Sangat Baik: 8+', hi: 'बहुत अच्छा: 8+', ur: 'بہت اچھا: +8', fr: 'Très bien : 8+', bn: 'অতি ভালো: 8+');
     case 'Parking':
       return _t3(context, ar: 'موقف سيارات', en: 'Parking', es: 'Estacionamiento', tr: 'Otopark',
           id: 'Parkir', hi: 'पार्किंग', ur: 'پارکنگ', fr: 'Parking', bn: 'পার্কিং');
     case '4 stars':
       return _t3(context, ar: '4 نجوم', en: '4 stars', es: '4 estrellas', tr: '4 yıldız',
-          id: '4 bintang', hi: '4 सितारे', ur: '4 ستارے', fr: '4 étoiles', bn: '৪ তারকা');
+          id: '4 bintang', hi: '4 सितारे', ur: '4 ستارے', fr: '4 étoiles', bn: '4 তারকা');
     case 'Apartments':
       return _t3(context, ar: 'شقق فندقية', en: 'Apartments', es: 'Apartamentos', tr: 'Daireler',
           id: 'Apartemen', hi: 'अपार्टमेंट', ur: 'اپارٹمنٹس', fr: 'Appartements', bn: 'অ্যাপার্টমেন্ট');
@@ -121,16 +121,16 @@ String _labelText(BuildContext context, String key) {
           id: 'Dapur/Dapur kecil', hi: 'रसोई/मिनी किचन', ur: 'باورچی خانہ/چھوٹا باورچی خانہ', fr: 'Cuisine/Kitchenette', bn: 'রান্নাঘর/মিনি রান্নাঘর');
     case '1 stars':
       return _t3(context, ar: 'نجمة واحدة', en: '1 star', es: '1 estrella', tr: '1 yıldız',
-          id: '1 bintang', hi: '1 सितारा', ur: '1 ستارہ', fr: '1 étoile', bn: '১ তারকা');
+          id: '1 bintang', hi: '1 सितारा', ur: '1 ستارہ', fr: '1 étoile', bn: '1 তারকা');
     case '2 stars':
       return _t3(context, ar: 'نجمتان', en: '2 stars', es: '2 estrellas', tr: '2 yıldız',
-          id: '2 bintang', hi: '2 सितारे', ur: '2 ستارے', fr: '2 étoiles', bn: '২ তারকা');
+          id: '2 bintang', hi: '2 सितारे', ur: '2 ستارے', fr: '2 étoiles', bn: '2 তারকা');
     case '3 stars':
       return _t3(context, ar: '3 نجوم', en: '3 stars', es: '3 estrellas', tr: '3 yıldız',
-          id: '3 bintang', hi: '3 सितारे', ur: '3 ستارے', fr: '3 étoiles', bn: '৩ তারকা');
+          id: '3 bintang', hi: '3 सितारे', ur: '3 ستارے', fr: '3 étoiles', bn: '3 তারকা');
     case '5 stars':
       return _t3(context, ar: '5 نجوم', en: '5 stars', es: '5 estrellas', tr: '5 yıldız',
-          id: '5 bintang', hi: '5 सितारे', ur: '5 ستارے', fr: '5 étoiles', bn: '৫ তারকা');
+          id: '5 bintang', hi: '5 सितारे', ur: '5 ستارے', fr: '5 étoiles', bn: '5 তারকা');
     default:
     // أسماء أحياء حقيقية (زي "South End"، "Back Bay") أو أي مفتاح
     // جديد لسه مضافش هنا -- بيتعرض زي ما هو من غير ترجمة.

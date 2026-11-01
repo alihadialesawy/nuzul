@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import 'admin_booking_desk_page.dart';
+import 'admin_community_reports_page.dart';
 import 'admin_disputes_page.dart';
 import 'admin_group_requests_page.dart';
 
@@ -28,6 +29,7 @@ String _t3(BuildContext context, {required String ar, required String en, requir
 ///   3) ينتهي الإلغاء المجاني خلال 24 ساعة                    ← Booking Desk
 ///   4) طلبات مجموعات جديدة                                   ← Group Requests
 ///   5) طلبات حذف حساب لم تكتمل (مهلة 30 يومًا)
+///   6) بلاغات المجتمع (مهلة آبل 24 ساعة)                     ← Community Reports
 class AdminAlertsPage extends StatefulWidget {
   const AdminAlertsPage({super.key});
 
@@ -37,7 +39,8 @@ class AdminAlertsPage extends StatefulWidget {
       final r = await Supabase.instance.client.rpc('admin_alerts');
       if (r is! Map) return null;
       int n(String k) => (r[k] is List) ? (r[k] as List).length : 0;
-      return n('disputes') + n('stuck') + n('arrivals') + n('free_cancel_ending') + n('group_requests') + n('deletions');
+      return n('disputes') + n('stuck') + n('arrivals') + n('free_cancel_ending') + n('group_requests') +
+          n('deletions') + n('community_reports');
     } catch (_) {
       return null;
     }
@@ -95,6 +98,18 @@ class _AdminAlertsPageState extends State<AdminAlertsPage> {
   Future<void> _openDisputes() async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminDisputesPage()));
     if (mounted) _load();
+  }
+
+  Future<void> _openCommunityReports() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminCommunityReportsPage()));
+    if (mounted) _load();
+  }
+
+  String _hoursAgo(BuildContext context, dynamic v) {
+    final d = DateTime.tryParse('${v ?? ''}');
+    if (d == null) return '';
+    final h = DateTime.now().difference(d).inHours;
+    return _t3(context, ar: 'منذ $h ساعة', en: '$h h ago', es: 'hace $h h');
   }
 
   Future<void> _openGroups() async {
@@ -198,7 +213,9 @@ class _AdminAlertsPageState extends State<AdminAlertsPage> {
     final freeCancel = _list('free_cancel_ending');
     final groups = _list('group_requests');
     final deletions = _list('deletions');
-    final total = disputes.length + stuck.length + arrivals.length + freeCancel.length + groups.length + deletions.length;
+    final reports = _list('community_reports');
+    final total = disputes.length + stuck.length + arrivals.length + freeCancel.length + groups.length +
+        deletions.length + reports.length;
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -223,6 +240,27 @@ class _AdminAlertsPageState extends State<AdminAlertsPage> {
                         ),
                       ]),
                     ),
+
+                  // بلاغات المجتمع (مهلة 24 ساعة)
+                  _SectionCard(
+                    icon: Icons.flag_outlined,
+                    color: const Color(0xFFC2185B),
+                    title: _t3(context, ar: 'بلاغات المجتمع', en: 'Community reports', es: 'Denuncias de la comunidad'),
+                    hint: _t3(context,
+                        ar: 'آبل تشترط التعامل مع البلاغ خلال 24 ساعة: احذف المحتوى المخالف أو تجاهل البلاغ.',
+                        en: 'Apple expects reports to be handled within 24 hours: remove the content or dismiss.',
+                        es: 'Apple exige atender las denuncias en 24 horas.'),
+                    items: [
+                      for (final r in reports)
+                        _AlertTile(
+                          title: '${r['kind'] == 'comment' ? _t3(context, ar: 'تعليق', en: 'Comment', es: 'Comentario') : _t3(context, ar: 'منشور', en: 'Post', es: 'Publicación')}'
+                              ' · ${r['reports']} ${_t3(context, ar: 'بلاغ', en: 'report(s)', es: 'denuncia(s)')}',
+                          subtitle: '${r['text'] ?? ''}',
+                          trailing: _hoursAgo(context, r['since']),
+                          onTap: _openCommunityReports,
+                        ),
+                    ],
+                  ),
 
                   // 0) اعتراضات على الدفع
                   _SectionCard(
