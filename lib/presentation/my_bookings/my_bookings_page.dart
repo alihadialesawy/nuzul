@@ -53,10 +53,26 @@ String _tm(
   }
 }
 
-/// تاريخ بصيغة أمريكية واضحة: "Oct 12, 2026" (بدل 12/10/2026 الملتبسة).
-String _usDate(DateTime d) {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return '${months[d.month - 1]} ${d.day}, ${d.year}';
+/// أسماء الأشهر المختصرة باللغات التسع.
+const _monthNames = <String, List<String>>{
+  'en': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  'ar': ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+  'es': ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'],
+  'tr': ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
+  'id': ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+  'hi': ['जन॰', 'फ़र॰', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुल॰', 'अग॰', 'सित॰', 'अक्तू॰', 'नव॰', 'दिस॰'],
+  'ur': ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر'],
+  'fr': ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'],
+  'bn': ['জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'],
+};
+
+/// تاريخ بلغة المستخدم وبالشهر مكتوبًا (لا 12/10/2026 الملتبسة):
+/// الإنجليزية "Oct 12, 2026" — باقي اللغات "12 أكتوبر 2026" / "12 oct 2026".
+String _localDate(BuildContext context, DateTime d) {
+  final code = Localizations.localeOf(context).languageCode;
+  final months = _monthNames[code] ?? _monthNames['en']!;
+  final m = months[d.month - 1];
+  return _monthNames.containsKey(code) && code != 'en' ? '${d.day} $m ${d.year}' : '$m ${d.day}, ${d.year}';
 }
 
 String _usd(double v) => '\$${v.toStringAsFixed(2)}';
@@ -577,7 +593,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '${_usDate(booking.checkIn)} – ${_usDate(booking.checkOut)}',
+            '${_localDate(context, booking.checkIn)} – ${_localDate(context, booking.checkOut)}',
             style: const TextStyle(fontSize: 13),
           ),
           Text(
@@ -654,7 +670,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            item.departureTime != null ? Formatters.date(item.departureTime!) : '',
+            item.departureTime != null ? _localDate(context, item.departureTime!) : '',
             style: const TextStyle(fontSize: 13),
           ),
         ],
@@ -670,7 +686,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
           style: const TextStyle(fontSize: 13),
         ),
         Text(
-          item.pickupDate != null ? Formatters.date(item.pickupDate!) : '',
+          item.pickupDate != null ? _localDate(context, item.pickupDate!) : '',
           style: const TextStyle(fontSize: 13),
         ),
       ],

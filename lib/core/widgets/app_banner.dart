@@ -17,12 +17,31 @@ String appBannerText(
       required String ar,
       required String en,
       required String es,
+      // اختيارية حتى لا يتعطل أي استدعاء قديم؛ إن غابت تظهر الإنجليزية.
+      String? tr,
+      String? id,
+      String? hi,
+      String? ur,
+      String? fr,
+      String? bn,
     }) {
   switch (Localizations.localeOf(context).languageCode) {
     case 'ar':
       return ar;
     case 'es':
       return es;
+    case 'tr':
+      return tr ?? en;
+    case 'id':
+      return id ?? en;
+    case 'hi':
+      return hi ?? en;
+    case 'ur':
+      return ur ?? en;
+    case 'fr':
+      return fr ?? en;
+    case 'bn':
+      return bn ?? en;
     default:
       return en;
   }
@@ -484,6 +503,12 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                       ar: 'لوحة تحكم الأدمن',
                                       en: 'Admin dashboard',
                                       es: 'Panel de administración',
+                                      tr: 'Yönetici paneli',
+                                      id: 'Dasbor admin',
+                                      hi: 'एडमिन डैशबोर्ड',
+                                      ur: 'ایڈمن ڈیش بورڈ',
+                                      fr: 'Tableau de bord admin',
+                                      bn: 'অ্যাডমিন ড্যাশবোর্ড',
                                     ),
                                     child: IconButton(
                                       icon: const Icon(Icons.admin_panel_settings_outlined, color: Colors.white),
@@ -518,11 +543,11 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                 ],
 
                                 _BannerAction(
-                                  label: appBannerText(context, ar: 'العملة', en: 'Currency', es: 'Moneda'),
+                                  label: appBannerText(context, ar: 'العملة', en: 'Currency', es: 'Moneda', tr: 'Para birimi', id: 'Mata uang', hi: 'मुद्रा', ur: 'کرنسی', fr: 'Devise', bn: 'মুদ্রা'),
                                   child: const CurrencySelectorButton(),
                                 ),
                                 _BannerAction(
-                                  label: appBannerText(context, ar: 'اللغة', en: 'Language', es: 'Idioma'),
+                                  label: appBannerText(context, ar: 'اللغة', en: 'Language', es: 'Idioma', tr: 'Dil', id: 'Bahasa', hi: 'भाषा', ur: 'زبان', fr: 'Langue', bn: 'ভাষা'),
                                   child: PopupMenuButton<Locale>(
                                     icon: Icon(Icons.language, color: Colors.white, size: iconSize),
                                     padding: EdgeInsets.all(iconPadding),
@@ -541,7 +566,7 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                   ),
                                 ),
                                 _BannerAction(
-                                  label: appBannerText(context, ar: 'حجوزاتي', en: 'My bookings', es: 'Mis reservas'),
+                                  label: appBannerText(context, ar: 'حجوزاتي', en: 'My bookings', es: 'Mis reservas', tr: 'Rezervasyonlarım', id: 'Pesanan Saya', hi: 'मेरी बुकिंग', ur: 'میری بکنگز', fr: 'Mes réservations', bn: 'আমার বুকিং'),
                                   child: IconButton(
                                     icon: const Icon(Icons.receipt_long_outlined, color: Colors.white),
                                     iconSize: iconSize,
@@ -558,7 +583,7 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                   ),
                                 ),
                                 _BannerAction(
-                                  label: appBannerText(context, ar: 'الدعم', en: 'Support', es: 'Soporte'),
+                                  label: appBannerText(context, ar: 'الدعم', en: 'Support', es: 'Soporte', tr: 'Destek', id: 'Bantuan', hi: 'सहायता', ur: 'مدد', fr: 'Assistance', bn: 'সহায়তা'),
                                   child: IconButton(
                                     icon: const Icon(Icons.support_agent_outlined, color: Colors.white),
                                     iconSize: iconSize,
@@ -583,7 +608,7 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                     ),
                                     onPressed: () => context.push(AppRoutes.login),
                                     child: Text(
-                                      appBannerText(context, ar: 'تسجيل الدخول', en: 'Sign in', es: 'Iniciar sesión'),
+                                      appBannerText(context, ar: 'تسجيل الدخول', en: 'Sign in', es: 'Iniciar sesión', tr: 'Giriş yap', id: 'Masuk', hi: 'साइन इन करें', ur: 'سائن ان کریں', fr: 'Se connecter', bn: 'সাইন ইন'),
                                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                                     ),
                                   ),

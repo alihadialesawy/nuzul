@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import '../../core/i18n/place_names.dart';
 import '../../core/widgets/app_banner.dart';
 import '../../core/widgets/price_text.dart';
 import '../../data/models/hotel_model.dart';
@@ -92,7 +93,7 @@ class CountryCitiesPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBanner(
         tabsBar: Text(
-          isArabic ? country.nameAr : country.nameEn,
+          isArabic ? country.nameAr : PlaceNames.of(context, country.nameEn),
           style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
         ),
         bannerHeight: 140,
@@ -112,7 +113,9 @@ class _CitySection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // البحث بالاسم الإنجليزي (cityName)، والعرض بلغة المستخدم (label).
     final hotelsAsync = ref.watch(cityTopHotelsProvider(cityName));
+    final label = PlaceNames.of(context, cityName);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.lg),
@@ -120,7 +123,7 @@ class _CitySection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            cityName,
+            label,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
           const SizedBox(height: AppSizes.sm),
@@ -133,12 +136,12 @@ class _CitySection extends ConsumerWidget {
               height: 60,
               child: Center(
                 child: Text(
-                  _t3(context, ar: 'تعذر تحميل فنادق $cityName', en: 'Could not load hotels for $cityName', es: 'No se pudieron cargar los hoteles de $cityName', tr: '$cityName otelleri yüklenemedi',
-                      id: 'Gagal memuat hotel di $cityName',
-                      hi: '$cityName के होटल लोड नहीं हो सके',
-                      ur: '$cityName کے ہوٹل لوڈ نہیں ہو سکے',
-                      fr: 'Impossible de charger les hôtels de $cityName',
-                      bn: '$cityName এর হোটেল লোড করা যায়নি'),
+                  _t3(context, ar: 'تعذر تحميل فنادق $label', en: 'Could not load hotels for $label', es: 'No se pudieron cargar los hoteles de $label', tr: '$label otelleri yüklenemedi',
+                      id: 'Gagal memuat hotel di $label',
+                      hi: '$label के होटल लोड नहीं हो सके',
+                      ur: '$label کے ہوٹل لوڈ نہیں ہو سکے',
+                      fr: 'Impossible de charger les hôtels de $label',
+                      bn: '$label এর হোটেল লোড করা যায়নি'),
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
               ),

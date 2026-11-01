@@ -83,6 +83,27 @@ String _t3(BuildContext context, {
   }
 }
 
+/// يوم وشهر مختصر بلغة المستخدم لأشرطة البحث:
+/// الإنجليزية "Nov 2"، وباقي اللغات "2 Kas" / "2 نوفمبر" / "2 nov".
+const _shortMonths = <String, List<String>>{
+  'en': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  'ar': ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+  'es': ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'],
+  'tr': ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
+  'id': ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+  'hi': ['जन॰', 'फ़र॰', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुल॰', 'अग॰', 'सित॰', 'अक्तू॰', 'नव॰', 'दिस॰'],
+  'ur': ['جنوری', 'فروری', 'مارچ', 'اپریل', 'مئی', 'جون', 'جولائی', 'اگست', 'ستمبر', 'اکتوبر', 'نومبر', 'دسمبر'],
+  'fr': ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'],
+  'bn': ['জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'],
+};
+
+String _md(BuildContext context, DateTime d) {
+  final code = Localizations.localeOf(context).languageCode;
+  final months = _shortMonths[code] ?? _shortMonths['en']!;
+  final m = months[d.month - 1];
+  return _shortMonths.containsKey(code) && code != 'en' ? '${d.day} $m' : '$m ${d.day}';
+}
+
 /// شاشة رئيسية: بحث حر عن الفنادق بدون تسجيل دخول (guest mode)
 /// حالة اختيار الرحلة والفندق في تبويب Flight+Hotel — Riverpod state
 /// بدل ما تفضل جوه StatefulWidget متداخل، عشان شريط الملخص يقدر
@@ -413,12 +434,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   /// الفورم الكامل تاني (_flightFormExpanded = true).
   Widget _buildCollapsedFlightBar() {
     final params = _flightSearchParams!;
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
     final date = params['departureDate'] as DateTime;
-    final dateLabel = '${months[date.month - 1]} ${date.day}';
+    final dateLabel = '${_md(context, date)}';
     return Container(
       margin: const EdgeInsets.all(AppSizes.md),
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.md, vertical: 10),
@@ -458,17 +475,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   /// بيعرض شريط ملخّص واحد (المدينة · التواريخ · عدد الضيوف) بدل فورم
   /// البحث الكامل، بمجرد ما نتايج بحث فعلية تظهر.
   Widget _buildCollapsedStaysBar() {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
     final params = _searchParams!;
     final label = params['cityLabel'] as String;
     final checkIn = params['checkIn'] as DateTime;
     final checkOut = params['checkOut'] as DateTime;
     final guests = params['guests'] as int;
     final dateLabel =
-        '${months[checkIn.month - 1]} ${checkIn.day} - ${months[checkOut.month - 1]} ${checkOut.day}';
+        '${_md(context, checkIn)} - ${_md(context, checkOut)}';
 
     return Container(
       margin: const EdgeInsets.all(AppSizes.md),
@@ -537,13 +550,9 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   String get _carDateRangeLabel {
     if (_carDateRange == null) return 'Dates';
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
     final s = _carDateRange!.start;
     final e = _carDateRange!.end;
-    return '${months[s.month - 1]} ${s.day} - ${months[e.month - 1]} ${e.day}';
+    return '${_md(context, s)} - ${_md(context, e)}';
   }
 
   void _swapFlightLocations() {
@@ -573,13 +582,9 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   String get _flightDateRangeLabel {
     if (_flightDateRange == null) return 'Dates';
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
     final s = _flightDateRange!.start;
     final e = _flightDateRange!.end;
-    return '${months[s.month - 1]} ${s.day} - ${months[e.month - 1]} ${e.day}';
+    return '${_md(context, s)} - ${_md(context, e)}';
   }
 
   Future<void> _pickFlightTravelers() async {
@@ -1002,12 +1007,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _buildStaysSearchBox() {
     final l10n = AppLocalizations.of(context)!;
     final nights = _checkOut.difference(_checkIn).inDays;
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
     final datesLabel =
-        '${months[_checkIn.month - 1]} ${_checkIn.day} - ${months[_checkOut.month - 1]} ${_checkOut.day}';
+        '${_md(context, _checkIn)} - ${_md(context, _checkOut)}';
 
     final cityField = Container(
       decoration: BoxDecoration(
@@ -1316,10 +1317,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildCollapsedUmrahBar() {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
     final params = _umrahParams!;
     final checkIn = params['checkIn'] as DateTime;
     final checkOut = params['checkOut'] as DateTime;
@@ -1329,7 +1326,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         : _t3(context, ar: 'المدينة المنورة', en: 'Madinah', es: 'Medina', tr: 'Medine', id: 'Madinah',
         hi: 'मदीना', ur: 'مدینہ منورہ', fr: 'Médine', bn: 'মদিনা');
     final dateLabel =
-        '${months[checkIn.month - 1]} ${checkIn.day} - ${months[checkOut.month - 1]} ${checkOut.day}';
+        '${_md(context, checkIn)} - ${_md(context, checkOut)}';
 
     return Container(
       margin: const EdgeInsets.all(AppSizes.md),
@@ -1365,12 +1362,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildUmrahSearchBox() {
     final l10n = AppLocalizations.of(context)!;
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
     final datesLabel =
-        '${months[_checkIn.month - 1]} ${_checkIn.day} - ${months[_checkOut.month - 1]} ${_checkOut.day}';
+        '${_md(context, _checkIn)} - ${_md(context, _checkOut)}';
 
     Widget cityChip(String code, String label) {
       final selected = _umrahCity == code;
@@ -1785,12 +1778,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _buildFlightHotelSearchBox() {
     final l10n = AppLocalizations.of(context)!;
     final nights = _checkOut.difference(_checkIn).inDays;
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
     final datesLabel =
-        '${months[_checkIn.month - 1]} ${_checkIn.day} - ${months[_checkOut.month - 1]} ${_checkOut.day}';
+        '${_md(context, _checkIn)} - ${_md(context, _checkOut)}';
 
     return Container(
       padding: const EdgeInsets.all(AppSizes.sm),
@@ -3953,6 +3942,10 @@ class _UmrahEntryNotice extends StatelessWidget {
   static const _visaUrl = 'https://visa.visitsaudi.com/';
   static const _nusukUrl = 'https://umrah.nusuk.sa/';
 
+  /// الخطوط الجوية السعودية: رابط نصي فقط (بلا شعار — علامة تجارية مسجلة)،
+  /// مع عبارة أن Flynoom غير تابع لها. يُستبدل لاحقًا ببحث الطيران داخل Flynoom.
+  static const _saudiaUrl = 'https://www.saudia.com/';
+
   Future<void> _open(BuildContext context, String url) async {
     final ok = await launchUrl(
       Uri.parse(url),
@@ -4035,6 +4028,22 @@ class _UmrahEntryNotice extends StatelessWidget {
             padding: const EdgeInsetsDirectional.only(start: 28),
             child: _buttons(context),
           ),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 28, top: 8),
+            child: Text(
+              _t3(context,
+                  ar: 'روابط خارجية تُفتح في نافذة جديدة. Flynoom غير تابع للخطوط الجوية السعودية أو لهذه المواقع.',
+                  en: 'External links open in a new window. Flynoom is not affiliated with Saudia or these websites.',
+                  es: 'Los enlaces externos se abren en una ventana nueva. Flynoom no está afiliado a Saudia ni a estos sitios.',
+                  tr: 'Harici bağlantılar yeni pencerede açılır. Flynoom, Saudia veya bu sitelerle bağlantılı değildir.',
+                  id: 'Tautan eksternal dibuka di jendela baru. Flynoom tidak berafiliasi dengan Saudia atau situs-situs ini.',
+                  hi: 'बाहरी लिंक नई विंडो में खुलते हैं। Flynoom का सउदिया या इन वेबसाइटों से कोई संबंध नहीं है।',
+                  ur: 'بیرونی لنکس نئی ونڈو میں کھلتے ہیں۔ Flynoom کا سعودیہ ایئرلائن یا ان ویب سائٹس سے کوئی تعلق نہیں۔',
+                  fr: 'Les liens externes s\'ouvrent dans une nouvelle fenêtre. Flynoom n\'est pas affilié à Saudia ni à ces sites.',
+                  bn: 'বাহ্যিক লিঙ্ক নতুন উইন্ডোতে খোলে। Flynoom সৌদিয়া বা এই ওয়েবসাইটগুলোর সাথে যুক্ত নয়।'),
+              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ),
         ],
       ),
     );
@@ -4074,6 +4083,21 @@ class _UmrahEntryNotice extends StatelessWidget {
               fr: 'Permis de Omra sur Nusuk',
               bn: 'নুসুকে উমরাহ পারমিট'),
           onPressed: () => _open(context, _nusukUrl),
+        ),
+        _button(
+          icon: Icons.flight_takeoff,
+          external: true,
+          label: _t3(context,
+              ar: 'رحلات الخطوط الجوية السعودية',
+              en: 'Flights on Saudia',
+              es: 'Vuelos con Saudia',
+              tr: 'Saudia uçuşları',
+              id: 'Penerbangan Saudia',
+              hi: 'सउदिया की उड़ानें',
+              ur: 'سعودیہ ایئرلائن کی پروازیں',
+              fr: 'Vols avec Saudia',
+              bn: 'সৌদিয়ার ফ্লাইট'),
+          onPressed: () => _open(context, _saudiaUrl),
         ),
         if (onGroupStays != null)
           _button(

@@ -10,6 +10,7 @@ import '../../core/widgets/app_banner.dart';
 import 'admin_alerts_page.dart';
 import 'admin_analytics_page.dart';
 import 'admin_booking_desk_page.dart';
+import 'admin_customer_lookup_page.dart';
 import 'admin_disputes_page.dart';
 import 'admin_financial_report_page.dart';
 import 'admin_group_requests_page.dart';
@@ -267,6 +268,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       ),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const AdminBookingDeskPage()),
+      ),
+      ),
+      (
+      icon: Icons.person_search_outlined,
+      color: const Color(0xFF00897B),
+      title: _t3(context, ar: 'بحث عن عميل', en: 'Customer Lookup', es: 'Buscar cliente'),
+      description: _t3(
+        context,
+        ar: 'بالبريد أو الاسم أو الهاتف أو رقم الحجز: الحساب وكل الحجوزات وطلبات الحذف في مكان واحد',
+        en: 'By email, name, phone or booking ref: account, all bookings and deletion requests in one place',
+        es: 'Por correo, nombre, teléfono o referencia: cuenta, reservas y solicitudes',
+      ),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AdminCustomerLookupPage()),
       ),
       ),
       if (_kLegacyAdminEnabled)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/i18n/place_names.dart';
 import '../../../data/models/country_destinations_data.dart';
 import '../country_cities_page.dart';
 
@@ -141,7 +142,8 @@ class _CountryCard extends StatelessWidget {
                 right: 12,
                 bottom: 10,
                 child: Text(
-                  isArabic ? country.nameAr : country.nameEn,
+                  // العربية من nameAr كما كانت، وباقي اللغات من PlaceNames.
+                  isArabic ? country.nameAr : PlaceNames.of(context, country.nameEn),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

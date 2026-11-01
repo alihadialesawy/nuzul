@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/i18n/place_names.dart';
 
 /// يختار النص المناسب حسب اللغة الحالية.
 String _t3(
@@ -150,8 +151,9 @@ class _TrendingCityCard extends StatelessWidget {
                 left: 12,
                 bottom: 10,
                 right: 12,
+                // العرض بلغة المستخدم؛ البحث يبقى بـ searchQuery الإنجليزي.
                 child: Text(
-                  city.name,
+                  PlaceNames.of(context, city.name),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

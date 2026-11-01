@@ -21,7 +21,15 @@ class AdminBookingDeskPage extends StatefulWidget {
   /// الفلتر عند الفتح: active / needs_attention / cancelled / attempts / all.
   final String initialFilter;
 
-  const AdminBookingDeskPage({super.key, this.initialQuery, this.initialFilter = 'active'});
+  /// يفتح نافذة الحجز مباشرة إن كانت نتيجة البحث حجزًا واحدًا (من "بحث عن عميل").
+  final bool autoOpen;
+
+  const AdminBookingDeskPage({
+    super.key,
+    this.initialQuery,
+    this.initialFilter = 'active',
+    this.autoOpen = false,
+  });
 
   @override
   State<AdminBookingDeskPage> createState() => _AdminBookingDeskPageState();
@@ -149,6 +157,7 @@ class _AdminBookingDeskPageState extends State<AdminBookingDeskPage> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _rows = [];
+  bool _autoOpened = false;
 
   @override
   void initState() {
@@ -195,6 +204,20 @@ class _AdminBookingDeskPageState extends State<AdminBookingDeskPage> {
         _rows = List<Map<String, dynamic>>.from(data as List);
         _loading = false;
       });
+      if (widget.autoOpen && !_autoOpened) {
+        _autoOpened = true;
+        final match = _visible;
+        if (match.length == 1) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            if (!mounted) return;
+            final changed = await showDialog<bool>(
+              context: context,
+              builder: (_) => _BookingDetailsDialog(row: match.first),
+            );
+            if (changed == true) _load();
+          });
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -402,6 +425,12 @@ class _BookingDetailsDialog extends StatefulWidget {
 class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
   bool _busy = false;
 
+  /// التحقق من هوية المتصل قبل الإلغاء (يظهر داخل النافذة للحجز المؤكد).
+  bool _vRef = false;
+  bool _vCard = false;
+  bool _vName = false;
+  bool get _verified => _vRef && _vCard && _vName;
+
   /// يستدعي hotelbeds-cancel ويرجع البيانات، أو يرمي رسالة خطأ مقروءة.
   Future<Map<String, dynamic>> _callCancel(String mode) =>
       _callFunction('hotelbeds-cancel', {'bookingId': widget.row['id'], 'mode': mode});
@@ -423,6 +452,9 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
   }
 
   Future<void> _cancelOnBehalf() async {
+    // لا يبدأ الإلغاء قبل تأكيد المعلومات الثلاث (الزر معطّل حتى ذلك).
+    if (!_verified) return;
+
     setState(() => _busy = true);
     Map<String, dynamic> quote;
     try {
@@ -840,6 +872,18 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
                     Text('• ${_t(context, ar: 'من', en: 'From')} ${p['from']}: ${p['amount']}',
                         style: const TextStyle(fontSize: 12)),
               ],
+              if (status == 'confirmed') ...[
+                const SizedBox(height: AppSizes.md),
+                _VerifyCallerPanel(
+                  row: r,
+                  ref: _vRef,
+                  card: _vCard,
+                  lastName: _vName,
+                  onRef: (v) => setState(() => _vRef = v),
+                  onCard: (v) => setState(() => _vCard = v),
+                  onLastName: (v) => setState(() => _vName = v),
+                ),
+              ],
               if (status == 'needs_attention' || status == 'processing') ...[
                 const SizedBox(height: AppSizes.md),
                 Text(
@@ -917,13 +961,163 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
         if (status == 'confirmed')
           FilledButton.icon(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: _busy ? null : _cancelOnBehalf,
+            onPressed: (_busy || !_verified) ? null : _cancelOnBehalf,
             icon: _busy
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.cancel_outlined),
             label: Text(_t(context, ar: 'إلغاء نيابة عن العميل', en: 'Cancel on behalf')),
           ),
       ],
+    );
+  }
+}
+
+/// قسم "التحقق من المتصل" داخل نافذة الحجز المؤكد.
+/// زر "إلغاء نيابة عن العميل" معطّل حتى يضغط الموظف الأزرار الثلاثة، كل زر بعد
+/// أن يقول المتصل المعلومة بنفسه ويطابقها الموظف:
+///   1) رقم الحجز   2) آخر 4 أرقام من البطاقة   3) اسم العائلة (اللقب)
+/// القيم الصحيحة مخفية حتى يضغط الموظف "إظهار للمطابقة"، حتى لا يقرأها للمتصل.
+class _VerifyCallerPanel extends StatefulWidget {
+  final Map<String, dynamic> row;
+  final bool ref;
+  final bool card;
+  final bool lastName;
+  final ValueChanged<bool> onRef;
+  final ValueChanged<bool> onCard;
+  final ValueChanged<bool> onLastName;
+
+  const _VerifyCallerPanel({
+    required this.row,
+    required this.ref,
+    required this.card,
+    required this.lastName,
+    required this.onRef,
+    required this.onCard,
+    required this.onLastName,
+  });
+
+  @override
+  State<_VerifyCallerPanel> createState() => _VerifyCallerPanelState();
+}
+
+class _VerifyCallerPanelState extends State<_VerifyCallerPanel> {
+  bool _reveal = false;
+
+  Widget _check({
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required IconData icon,
+    required String label,
+    required String expected,
+  }) {
+    const green = Color(0xFF00B894);
+    final color = value ? green : AppColors.textSecondary;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          side: BorderSide(color: value ? green : AppColors.divider, width: value ? 2 : 1),
+          backgroundColor: value ? green.withOpacity(0.08) : null,
+          alignment: AlignmentDirectional.centerStart,
+        ),
+        onPressed: () => onChanged(!value),
+        child: Row(children: [
+          Icon(value ? Icons.check_circle : icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: value ? green : null)),
+              if (_reveal)
+                Text(expected,
+                    textDirection: TextDirection.ltr,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            ]),
+          ),
+          Text(
+            value ? _t(context, ar: 'مطابق ✓', en: 'Verified ✓') : _t(context, ar: 'اضغط عند المطابقة', en: 'Tap when it matches'),
+            style: TextStyle(fontSize: 11, color: color),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final r = widget.row;
+    final all = widget.ref && widget.card && widget.lastName;
+    final ref = '${r['client_reference'] ?? '—'}'
+        '${r['supplier_reference'] != null ? '  /  HB ${r['supplier_reference']}' : ''}';
+    final card = r['card_last4'] == null
+        ? _t(context, ar: 'غير مسجّلة في المنصة — تحقق منها في Stripe', en: 'Not stored — check it in Stripe')
+        : '${_cardBrand('${r['card_brand'] ?? ''}')} •••• ${r['card_last4']}';
+    final lastName = '${r['holder_last_name'] ?? '—'}';
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: (all ? const Color(0xFF00B894) : const Color(0xFFD63031)).withOpacity(0.05),
+        border: Border.all(color: (all ? const Color(0xFF00B894) : const Color(0xFFD63031)).withOpacity(0.4)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(all ? Icons.lock_open : Icons.lock_outline, size: 18,
+              color: all ? const Color(0xFF00B894) : const Color(0xFFD63031)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              _t(context, ar: 'التحقق من المتصل قبل الإلغاء', en: 'Verify the caller before cancelling'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+          ),
+          TextButton.icon(
+            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+            onPressed: () => setState(() => _reveal = !_reveal),
+            icon: Icon(_reveal ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 16),
+            label: Text(_reveal
+                ? _t(context, ar: 'إخفاء', en: 'Hide')
+                : _t(context, ar: 'إظهار للمطابقة', en: 'Show to compare')),
+          ),
+        ]),
+        Text(
+          _t(context,
+              ar: 'اطلب من المتصل أن يذكر كل معلومة بنفسه، ولا تقرأها له. اضغط الزر فقط إن طابق جوابه.',
+              en: 'Ask the caller to say each item. Never read it to them. Tap only if their answer matches.'),
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        _check(
+          value: widget.ref,
+          onChanged: widget.onRef,
+          icon: Icons.confirmation_number_outlined,
+          label: _t(context, ar: '1. رقم الحجز', en: '1. Booking reference'),
+          expected: ref,
+        ),
+        _check(
+          value: widget.card,
+          onChanged: widget.onCard,
+          icon: Icons.credit_card,
+          label: _t(context, ar: '2. آخر 4 أرقام من البطاقة', en: '2. Last 4 card digits'),
+          expected: card,
+        ),
+        _check(
+          value: widget.lastName,
+          onChanged: widget.onLastName,
+          icon: Icons.badge_outlined,
+          label: _t(context, ar: '3. اسم العائلة (اللقب)', en: '3. Last name'),
+          expected: lastName,
+        ),
+        Text(
+          all
+              ? _t(context, ar: 'تم التحقق ✓ — زر الإلغاء مفعّل الآن.', en: 'Verified ✓ — cancel is now enabled.')
+              : _t(context,
+              ar: 'زر الإلغاء معطّل حتى تأكيد المعلومات الثلاث. إن لم تتطابق، اطلب من العميل مراسلة support@flynoom.com من بريد الحجز.',
+              en: 'Cancel stays disabled until all three are verified. If they do not match, ask the guest to email support@flynoom.com from the booking email.'),
+          style: TextStyle(fontSize: 11, color: all ? const Color(0xFF00B894) : AppColors.error),
+        ),
+      ]),
     );
   }
 }

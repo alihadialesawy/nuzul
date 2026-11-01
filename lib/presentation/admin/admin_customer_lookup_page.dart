@@ -1,0 +1,393 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
+
+import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_sizes.dart';
+import 'admin_booking_desk_page.dart';
+
+/// يختار النص المناسب حسب اللغة الحالية (عربي/إنجليزي/إسباني).
+String _t3(BuildContext context, {required String ar, required String en, required String es}) {
+  switch (Localizations.localeOf(context).languageCode) {
+    case 'ar':
+      return ar;
+    case 'es':
+      return es;
+    default:
+      return en;
+  }
+}
+
+String _date(dynamic v) {
+  final s = '${v ?? ''}';
+  return s.length >= 10 ? s.substring(0, 10) : (s.isEmpty ? '—' : s);
+}
+
+Color _statusColor(String s) {
+  switch (s) {
+    case 'confirmed':
+      return const Color(0xFF00B894);
+    case 'cancelled':
+      return const Color(0xFF636E72);
+    case 'needs_attention':
+    case 'processing':
+      return const Color(0xFFD63031);
+    default:
+      return const Color(0xFFB2BEC3);
+  }
+}
+
+/// بحث عن عميل — للمالك والمساعدين.
+/// عند اتصال عميل: اكتب بريده أو اسمه أو هاتفه أو رقم الحجز، فترى حسابه
+/// وكل حجوزاته وطلبات حذف الحساب وتغييرات البريد في مكان واحد.
+/// البيانات من admin_customer_search و admin_customer_detail (بلا أرباح).
+class AdminCustomerLookupPage extends StatefulWidget {
+  const AdminCustomerLookupPage({super.key});
+
+  @override
+  State<AdminCustomerLookupPage> createState() => _AdminCustomerLookupPageState();
+}
+
+class _AdminCustomerLookupPageState extends State<AdminCustomerLookupPage> {
+  final _controller = TextEditingController();
+  Timer? _debounce;
+  bool _loading = false;
+  String? _error;
+  String _lastQuery = '';
+  List<Map<String, dynamic>> _accounts = [];
+  List<Map<String, dynamic>> _guestBookings = [];
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String v) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 450), () => _search(v));
+  }
+
+  List<Map<String, dynamic>> _list(dynamic v) =>
+      v is List ? v.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList() : [];
+
+  Future<void> _search(String raw) async {
+    final q = raw.trim();
+    if (q == _lastQuery) return;
+    _lastQuery = q;
+    if (q.length < 3) {
+      setState(() {
+        _accounts = [];
+        _guestBookings = [];
+        _error = null;
+      });
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final r = await Supabase.instance.client.rpc('admin_customer_search', params: {'p_query': q});
+      if (!mounted || q != _lastQuery) return;
+      final m = r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};
+      setState(() {
+        _accounts = _list(m['accounts']);
+        _guestBookings = _list(m['guest_bookings']);
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = '$e';
+        _loading = false;
+      });
+    }
+  }
+
+  void _openBooking(String? ref) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => AdminBookingDeskPage(initialQuery: ref, initialFilter: 'all'),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = _controller.text.trim();
+    return Scaffold(
+      appBar: AppBar(title: Text(_t3(context, ar: 'بحث عن عميل', en: 'Customer Lookup', es: 'Buscar cliente'))),
+      body: ListView(
+        padding: const EdgeInsets.all(AppSizes.md),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                TextField(
+                  controller: _controller,
+                  autofocus: true,
+                  onChanged: _onChanged,
+                  onSubmitted: (v) {
+                    _lastQuery = '';
+                    _search(v);
+                  },
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.person_search_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    hintText: _t3(context,
+                        ar: 'البريد، أو الاسم، أو الهاتف، أو رقم الحجز (3 أحرف على الأقل)',
+                        en: 'Email, name, phone, or booking reference (at least 3 characters)',
+                        es: 'Correo, nombre, teléfono o referencia (mín. 3 caracteres)'),
+                  ),
+                ),
+                const SizedBox(height: AppSizes.sm),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0984E3).withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _t3(context,
+                        ar: '🔐 قبل إعطاء أي معلومة أو تنفيذ إلغاء أو تغيير بريد: تحقق من المتصل — رقم الحجز، والاسم الكامل، وآخر 4 أرقام من البطاقة.',
+                        en: '🔐 Before sharing details, cancelling, or changing an email: verify the caller — booking reference, full name, and last 4 card digits.',
+                        es: '🔐 Antes de compartir datos o cancelar: verifica referencia, nombre completo y últimos 4 dígitos.'),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: AppSizes.md),
+                if (_loading)
+                  const Padding(padding: EdgeInsets.all(AppSizes.lg), child: Center(child: CircularProgressIndicator()))
+                else if (_error != null)
+                  SelectableText(_error!, style: const TextStyle(color: Colors.red))
+                else if (q.length >= 3 && _accounts.isEmpty && _guestBookings.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(AppSizes.lg),
+                      child: Text(_t3(context, ar: 'لا نتائج.', en: 'No results.', es: 'Sin resultados.'),
+                          textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+                    )
+                  else ...[
+                      for (final a in _accounts)
+                        Card(
+                          margin: const EdgeInsets.only(bottom: AppSizes.sm),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppColors.primary.withOpacity(0.1),
+                              child: const Icon(Icons.person_outline, color: AppColors.primary),
+                            ),
+                            title: Text('${a['name'] ?? a['email'] ?? '—'}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(
+                              [
+                                '${a['email'] ?? ''}',
+                                if ((a['phone'] ?? '').toString().isNotEmpty) '${a['phone']}',
+                                '${_t3(context, ar: 'حجوزات', en: 'Bookings', es: 'Reservas')}: ${a['bookings'] ?? 0}',
+                              ].join(' · '),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                              if (a['role'] == 'admin' || a['role'] == 'super_admin')
+                                const _Chip('STAFF', Color(0xFF6C5CE7)),
+                              if (a['pending_deletion'] == true)
+                                _Chip(_t3(context, ar: 'طلب حذف', en: 'Deletion', es: 'Eliminación'), const Color(0xFFD63031)),
+                              if (a['confirmed'] != true)
+                                _Chip(_t3(context, ar: 'غير مفعّل', en: 'Unconfirmed', es: 'Sin confirmar'), const Color(0xFFE17055)),
+                              const Icon(Icons.chevron_right),
+                            ]),
+                            onTap: () => showDialog<void>(
+                              context: context,
+                              builder: (_) => _CustomerDialog(userId: '${a['id']}', onOpenBooking: _openBooking),
+                            ),
+                          ),
+                        ),
+                      if (_guestBookings.isNotEmpty) ...[
+                        const SizedBox(height: AppSizes.md),
+                        Text(
+                          _t3(context,
+                              ar: 'حجوزات بلا حساب مطابق (مثلًا: حساب محذوف)',
+                              en: 'Bookings without a matching account (e.g. deleted account)',
+                              es: 'Reservas sin cuenta asociada'),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 6),
+                        for (final b in _guestBookings)
+                          Card(
+                            margin: const EdgeInsets.only(bottom: AppSizes.sm),
+                            child: ListTile(
+                              title: Text('${b['hotel_name'] ?? '—'} · ${b['guest'] ?? ''}'),
+                              subtitle: Text('${b['client_reference'] ?? ''} · ${b['email'] ?? ''} · ${_date(b['check_in'])}',
+                                  style: const TextStyle(fontSize: 12)),
+                              trailing: _Chip('${b['status']}', _statusColor('${b['status']}')),
+                              onTap: () => _openBooking('${b['client_reference'] ?? ''}'),
+                            ),
+                          ),
+                      ],
+                    ],
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String text;
+  final Color color;
+  const _Chip(this.text, this.color);
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsetsDirectional.only(end: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+    child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+  );
+}
+
+/// ملف عميل واحد: الحساب، والحجوزات، وطلبات الحذف، وتغييرات البريد.
+class _CustomerDialog extends StatefulWidget {
+  final String userId;
+  final void Function(String? ref) onOpenBooking;
+  const _CustomerDialog({required this.userId, required this.onOpenBooking});
+
+  @override
+  State<_CustomerDialog> createState() => _CustomerDialogState();
+}
+
+class _CustomerDialogState extends State<_CustomerDialog> {
+  bool _loading = true;
+  String? _error;
+  Map<String, dynamic> _d = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final r = await Supabase.instance.client.rpc('admin_customer_detail', params: {'p_user_id': widget.userId});
+      if (!mounted) return;
+      setState(() {
+        _d = r is Map ? Map<String, dynamic>.from(r) : {};
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = '$e';
+        _loading = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _list(String k) {
+    final v = _d[k];
+    return v is List ? v.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList() : [];
+  }
+
+  Widget _r(String k, String? v, {bool copy = false}) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(children: [
+      SizedBox(width: 120, child: Text(k, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13))),
+      Expanded(child: SelectableText(v == null || v.isEmpty ? '—' : v, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+      if (copy && v != null && v.isNotEmpty)
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          iconSize: 16,
+          icon: const Icon(Icons.copy),
+          onPressed: () => Clipboard.setData(ClipboardData(text: v)),
+        ),
+    ]),
+  );
+
+  Widget _section(String t) => Padding(
+    padding: const EdgeInsets.only(top: AppSizes.md, bottom: 6),
+    child: Text(t.toUpperCase(),
+        style: const TextStyle(fontSize: 12, letterSpacing: 1, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final a = Map<String, dynamic>.from((_d['account'] as Map?) ?? const {});
+    final bookings = _list('bookings');
+    final deletions = _list('deletions');
+    final emailChanges = _list('email_changes');
+
+    return AlertDialog(
+      title: Text('${a['name'] ?? a['email'] ?? _t3(context, ar: 'عميل', en: 'Customer', es: 'Cliente')}'),
+      content: SizedBox(
+        width: 600,
+        child: _loading
+            ? const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()))
+            : _error != null
+            ? SelectableText(_error!, style: const TextStyle(color: Colors.red))
+            : SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            _section(_t3(context, ar: 'الحساب', en: 'Account', es: 'Cuenta')),
+            _r(_t3(context, ar: 'البريد', en: 'Email', es: 'Correo'), a['email'] as String?, copy: true),
+            _r(_t3(context, ar: 'الهاتف', en: 'Phone', es: 'Teléfono'), a['phone'] as String?, copy: true),
+            _r(_t3(context, ar: 'تاريخ التسجيل', en: 'Signed up', es: 'Registro'), _date(a['created_at'])),
+            _r(_t3(context, ar: 'آخر دخول', en: 'Last sign-in', es: 'Último acceso'), _date(a['last_sign_in_at'])),
+            _r(_t3(context, ar: 'طريقة الدخول', en: 'Sign-in method', es: 'Método'), '${a['provider'] ?? 'email'}'),
+            _r(_t3(context, ar: 'البريد مفعّل', en: 'Email confirmed', es: 'Confirmado'),
+                a['confirmed'] == true ? '✅' : _t3(context, ar: 'لا', en: 'No', es: 'No')),
+
+            _section('${_t3(context, ar: 'الحجوزات', en: 'Bookings', es: 'Reservas')} (${bookings.length})'),
+            if (bookings.isEmpty)
+              Text(_t3(context, ar: 'لا حجوزات.', en: 'No bookings.', es: 'Sin reservas.'),
+                  style: const TextStyle(color: AppColors.textSecondary)),
+            for (final b in bookings)
+              InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenBooking('${b['client_reference'] ?? ''}');
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('${b['hotel_name'] ?? '—'} · ${b['hotel_city'] ?? ''}',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text(
+                          '${b['client_reference'] ?? ''} · ${_date(b['check_in'])} → ${_date(b['check_out'])}'
+                              ' · \$${b['amount'] ?? '—'}'
+                              '${b['card'] != null ? ' · ${b['card']}' : ''}',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ]),
+                    ),
+                    _Chip('${b['status']}', _statusColor('${b['status']}')),
+                    const Icon(Icons.chevron_right, size: 18),
+                  ]),
+                ),
+              ),
+
+            if (deletions.isNotEmpty) ...[
+              _section(_t3(context, ar: 'طلبات حذف الحساب', en: 'Account deletion requests', es: 'Solicitudes de eliminación')),
+              for (final d in deletions)
+                Text('${d['status']} · ${_date(d['requested_at'])}${d['completed_at'] != null ? ' → ${_date(d['completed_at'])}' : ''}',
+                    style: const TextStyle(fontSize: 13)),
+            ],
+
+            if (emailChanges.isNotEmpty) ...[
+              _section(_t3(context, ar: 'تغييرات بريد الحجز', en: 'Booking email changes', es: 'Cambios de correo')),
+              for (final c in emailChanges)
+                Text('${c['booking']}: ${c['old'] ?? '—'} → ${c['new']} (${_date(c['at'])})',
+                    style: const TextStyle(fontSize: 12)),
+            ],
+          ]),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(_t3(context, ar: 'إغلاق', en: 'Close', es: 'Cerrar'))),
+      ],
+    );
+  }
+}

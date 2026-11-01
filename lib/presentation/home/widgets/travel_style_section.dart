@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/i18n/place_names.dart';
 
 /// يختار النص المناسب حسب اللغة الحالية.
 String _t3(
@@ -297,14 +298,15 @@ class _StyleDestinationCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
+            // الاسم المعروض بلغة المستخدم؛ البحث يبقى بالاسم الإنجليزي (destination.city).
             Text(
-              destination.city,
+              PlaceNames.of(context, destination.city),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             Text(
-              destination.country,
+              PlaceNames.of(context, destination.country),
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
