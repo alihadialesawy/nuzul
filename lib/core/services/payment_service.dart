@@ -6,6 +6,22 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/result.dart';
 import '../utils/error_translator.dart';
 
+/// نص نافذة الدفع على الويب حسب لغة التطبيق (اللغات التسع).
+String _pt(BuildContext context, String key) {
+  const t = <String, List<String>>{
+    // ar, en, es, tr, id, hi, ur, fr, bn
+    'title': ['إتمام الدفع', 'Complete payment', 'Completar el pago', 'Ödemeyi tamamla', 'Selesaikan pembayaran', 'भुगतान पूरा करें', 'ادائیگی مکمل کریں', 'Finaliser le paiement', 'পেমেন্ট সম্পন্ন করুন'],
+    'pay': ['ادفع', 'Pay', 'Pagar', 'Öde', 'Bayar', 'भुगतान करें', 'ادائیگی کریں', 'Payer', 'পেমেন্ট করুন'],
+    'cancel': ['إلغاء', 'Cancel', 'Cancelar', 'Vazgeç', 'Batal', 'रद्द करें', 'منسوخ کریں', 'Annuler', 'বাতিল'],
+    'incomplete': ['يُرجى إدخال بيانات البطاقة كاملة.', 'Please enter your full card details.', 'Introduce los datos completos de tu tarjeta.', 'Lütfen kart bilgilerinizi eksiksiz girin.', 'Harap masukkan detail kartu Anda dengan lengkap.', 'कृपया अपने कार्ड का पूरा विवरण दर्ज करें।', 'براہ کرم اپنے کارڈ کی مکمل تفصیلات درج کریں۔', 'Veuillez saisir toutes les informations de votre carte.', 'অনুগ্রহ করে কার্ডের সম্পূর্ণ তথ্য দিন।'],
+    'failed': ['فشلت عملية الدفع.', 'Payment failed.', 'El pago no se pudo completar.', 'Ödeme başarısız oldu.', 'Pembayaran gagal.', 'भुगतान विफल रहा।', 'ادائیگی ناکام ہو گئی۔', 'Le paiement a échoué.', 'পেমেন্ট ব্যর্থ হয়েছে।'],
+    'error': ['حدث خطأ أثناء الدفع، حاول مرة أخرى.', 'Something went wrong during payment. Please try again.', 'Ocurrió un error durante el pago. Inténtalo de nuevo.', 'Ödeme sırasında bir hata oluştu. Lütfen tekrar deneyin.', 'Terjadi kesalahan saat pembayaran. Silakan coba lagi.', 'भुगतान के दौरान कुछ गलत हो गया। कृपया फिर से प्रयास करें।', 'ادائیگی کے دوران کچھ غلط ہو گیا۔ براہ کرم دوبارہ کوشش کریں۔', 'Une erreur est survenue pendant le paiement. Veuillez réessayer.', 'পেমেন্টের সময় সমস্যা হয়েছে। আবার চেষ্টা করুন।'],
+  };
+  const order = ['ar', 'en', 'es', 'tr', 'id', 'hi', 'ur', 'fr', 'bn'];
+  final i = order.indexOf(Localizations.localeOf(context).languageCode);
+  return t[key]![i < 0 ? 1 : i];
+}
+
 /// يتعامل مع عملية الدفع الكاملة. على الموبايل يستخدم PaymentSheet الجاهزة
 /// من Stripe، وعلى الويب يستخدم CardField + confirmPayment لأن PaymentSheet
 /// غير مدعومة رسميًا على الويب حتى الآن.
@@ -111,7 +127,7 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
 
   Future<void> _submit() async {
     if (_card == null || !_card!.complete) {
-      setState(() => _errorMessage = 'من فضلك أدخل بيانات البطاقة كاملة');
+      setState(() => _errorMessage = _pt(context, 'incomplete'));
       return;
     }
 
@@ -131,12 +147,12 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
     } on StripeException catch (e) {
       setState(() {
         _isProcessing = false;
-        _errorMessage = e.error.localizedMessage ?? 'فشلت عملية الدفع';
+        _errorMessage = e.error.localizedMessage ?? _pt(context, 'failed');
       });
     } catch (e) {
       setState(() {
         _isProcessing = false;
-        _errorMessage = 'حدث خطأ أثناء الدفع، حاول مرة أخرى';
+        _errorMessage = _pt(context, 'error');
       });
     }
   }
@@ -144,19 +160,28 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('إتمام الدفع'),
+      title: Text(_pt(context, 'title')),
       content: SizedBox(
         width: 400,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CardField(
-              // الرمز البريدي إلزامي: نعرف منه ولاية البطاقة (منع الولايات غير
-              // المسجّل فيها في hotelbeds-book) ويتحقق منه بنك العميل.
-              enablePostalCode: true,
-              onCardChanged: (card) {
-                setState(() => _card = card);
-              },
+            // ⚠️ إمكانية الوصول على الويب (main.dart) تسحب التركيز من خانة Stripe
+            // (iframe) فلا يمكن الكتابة فيها. ExcludeSemantics + ExcludeFocus
+            // يُبعدان الخانة عن إدارة Flutter للتركيز وعن طبقة قارئ الشاشة،
+            // فيبقى التركيز داخلها. الخانة نفسها HTML من Stripe يقرؤه قارئ الشاشة
+            // مباشرة. لا تحذفهما.
+            ExcludeSemantics(
+              child: ExcludeFocus(
+                child: CardField(
+                  // الرمز البريدي إلزامي: نعرف منه ولاية البطاقة (منع الولايات غير
+                  // المسجّل فيها في hotelbeds-book) ويتحقق منه بنك العميل.
+                  enablePostalCode: true,
+                  onCardChanged: (card) {
+                    setState(() => _card = card);
+                  },
+                ),
+              ),
             ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 12),
@@ -168,7 +193,7 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
       actions: [
         TextButton(
           onPressed: _isProcessing ? null : () => Navigator.of(context).pop(false),
-          child: const Text('إلغاء'),
+          child: Text(_pt(context, 'cancel')),
         ),
         ElevatedButton(
           onPressed: _isProcessing ? null : _submit,
@@ -178,7 +203,7 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
             width: 18,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
-              : const Text('ادفع'),
+              : Text(_pt(context, 'pay')),
         ),
       ],
     );

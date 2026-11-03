@@ -6,10 +6,14 @@ import '../legal/legal_i18n.dart';
 /// حتى تصل إلى الفريق بالعنوان نفسه أيًّا كانت لغة المرسل.
 const _e = 'support@flynoom.com';
 
+/// بيانات وكيل DMCA (تبقى بالحروف اللاتينية في كل اللغات لأنها عنوان بريدي أمريكي).
+const _agent = 'Ali Alesawy, FLYNOOM LLC, 31345 Six Mile Road, Livonia, MI 48152, USA · '
+    'Phone: +1 978-483-9704 · Email: $_e';
+
 const Map<String, LegalDoc> contentGuidelinesI18n = {
   'es': LegalDoc(
     title: 'Pautas de contenido y denuncias',
-    updated: 'Última actualización: 12 de octubre de 2026',
+    updated: 'Última actualización: 2 de noviembre de 2026',
     extra: {'report': 'Reportar un problema'},
     sections: [
       ('Qué cubren estas pautas',
@@ -29,14 +33,14 @@ const Map<String, LegalDoc> contentGuidelinesI18n = {
       ('Cómo denunciar contenido o un problema',
       "Si ves contenido que incumple estas pautas, usa la opción de denuncia de esa publicación si está disponible, o escribe a $_e con un enlace o una descripción. Puedes usar la misma dirección para informar de datos erróneos de un hotel (como fotos o servicios incorrectos), de un posible fraude en tu cuenta o de un mensaje que se haga pasar por Flynoom. Si estás en peligro inmediato, contacta primero con los servicios de emergencia locales."),
       ('Reclamaciones de derechos de autor',
-      "Si crees que algún contenido de Flynoom infringe tus derechos de autor, escribe a $_e con el asunto “Copyright Notice” e incluye: tus datos de contacto; una descripción de la obra protegida; la ubicación del contenido en Flynoom; una declaración de que crees de buena fe que el uso no está autorizado; una declaración, bajo pena de perjurio, de que tu aviso es exacto y de que eres el titular o estás autorizado para actuar en su nombre; y tu firma física o electrónica."),
+      "Si crees que algún contenido de Flynoom infringe tus derechos de autor, escribe a $_e con el asunto “Copyright Notice” e incluye: tus datos de contacto; una descripción de la obra protegida; la ubicación del contenido en Flynoom; una declaración de que crees de buena fe que el uso no está autorizado; una declaración, bajo pena de perjurio, de que tu aviso es exacto y de que eres el titular o estás autorizado para actuar en su nombre; y tu firma física o electrónica. Nuestro agente designado para avisos de derechos de autor conforme a la Digital Millennium Copyright Act (DMCA), registrado ante la Oficina de Derechos de Autor de EE. UU. (DMCA-1085024), es: $_agent. Podemos cerrar las cuentas de usuarios que infrinjan reiteradamente derechos de autor ajenos."),
       ('Aplicación de las pautas y apelaciones',
       "Según la gravedad de la infracción y si se ha repetido, podemos eliminar contenido, limitar la capacidad de publicar de una cuenta, o suspender o cerrar una cuenta. Cuando corresponda, te diremos qué se eliminó y por qué. Puedes apelar una decisión escribiendo a $_e con el asunto “Content Appeal”. La aplicación de estas pautas no cancela tus reservas existentes, salvo que impliquen fraude."),
     ],
   ),
   'tr': LegalDoc(
     title: 'İçerik Kuralları ve Bildirim',
-    updated: 'Son güncelleme: 12 Ekim 2026',
+    updated: 'Son güncelleme: 2 Kasım 2026',
     extra: {'report': 'Bir sorunu bildir'},
     sections: [
       ('Bu kurallar neleri kapsar',
@@ -56,14 +60,14 @@ const Map<String, LegalDoc> contentGuidelinesI18n = {
       ('İçerik veya bir sorun nasıl bildirilir',
       "Bu kuralları ihlal eden bir içerik görürseniz, varsa o gönderideki bildirme seçeneğini kullanın veya bir bağlantı ya da açıklamayla $_e adresine yazın. Aynı adresi yanlış otel bilgilerini (hatalı fotoğraflar veya olanaklar gibi), hesabınızdaki şüpheli dolandırıcılığı veya Flynoom’dan geliyormuş gibi görünen bir mesajı bildirmek için de kullanabilirsiniz. Acil bir tehlike altındaysanız önce yerel acil durum hizmetlerini arayın."),
       ('Telif hakkı şikâyetleri',
-      "Flynoom’daki bir içeriğin telif hakkınızı ihlal ettiğini düşünüyorsanız, konu satırına “Copyright Notice” yazarak $_e adresine e-posta gönderin ve şunları ekleyin: iletişim bilgileriniz; telif hakkıyla korunan eserin açıklaması; içeriğin Flynoom’daki konumu; kullanımın yetkisiz olduğuna iyi niyetle inandığınıza dair bir beyan; yalan beyanın cezai sorumluluğu altında, bildiriminizin doğru olduğuna ve hak sahibi olduğunuza ya da onun adına hareket etmeye yetkili olduğunuza dair bir beyan; ve fiziksel veya elektronik imzanız."),
+      "Flynoom’daki bir içeriğin telif hakkınızı ihlal ettiğini düşünüyorsanız, konu satırına “Copyright Notice” yazarak $_e adresine e-posta gönderin ve şunları ekleyin: iletişim bilgileriniz; telif hakkıyla korunan eserin açıklaması; içeriğin Flynoom’daki konumu; kullanımın yetkisiz olduğuna iyi niyetle inandığınıza dair bir beyan; yalan beyanın cezai sorumluluğu altında, bildiriminizin doğru olduğuna ve hak sahibi olduğunuza ya da onun adına hareket etmeye yetkili olduğunuza dair bir beyan; ve fiziksel veya elektronik imzanız. Digital Millennium Copyright Act (DMCA) kapsamındaki telif hakkı bildirimleri için ABD Telif Hakkı Ofisi’ne kayıtlı (DMCA-1085024) yetkili temsilcimiz: $_agent. Başkalarının telif haklarını tekrar tekrar ihlal eden kullanıcıların hesaplarını kapatabiliriz."),
       ('Uygulama ve itirazlar',
       "İhlalin ciddiyetine ve daha önce yaşanıp yaşanmadığına bağlı olarak içeriği kaldırabilir, bir hesabın paylaşım yapmasını kısıtlayabilir veya hesabı askıya alabilir ya da kapatabiliriz. Uygun olduğunda neyin ve neden kaldırıldığını size bildiririz. Bir karara, konu satırına “Content Appeal” yazarak $_e adresine e-posta göndererek itiraz edebilirsiniz. Bu kuralların uygulanması, dolandırıcılık içermedikçe mevcut rezervasyonlarınızı iptal etmez."),
     ],
   ),
   'id': LegalDoc(
     title: 'Pedoman Konten dan Pelaporan',
-    updated: 'Terakhir diperbarui: 12 Oktober 2026',
+    updated: 'Terakhir diperbarui: 2 November 2026',
     extra: {'report': 'Laporkan masalah'},
     sections: [
       ('Cakupan pedoman ini',
@@ -83,14 +87,14 @@ const Map<String, LegalDoc> contentGuidelinesI18n = {
       ('Cara melaporkan konten atau masalah',
       "Jika Anda melihat konten yang melanggar pedoman ini, gunakan opsi laporkan pada postingan tersebut jika tersedia, atau kirim email ke $_e dengan tautan atau deskripsi. Anda dapat menggunakan alamat yang sama untuk melaporkan informasi hotel yang salah (seperti foto atau fasilitas yang keliru), dugaan penipuan pada akun Anda, atau pesan yang mengaku dari Flynoom. Jika Anda dalam bahaya langsung, hubungi layanan darurat setempat terlebih dahulu."),
       ('Keluhan hak cipta',
-      "Jika Anda yakin ada konten di Flynoom yang melanggar hak cipta Anda, kirim email ke $_e dengan subjek “Copyright Notice” dan sertakan: detail kontak Anda; deskripsi karya yang dilindungi hak cipta; lokasi konten di Flynoom; pernyataan bahwa Anda dengan itikad baik meyakini penggunaan tersebut tidak sah; pernyataan, di bawah ancaman sanksi sumpah palsu, bahwa pemberitahuan Anda akurat dan bahwa Anda adalah pemilik atau berwenang bertindak atas nama pemilik; serta tanda tangan fisik atau elektronik Anda."),
+      "Jika Anda yakin ada konten di Flynoom yang melanggar hak cipta Anda, kirim email ke $_e dengan subjek “Copyright Notice” dan sertakan: detail kontak Anda; deskripsi karya yang dilindungi hak cipta; lokasi konten di Flynoom; pernyataan bahwa Anda dengan itikad baik meyakini penggunaan tersebut tidak sah; pernyataan, di bawah ancaman sanksi sumpah palsu, bahwa pemberitahuan Anda akurat dan bahwa Anda adalah pemilik atau berwenang bertindak atas nama pemilik; serta tanda tangan fisik atau elektronik Anda. Agen yang kami tunjuk untuk pemberitahuan hak cipta berdasarkan Digital Millennium Copyright Act (DMCA), yang terdaftar di Kantor Hak Cipta AS (DMCA-1085024), adalah: $_agent. Kami dapat menutup akun pengguna yang berulang kali melanggar hak cipta pihak lain."),
       ('Penegakan dan banding',
       "Bergantung pada seberapa serius pelanggaran dan apakah pernah terjadi sebelumnya, kami dapat menghapus konten, membatasi kemampuan akun untuk memposting, atau menangguhkan atau menutup akun. Jika sesuai, kami akan memberi tahu Anda apa yang dihapus dan alasannya. Anda dapat mengajukan banding atas keputusan dengan mengirim email ke $_e dengan subjek “Content Appeal”. Penegakan pedoman ini tidak membatalkan pemesanan Anda yang ada kecuali jika terkait penipuan."),
     ],
   ),
   'hi': LegalDoc(
     title: 'सामग्री दिशानिर्देश और रिपोर्टिंग',
-    updated: 'अंतिम अपडेट: 12 अक्टूबर 2026',
+    updated: 'अंतिम अपडेट: 2 नवंबर 2026',
     extra: {'report': 'समस्या की रिपोर्ट करें'},
     sections: [
       ('ये दिशानिर्देश किन चीज़ों पर लागू होते हैं',
@@ -110,14 +114,14 @@ const Map<String, LegalDoc> contentGuidelinesI18n = {
       ('सामग्री या समस्या की रिपोर्ट कैसे करें',
       "अगर आपको इन दिशानिर्देशों का उल्लंघन करने वाली सामग्री दिखे, तो उस पोस्ट पर रिपोर्ट विकल्प उपलब्ध हो तो उसका उपयोग करें, या लिंक या विवरण के साथ $_e पर ईमेल करें। आप इसी पते का उपयोग होटल की गलत जानकारी (जैसे गलत तस्वीरें या सुविधाएँ), अपने खाते पर संदिग्ध धोखाधड़ी, या Flynoom के नाम से आए किसी संदेश की रिपोर्ट करने के लिए भी कर सकते हैं। अगर आप तत्काल ख़तरे में हैं, तो पहले स्थानीय आपातकालीन सेवाओं से संपर्क करें।"),
       ('कॉपीराइट शिकायतें',
-      "अगर आपको लगता है कि Flynoom पर कोई सामग्री आपके कॉपीराइट का उल्लंघन करती है, तो विषय में “Copyright Notice” लिखकर $_e पर ईमेल करें और इसमें शामिल करें: आपके संपर्क विवरण; कॉपीराइट वाले काम का विवरण; Flynoom पर सामग्री का स्थान; यह कथन कि आप सद्भावना से मानते हैं कि उपयोग अधिकृत नहीं है; झूठी गवाही के दंड के अधीन यह कथन कि आपकी सूचना सटीक है और आप मालिक हैं या मालिक की ओर से कार्य करने के लिए अधिकृत हैं; और आपके भौतिक या इलेक्ट्रॉनिक हस्ताक्षर।"),
+      "अगर आपको लगता है कि Flynoom पर कोई सामग्री आपके कॉपीराइट का उल्लंघन करती है, तो विषय में “Copyright Notice” लिखकर $_e पर ईमेल करें और इसमें शामिल करें: आपके संपर्क विवरण; कॉपीराइट वाले काम का विवरण; Flynoom पर सामग्री का स्थान; यह कथन कि आप सद्भावना से मानते हैं कि उपयोग अधिकृत नहीं है; झूठी गवाही के दंड के अधीन यह कथन कि आपकी सूचना सटीक है और आप मालिक हैं या मालिक की ओर से कार्य करने के लिए अधिकृत हैं; और आपके भौतिक या इलेक्ट्रॉनिक हस्ताक्षर। Digital Millennium Copyright Act (DMCA) के तहत कॉपीराइट सूचनाओं के लिए हमारा नामित एजेंट, जो अमेरिकी कॉपीराइट कार्यालय में पंजीकृत है (DMCA-1085024), यह है: $_agent। जो उपयोगकर्ता बार-बार दूसरों के कॉपीराइट का उल्लंघन करते हैं, हम उनके खाते बंद कर सकते हैं।"),
       ('प्रवर्तन और अपील',
       "उल्लंघन कितना गंभीर है और क्या यह पहले भी हुआ है, इसके आधार पर हम सामग्री हटा सकते हैं, किसी खाते की पोस्ट करने की क्षमता सीमित कर सकते हैं, या खाता निलंबित या बंद कर सकते हैं। जहाँ उचित हो, हम आपको बताएँगे कि क्या हटाया गया और क्यों। आप विषय में “Content Appeal” लिखकर $_e पर ईमेल करके किसी निर्णय के विरुद्ध अपील कर सकते हैं। इन दिशानिर्देशों के प्रवर्तन से आपकी मौजूदा बुकिंग रद्द नहीं होतीं, जब तक उनमें धोखाधड़ी शामिल न हो।"),
     ],
   ),
   'ur': LegalDoc(
     title: 'مواد کی رہنما ہدایات اور رپورٹنگ',
-    updated: 'آخری تازہ کاری: 12 اکتوبر 2026',
+    updated: 'آخری تازہ کاری: 2 نومبر 2026',
     extra: {'report': 'مسئلہ رپورٹ کریں'},
     sections: [
       ('یہ ہدایات کن چیزوں پر لاگو ہوتی ہیں',
@@ -137,14 +141,14 @@ const Map<String, LegalDoc> contentGuidelinesI18n = {
       ('مواد یا مسئلے کی رپورٹ کیسے کریں',
       "اگر آپ کو ان ہدایات کی خلاف ورزی کرنے والا مواد نظر آئے تو اس پوسٹ پر رپورٹ کا آپشن موجود ہو تو اسے استعمال کریں، یا لنک یا تفصیل کے ساتھ $_e پر ای میل کریں۔ آپ یہی پتا ہوٹل کی غلط معلومات (جیسے غلط تصاویر یا سہولیات)، اپنے اکاؤنٹ پر مشتبہ فراڈ، یا Flynoom کے نام سے آنے والے کسی پیغام کی رپورٹ کے لیے بھی استعمال کر سکتے ہیں۔ اگر آپ فوری خطرے میں ہیں تو پہلے مقامی ہنگامی خدمات سے رابطہ کریں۔"),
       ('کاپی رائٹ کی شکایات',
-      "اگر آپ سمجھتے ہیں کہ Flynoom پر کوئی مواد آپ کے کاپی رائٹ کی خلاف ورزی کرتا ہے، تو موضوع میں “Copyright Notice” لکھ کر $_e پر ای میل کریں اور اس میں شامل کریں: آپ کی رابطہ تفصیلات؛ کاپی رائٹ شدہ کام کی تفصیل؛ Flynoom پر مواد کا مقام؛ یہ بیان کہ آپ نیک نیتی سے سمجھتے ہیں کہ یہ استعمال مجاز نہیں؛ جھوٹی گواہی کی سزا کے تحت یہ بیان کہ آپ کا نوٹس درست ہے اور آپ مالک ہیں یا مالک کی جانب سے کام کرنے کے مجاز ہیں؛ اور آپ کے فزیکل یا الیکٹرانک دستخط۔"),
+      "اگر آپ سمجھتے ہیں کہ Flynoom پر کوئی مواد آپ کے کاپی رائٹ کی خلاف ورزی کرتا ہے، تو موضوع میں “Copyright Notice” لکھ کر $_e پر ای میل کریں اور اس میں شامل کریں: آپ کی رابطہ تفصیلات؛ کاپی رائٹ شدہ کام کی تفصیل؛ Flynoom پر مواد کا مقام؛ یہ بیان کہ آپ نیک نیتی سے سمجھتے ہیں کہ یہ استعمال مجاز نہیں؛ جھوٹی گواہی کی سزا کے تحت یہ بیان کہ آپ کا نوٹس درست ہے اور آپ مالک ہیں یا مالک کی جانب سے کام کرنے کے مجاز ہیں؛ اور آپ کے فزیکل یا الیکٹرانک دستخط۔ Digital Millennium Copyright Act (DMCA) کے تحت کاپی رائٹ نوٹسز کے لیے ہمارا نامزد ایجنٹ، جو امریکی کاپی رائٹ آفس میں رجسٹرڈ ہے (DMCA-1085024)، یہ ہے: $_agent۔ جو صارفین بار بار دوسروں کے کاپی رائٹ کی خلاف ورزی کریں، ہم ان کے اکاؤنٹس بند کر سکتے ہیں۔"),
       ('نفاذ اور اپیل',
       "خلاف ورزی کی سنگینی اور اس کے پہلے ہونے یا نہ ہونے کی بنیاد پر ہم مواد ہٹا سکتے ہیں، کسی اکاؤنٹ کی پوسٹ کرنے کی صلاحیت محدود کر سکتے ہیں، یا اکاؤنٹ معطل یا بند کر سکتے ہیں۔ جہاں مناسب ہو، ہم آپ کو بتائیں گے کہ کیا ہٹایا گیا اور کیوں۔ آپ موضوع میں “Content Appeal” لکھ کر $_e پر ای میل کر کے کسی فیصلے کے خلاف اپیل کر سکتے ہیں۔ ان ہدایات کے نفاذ سے آپ کی موجودہ بکنگز منسوخ نہیں ہوتیں، جب تک ان میں فراڈ شامل نہ ہو۔"),
     ],
   ),
   'fr': LegalDoc(
     title: 'Règles de contenu et signalement',
-    updated: 'Dernière mise à jour : 12 octobre 2026',
+    updated: 'Dernière mise à jour : 2 novembre 2026',
     extra: {'report': 'Signaler un problème'},
     sections: [
       ('Ce que couvrent ces règles',
@@ -164,14 +168,14 @@ const Map<String, LegalDoc> contentGuidelinesI18n = {
       ('Comment signaler un contenu ou un problème',
       "Si vous voyez un contenu qui enfreint ces règles, utilisez l’option de signalement de la publication si elle est disponible, ou écrivez à $_e avec un lien ou une description. Vous pouvez utiliser la même adresse pour signaler des informations erronées sur un hôtel (photos ou équipements incorrects, par exemple), une fraude présumée sur votre compte ou un message prétendant venir de Flynoom. Si vous êtes en danger immédiat, contactez d’abord les services d’urgence locaux."),
       ('Réclamations relatives au droit d’auteur',
-      "Si vous pensez qu’un contenu sur Flynoom porte atteinte à votre droit d’auteur, écrivez à $_e avec l’objet « Copyright Notice » et indiquez : vos coordonnées ; une description de l’œuvre protégée ; l’emplacement du contenu sur Flynoom ; une déclaration selon laquelle vous estimez de bonne foi que l’utilisation n’est pas autorisée ; une déclaration, sous peine de parjure, attestant que votre notification est exacte et que vous êtes le titulaire des droits ou autorisé à agir en son nom ; et votre signature manuscrite ou électronique."),
+      "Si vous pensez qu’un contenu sur Flynoom porte atteinte à votre droit d’auteur, écrivez à $_e avec l’objet « Copyright Notice » et indiquez : vos coordonnées ; une description de l’œuvre protégée ; l’emplacement du contenu sur Flynoom ; une déclaration selon laquelle vous estimez de bonne foi que l’utilisation n’est pas autorisée ; une déclaration, sous peine de parjure, attestant que votre notification est exacte et que vous êtes le titulaire des droits ou autorisé à agir en son nom ; et votre signature manuscrite ou électronique. Notre agent désigné pour les notifications de droit d’auteur au titre du Digital Millennium Copyright Act (DMCA), enregistré auprès du Bureau américain du droit d’auteur (DMCA-1085024), est : $_agent. Nous pouvons fermer les comptes des utilisateurs qui portent atteinte de manière répétée aux droits d’auteur d’autrui."),
       ('Application des règles et recours',
       "Selon la gravité de l’infraction et sa répétition éventuelle, nous pouvons supprimer du contenu, limiter la capacité d’un compte à publier, ou suspendre ou fermer un compte. Le cas échéant, nous vous indiquerons ce qui a été supprimé et pourquoi. Vous pouvez contester une décision en écrivant à $_e avec l’objet « Content Appeal ». L’application de ces règles n’annule pas vos réservations existantes, sauf en cas de fraude."),
     ],
   ),
   'bn': LegalDoc(
     title: 'কনটেন্ট নির্দেশিকা ও রিপোর্টিং',
-    updated: 'সর্বশেষ হালনাগাদ: 12 অক্টোবর 2026',
+    updated: 'সর্বশেষ হালনাগাদ: 2 নভেম্বর 2026',
     extra: {'report': 'সমস্যা রিপোর্ট করুন'},
     sections: [
       ('এই নির্দেশিকা কী কী কভার করে',
@@ -191,7 +195,7 @@ const Map<String, LegalDoc> contentGuidelinesI18n = {
       ('কনটেন্ট বা সমস্যা কীভাবে রিপোর্ট করবেন',
       "এই নির্দেশিকা লঙ্ঘনকারী কোনো কনটেন্ট দেখলে, সেই পোস্টে রিপোর্ট অপশন থাকলে তা ব্যবহার করুন, অথবা লিংক বা বিবরণসহ $_e-এ ইমেইল করুন। হোটেলের ভুল তথ্য (যেমন ভুল ছবি বা সুবিধা), আপনার অ্যাকাউন্টে সন্দেহজনক প্রতারণা, বা Flynoom-এর নামে আসা কোনো বার্তা রিপোর্ট করতেও একই ঠিকানা ব্যবহার করতে পারেন। আপনি তাৎক্ষণিক বিপদে থাকলে আগে স্থানীয় জরুরি সেবায় যোগাযোগ করুন।"),
       ('কপিরাইট অভিযোগ',
-      "Flynoom-এর কোনো কনটেন্ট আপনার কপিরাইট লঙ্ঘন করছে বলে মনে করলে, বিষয়ের ঘরে “Copyright Notice” লিখে $_e-এ ইমেইল করুন এবং যুক্ত করুন: আপনার যোগাযোগের তথ্য; কপিরাইটকৃত কাজের বিবরণ; Flynoom-এ কনটেন্টের অবস্থান; এই মর্মে বিবৃতি যে আপনি সরল বিশ্বাসে মনে করেন ব্যবহারটি অননুমোদিত; মিথ্যা সাক্ষ্যের দণ্ডের অধীনে এই মর্মে বিবৃতি যে আপনার নোটিশ সঠিক এবং আপনি মালিক বা মালিকের পক্ষে কাজ করার অনুমোদনপ্রাপ্ত; এবং আপনার হাতে লেখা বা ইলেকট্রনিক স্বাক্ষর।"),
+      "Flynoom-এর কোনো কনটেন্ট আপনার কপিরাইট লঙ্ঘন করছে বলে মনে করলে, বিষয়ের ঘরে “Copyright Notice” লিখে $_e-এ ইমেইল করুন এবং যুক্ত করুন: আপনার যোগাযোগের তথ্য; কপিরাইটকৃত কাজের বিবরণ; Flynoom-এ কনটেন্টের অবস্থান; এই মর্মে বিবৃতি যে আপনি সরল বিশ্বাসে মনে করেন ব্যবহারটি অননুমোদিত; মিথ্যা সাক্ষ্যের দণ্ডের অধীনে এই মর্মে বিবৃতি যে আপনার নোটিশ সঠিক এবং আপনি মালিক বা মালিকের পক্ষে কাজ করার অনুমোদনপ্রাপ্ত; এবং আপনার হাতে লেখা বা ইলেকট্রনিক স্বাক্ষর। Digital Millennium Copyright Act (DMCA)-এর অধীনে কপিরাইট নোটিশের জন্য আমাদের মনোনীত এজেন্ট, যিনি মার্কিন কপিরাইট অফিসে নিবন্ধিত (DMCA-1085024): $_agent। যেসব ব্যবহারকারী বারবার অন্যের কপিরাইট লঙ্ঘন করেন, আমরা তাদের অ্যাকাউন্ট বন্ধ করতে পারি।"),
       ('প্রয়োগ ও আপিল',
       "লঙ্ঘন কতটা গুরুতর এবং আগে ঘটেছে কি না তার ওপর ভিত্তি করে আমরা কনটেন্ট মুছে ফেলতে, কোনো অ্যাকাউন্টের পোস্ট করার ক্ষমতা সীমিত করতে, বা অ্যাকাউন্ট স্থগিত বা বন্ধ করতে পারি। উপযুক্ত ক্ষেত্রে আমরা আপনাকে জানাব কী মুছে ফেলা হয়েছে এবং কেন। বিষয়ের ঘরে “Content Appeal” লিখে $_e-এ ইমেইল করে আপনি কোনো সিদ্ধান্তের বিরুদ্ধে আপিল করতে পারেন। এই নির্দেশিকার প্রয়োগে আপনার বিদ্যমান বুকিং বাতিল হয় না, যদি না তাতে প্রতারণা জড়িত থাকে।"),
     ],

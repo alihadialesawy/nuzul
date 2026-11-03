@@ -20,6 +20,7 @@ import '../legal/dispute_resolution_page.dart';
 import '../legal/privacy_notice_page.dart';
 import '../legal/terms_of_service_page.dart';
 import '../../core/constants/legal_versions.dart';
+import '../../core/web/semantics_pointer_fix.dart';
 
 final bookingRepositoryProvider = Provider((ref) => BookingRepository());
 final paymentServiceProvider = Provider((ref) => PaymentService());
@@ -324,9 +325,13 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     }
 
     // 3) البطاقة (حجز المبلغ فقط)
+    // SemanticsPointerFix: يسمح بالنقر داخل خانة بطاقة Stripe على الويب
+    // رغم تفعيل إمكانية الوصول (انظر semantics_pointer_fix.dart).
+    SemanticsPointerFix.enable();
     final payResult = await ref
         .read(paymentServiceProvider)
-        .confirmWithClientSecret(clientSecret: quote!.clientSecret, context: context);
+        .confirmWithClientSecret(clientSecret: quote!.clientSecret, context: context)
+        .whenComplete(SemanticsPointerFix.disable);
     if (!mounted) return;
 
     var authorized = false;
@@ -847,15 +852,15 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                 if (v && _acceptedTerms) _errorMessage = null;
               }),
               text: _tb(context,
-                  ar: 'أؤكد أنني لست مقيمًا في كاليفورنيا أو فلوريدا أو هاواي أو واشنطن.',
-                  en: 'I confirm that I am not a resident of California, Florida, Hawaii, or Washington.',
-                  es: 'Confirmo que no resido en California, Florida, Hawái ni Washington.',
-                  tr: 'California, Florida, Hawaii veya Washington\'da ikamet etmediğimi onaylıyorum.',
-                  id: 'Saya menyatakan bahwa saya bukan penduduk California, Florida, Hawaii, atau Washington.',
-                  hi: 'मैं पुष्टि करता/करती हूं कि मैं कैलिफ़ोर्निया, फ़्लोरिडा, हवाई या वॉशिंगटन का निवासी नहीं हूं।',
-                  ur: 'میں تصدیق کرتا/کرتی ہوں کہ میں کیلیفورنیا، فلوریڈا، ہوائی یا واشنگٹن کا رہائشی نہیں ہوں۔',
-                  fr: 'Je confirme ne pas résider en Californie, en Floride, à Hawaï ou dans l\'État de Washington.',
-                  bn: 'আমি নিশ্চিত করছি যে আমি ক্যালিফোর্নিয়া, ফ্লোরিডা, হাওয়াই বা ওয়াশিংটনের বাসিন্দা নই।'),
+                  ar: 'أؤكد أنني لست مقيمًا في كاليفورنيا أو فلوريدا أو هاواي أو ماريلاند أو واشنطن.',
+                  en: 'I confirm that I am not a resident of California, Florida, Hawaii, Maryland, or Washington.',
+                  es: 'Confirmo que no resido en California, Florida, Hawái, Maryland ni Washington.',
+                  tr: 'California, Florida, Hawaii, Maryland veya Washington\'da ikamet etmediğimi onaylıyorum.',
+                  id: 'Saya menyatakan bahwa saya bukan penduduk California, Florida, Hawaii, Maryland, atau Washington.',
+                  hi: 'मैं पुष्टि करता/करती हूं कि मैं कैलिफ़ोर्निया, फ़्लोरिडा, हवाई, मैरीलैंड या वॉशिंगटन का निवासी नहीं हूं।',
+                  ur: 'میں تصدیق کرتا/کرتی ہوں کہ میں کیلیفورنیا، فلوریڈا، ہوائی، میری لینڈ یا واشنگٹن کا رہائشی نہیں ہوں۔',
+                  fr: 'Je confirme ne pas résider en Californie, en Floride, à Hawaï, dans le Maryland ou dans l\'État de Washington.',
+                  bn: 'আমি নিশ্চিত করছি যে আমি ক্যালিফোর্নিয়া, ফ্লোরিডা, হাওয়াই, মেরিল্যান্ড বা ওয়াশিংটনের বাসিন্দা নই।'),
             ),
           ],
         ),
@@ -884,7 +889,10 @@ class _BookingPageState extends ConsumerState<BookingPage> {
 
     // 1. نفّذ الدفع الفعلي أولاً عبر Stripe قبل أي تسجيل بقاعدة البيانات
     final paymentService = ref.read(paymentServiceProvider);
-    final paymentResult = await paymentService.pay(amount: _totalPrice, context: context);
+    SemanticsPointerFix.enable();
+    final paymentResult = await paymentService
+        .pay(amount: _totalPrice, context: context)
+        .whenComplete(SemanticsPointerFix.disable);
     if (!mounted) return;
 
     final paymentSucceeded = paymentResult.when(

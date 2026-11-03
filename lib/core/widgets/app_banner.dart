@@ -190,9 +190,9 @@ class _BannerIconWrap extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
+        color: Colors.white.withValues(alpha: 0.14),
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withOpacity(0.22), width: 1),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22), width: 1),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 2),
       // Theme هنا بيلغي الحد الأدنى الإجباري لمنطقة اللمس (48×48) اللي
@@ -211,9 +211,13 @@ class _BannerIconWrap extends StatelessWidget {
 }
 
 /// زر أكشن: أيقونة بخلفية دائرية، مع اسم الزر يظهر بس عند الوقوف
-/// عليه بالماوس (Tooltip قياسي من Flutter - نفس النوع المستخدم أصلاً
-/// على أيقونة الأدمن، ومختلف تمامًا عن الـ Material/InkWell المخصص
-/// اللي سبب مشكلة الماوس على Windows).
+/// عليه بالماوس (Tooltip قياسي من Flutter).
+///
+/// ⚠️ إمكانية الوصول: يُستخدم فقط للأزرار التي ليست IconButton (العملة
+/// واللغة). Tooltip الخارجي يضع الاسم على غلاف خارجي لا على الزر نفسه،
+/// فيقرأ قارئ الشاشة "button" بلا اسم (Lighthouse: "buttons do not have
+/// accessible names" + "prohibited ARIA attributes"). لأزرار IconButton
+/// مرّر الاسم في `tooltip:` الخاص بالـ IconButton نفسه واستخدم _BannerIconWrap.
 class _BannerAction extends StatelessWidget {
   final Widget child;
   final String label;
@@ -273,7 +277,7 @@ class _BannerDivider extends StatelessWidget {
       width: 1,
       height: height,
       margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
-      color: Colors.white.withOpacity(0.25),
+      color: Colors.white.withValues(alpha: 0.25),
     );
   }
 }
@@ -472,6 +476,7 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                         if (canPop) ...[
                           _BannerIconWrap(
                             child: IconButton(
+                              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
                               icon: const Icon(Icons.arrow_back, color: Colors.white),
                               iconSize: iconSize,
                               padding: EdgeInsets.all(iconPadding),
@@ -497,20 +502,20 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 if (isAdmin) ...[
-                                  _BannerAction(
-                                    label: appBannerText(
-                                      context,
-                                      ar: 'لوحة تحكم الأدمن',
-                                      en: 'Admin dashboard',
-                                      es: 'Panel de administración',
-                                      tr: 'Yönetici paneli',
-                                      id: 'Dasbor admin',
-                                      hi: 'एडमिन डैशबोर्ड',
-                                      ur: 'ایڈمن ڈیش بورڈ',
-                                      fr: 'Tableau de bord admin',
-                                      bn: 'অ্যাডমিন ড্যাশবোর্ড',
-                                    ),
+                                  _BannerIconWrap(
                                     child: IconButton(
+                                      tooltip: appBannerText(
+                                        context,
+                                        ar: 'لوحة تحكم الأدمن',
+                                        en: 'Admin dashboard',
+                                        es: 'Panel de administración',
+                                        tr: 'Yönetici paneli',
+                                        id: 'Dasbor admin',
+                                        hi: 'एडमिन डैशबोर्ड',
+                                        ur: 'ایڈمن ڈیش بورڈ',
+                                        fr: 'Tableau de bord admin',
+                                        bn: 'অ্যাডমিন ড্যাশবোর্ড',
+                                      ),
                                       icon: const Icon(Icons.admin_panel_settings_outlined, color: Colors.white),
                                       iconSize: iconSize,
                                       padding: EdgeInsets.all(iconPadding),
@@ -525,7 +530,7 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                   OutlinedButton.icon(
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: Colors.white,
-                                      backgroundColor: Colors.white.withOpacity(0.16),
+                                      backgroundColor: Colors.white.withValues(alpha: 0.16),
                                       side: const BorderSide(color: Colors.white, width: 1.2),
                                       shape: const StadiumBorder(),
                                       padding: EdgeInsets.symmetric(
@@ -546,9 +551,9 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                   label: appBannerText(context, ar: 'العملة', en: 'Currency', es: 'Moneda', tr: 'Para birimi', id: 'Mata uang', hi: 'मुद्रा', ur: 'کرنسی', fr: 'Devise', bn: 'মুদ্রা'),
                                   child: const CurrencySelectorButton(),
                                 ),
-                                _BannerAction(
-                                  label: appBannerText(context, ar: 'اللغة', en: 'Language', es: 'Idioma', tr: 'Dil', id: 'Bahasa', hi: 'भाषा', ur: 'زبان', fr: 'Langue', bn: 'ভাষা'),
+                                _BannerIconWrap(
                                   child: PopupMenuButton<Locale>(
+                                    tooltip: appBannerText(context, ar: 'اللغة', en: 'Language', es: 'Idioma', tr: 'Dil', id: 'Bahasa', hi: 'भाषा', ur: 'زبان', fr: 'Langue', bn: 'ভাষা'),
                                     icon: Icon(Icons.language, color: Colors.white, size: iconSize),
                                     padding: EdgeInsets.all(iconPadding),
                                     onSelected: (locale) => ref.read(localeProvider.notifier).setLocale(locale),
@@ -565,9 +570,9 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                     ],
                                   ),
                                 ),
-                                _BannerAction(
-                                  label: appBannerText(context, ar: 'حجوزاتي', en: 'My bookings', es: 'Mis reservas', tr: 'Rezervasyonlarım', id: 'Pesanan Saya', hi: 'मेरी बुकिंग', ur: 'میری بکنگز', fr: 'Mes réservations', bn: 'আমার বুকিং'),
+                                _BannerIconWrap(
                                   child: IconButton(
+                                    tooltip: appBannerText(context, ar: 'حجوزاتي', en: 'My bookings', es: 'Mis reservas', tr: 'Rezervasyonlarım', id: 'Pesanan Saya', hi: 'मेरी बुकिंग', ur: 'میری بکنگز', fr: 'Mes réservations', bn: 'আমার বুকিং'),
                                     icon: const Icon(Icons.receipt_long_outlined, color: Colors.white),
                                     iconSize: iconSize,
                                     padding: EdgeInsets.all(iconPadding),
@@ -582,9 +587,9 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                     },
                                   ),
                                 ),
-                                _BannerAction(
-                                  label: appBannerText(context, ar: 'الدعم', en: 'Support', es: 'Soporte', tr: 'Destek', id: 'Bantuan', hi: 'सहायता', ur: 'مدد', fr: 'Assistance', bn: 'সহায়তা'),
+                                _BannerIconWrap(
                                   child: IconButton(
+                                    tooltip: appBannerText(context, ar: 'الدعم', en: 'Support', es: 'Soporte', tr: 'Destek', id: 'Bantuan', hi: 'सहायता', ur: 'مدد', fr: 'Assistance', bn: 'সহায়তা'),
                                     icon: const Icon(Icons.support_agent_outlined, color: Colors.white),
                                     iconSize: iconSize,
                                     padding: EdgeInsets.all(iconPadding),
@@ -596,7 +601,7 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                   OutlinedButton(
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: Colors.white,
-                                      backgroundColor: Colors.white.withOpacity(0.16),
+                                      backgroundColor: Colors.white.withValues(alpha: 0.16),
                                       side: const BorderSide(color: Colors.white, width: 1.2),
                                       shape: const StadiumBorder(),
                                       padding: EdgeInsets.symmetric(

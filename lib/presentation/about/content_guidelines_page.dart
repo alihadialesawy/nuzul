@@ -25,16 +25,23 @@ class _InfoSection {
 /// ملاحظات:
 ///   • قسم "Reviews" يطابق قاعدة FTC للتقييمات (2024): لا تقييمات مزيفة، الإفصاح
 ///     عن أي مقابل، وعدم حذف التقييمات لأنها سلبية. ينطبق متى نشرنا تقييمات.
-///   • قسم حقوق النشر: لحماية "Safe Harbor" في قانون DMCA يُنصح بتسجيل وكيل DMCA
-///     لدى U.S. Copyright Office (رسوم رمزية) — اسأل المحامي.
+///   • قسم حقوق النشر: وكيل DMCA مسجّل لدى U.S. Copyright Office برقم
+///     DMCA-1085024 (سُجّل 2 نوفمبر 2026). يجب التجديد كل 3 سنوات (قبل
+///     2 نوفمبر 2029) وإلا تسقط حماية Safe Harbor. أي تغيير في بيانات الوكيل
+///     يُحدَّث هنا وفي content_guidelines_i18n.dart وفي dmca.copyright.gov معًا.
 ///   • الترجمات السبع الأخرى في content_guidelines_i18n.dart (الإنجليزية هي المعتمدة).
 class ContentGuidelinesPage extends StatefulWidget {
   const ContentGuidelinesPage({super.key});
 
-  static const String _lastUpdatedEn = 'October 12, 2026';
-  static const String _lastUpdatedAr = '12 أكتوبر 2026';
+  static const String _lastUpdatedEn = 'November 2, 2026';
+  static const String _lastUpdatedAr = '2 نوفمبر 2026';
 
   static const String _contactEmail = 'support@flynoom.com';
+
+  /// بيانات وكيل DMCA كما هي مسجّلة في دليل U.S. Copyright Office.
+  static const String _dmcaAgent =
+      'Ali Alesawy, FLYNOOM LLC, 31345 Six Mile Road, Livonia, MI 48152, USA · '
+      'Phone: +1 978-483-9704 · Email: $_contactEmail';
 
   static const List<_InfoSection> _sections = [
     _InfoSection(
@@ -105,9 +112,9 @@ class ContentGuidelinesPage extends StatefulWidget {
       titleEn: 'Copyright complaints',
       titleAr: 'شكاوى حقوق النشر',
       bodyEn:
-      'If you believe content on Flynoom infringes your copyright, email $_contactEmail with the subject "Copyright Notice" and include: your contact details; a description of the copyrighted work; the location of the content on Flynoom; a statement that you believe in good faith the use is not authorized; a statement, under penalty of perjury, that your notice is accurate and that you are the owner or authorized to act for the owner; and your physical or electronic signature.',
+      'If you believe content on Flynoom infringes your copyright, email $_contactEmail with the subject "Copyright Notice" and include: your contact details; a description of the copyrighted work; the location of the content on Flynoom; a statement that you believe in good faith the use is not authorized; a statement, under penalty of perjury, that your notice is accurate and that you are the owner or authorized to act for the owner; and your physical or electronic signature. Our designated agent for copyright notices under the Digital Millennium Copyright Act, registered with the U.S. Copyright Office (DMCA-1085024), is: $_dmcaAgent. We may end the accounts of users who repeatedly infringe others\' copyrights.',
       bodyAr:
-      'إذا كنت تعتقد أن محتوى في Flynoom ينتهك حقوق النشر الخاصة بك، فراسلنا على $_contactEmail مع كتابة "Copyright Notice" في عنوان الرسالة، وأرفق: بيانات التواصل معك؛ ووصفًا للعمل المحمي؛ وموضع المحتوى في Flynoom؛ وإقرارًا بأنك تعتقد بحسن نية أن الاستخدام غير مصرّح به؛ وإقرارًا، تحت طائلة عقوبة الحنث باليمين، بأن إشعارك دقيق وأنك المالك أو مفوَّض بالتصرف عنه؛ وتوقيعك الفعلي أو الإلكتروني.',
+      'إذا كنت تعتقد أن محتوى في Flynoom ينتهك حقوق النشر الخاصة بك، فراسلنا على $_contactEmail مع كتابة "Copyright Notice" في عنوان الرسالة، وأرفق: بيانات التواصل معك؛ ووصفًا للعمل المحمي؛ وموضع المحتوى في Flynoom؛ وإقرارًا بأنك تعتقد بحسن نية أن الاستخدام غير مصرّح به؛ وإقرارًا، تحت طائلة عقوبة الحنث باليمين، بأن إشعارك دقيق وأنك المالك أو مفوَّض بالتصرف عنه؛ وتوقيعك الفعلي أو الإلكتروني. وكيلنا المعيَّن لاستلام إشعارات حقوق النشر بموجب قانون الألفية الرقمية لحقوق المؤلف (DMCA)، والمسجَّل لدى مكتب حقوق النشر الأمريكي (DMCA-1085024)، هو: $_dmcaAgent. وقد نُنهي حسابات المستخدمين الذين ينتهكون حقوق نشر الآخرين بشكل متكرر.',
     ),
     _InfoSection(
       titleEn: 'Enforcement and appeals',

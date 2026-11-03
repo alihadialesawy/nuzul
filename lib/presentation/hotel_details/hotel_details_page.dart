@@ -41,11 +41,11 @@ String _hbSized(String url, String size) {
 
 /// صورة شبكية بمقاس محدد، وإن لم يوجد هذا المقاس عند HotelBeds نرجع للرابط الأصلي.
 Widget _sizedNetworkImage(
-  String url,
-  String size, {
-  BoxFit fit = BoxFit.cover,
-  required Widget Function() fallbackIcon,
-}) {
+    String url,
+    String size, {
+      BoxFit fit = BoxFit.cover,
+      required Widget Function() fallbackIcon,
+    }) {
   final sized = _hbSized(url, size);
   return Image.network(
     sized,
@@ -54,11 +54,11 @@ Widget _sizedNetworkImage(
     errorBuilder: (_, __, ___) => sized == url
         ? fallbackIcon()
         : Image.network(
-            url,
-            fit: fit,
-            filterQuality: FilterQuality.high,
-            errorBuilder: (_, __, ___) => fallbackIcon(),
-          ),
+      url,
+      fit: fit,
+      filterQuality: FilterQuality.high,
+      errorBuilder: (_, __, ___) => fallbackIcon(),
+    ),
   );
 }
 
@@ -96,6 +96,24 @@ String _t3(
       return en;
   }
 }
+
+/// زر القلب (حفظ الفندق) مخفي حتى تُبنى ميزة "المحفوظات" فعلًا (حفظ في
+/// Supabase + صفحة المحفوظات في الحساب). حاليًا كان يغيّر لونه فقط دون حفظ،
+/// أي يَعِد العميل بشيء لا يحدث. غيّرها إلى true عند جاهزية الميزة.
+const bool _kSaveHotelEnabled = false;
+
+// ─── أسماء أزرار المعرض لقارئات الشاشة (إمكانية الوصول) ───
+String _aPrevPhoto(BuildContext c) => _t3(c, ar: 'الصورة السابقة', en: 'Previous photo', es: 'Foto anterior', tr: 'Önceki fotoğraf', id: 'Foto sebelumnya', hi: 'पिछली तस्वीर', ur: 'پچھلی تصویر', fr: 'Photo précédente', bn: 'আগের ছবি');
+String _aNextPhoto(BuildContext c) => _t3(c, ar: 'الصورة التالية', en: 'Next photo', es: 'Foto siguiente', tr: 'Sonraki fotoğraf', id: 'Foto berikutnya', hi: 'अगली तस्वीर', ur: 'اگلی تصویر', fr: 'Photo suivante', bn: 'পরের ছবি');
+String _aPhotoOf(BuildContext c, int n, int total) => _t3(c,
+    ar: 'عرض الصورة $n من $total', en: 'View photo $n of $total', es: 'Ver foto $n de $total', tr: 'Fotoğraf $n / $total görüntüle',
+    id: 'Lihat foto $n dari $total', hi: '$total में से फ़ोटो $n देखें', ur: '$total میں سے تصویر $n دیکھیں', fr: 'Voir la photo $n sur $total', bn: '$total-এর মধ্যে ছবি $n দেখুন');
+String _aAllPhotos(BuildContext c, int total) => _t3(c,
+    ar: 'عرض كل الصور ($total)', en: 'View all photos ($total)', es: 'Ver todas las fotos ($total)', tr: 'Tüm fotoğrafları görüntüle ($total)',
+    id: 'Lihat semua foto ($total)', hi: 'सभी तस्वीरें देखें ($total)', ur: 'تمام تصاویر دیکھیں ($total)', fr: 'Voir toutes les photos ($total)', bn: 'সব ছবি দেখুন ($total)');
+String _aSave(BuildContext c, bool saved) => saved
+    ? _t3(c, ar: 'إزالة من المحفوظات', en: 'Remove from saved', es: 'Quitar de guardados', tr: 'Kaydedilenlerden kaldır', id: 'Hapus dari tersimpan', hi: 'सहेजे गए से हटाएं', ur: 'محفوظ سے ہٹائیں', fr: 'Retirer des favoris', bn: 'সংরক্ষিত থেকে সরান')
+    : _t3(c, ar: 'حفظ الفندق', en: 'Save hotel', es: 'Guardar hotel', tr: 'Oteli kaydet', id: 'Simpan hotel', hi: 'होटल सहेजें', ur: 'ہوٹل محفوظ کریں', fr: 'Enregistrer l\'hôtel', bn: 'হোটেল সংরক্ষণ করুন');
 
 /// معرّف نوع الغرفة، تُستخدم للحصول على النص المترجم عبر AppLocalizations
 /// وربطه بمعامل السعر (multiplier) على سعر الليلة الأساسي للفندق.
@@ -373,6 +391,9 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
           return _GalleryTile(
             url: thumbs[t],
             overlayText: isLast ? '+$remaining' : null,
+            label: isLast
+                ? _aAllPhotos(context, images.length)
+                : _aPhotoOf(context, t + 2, images.length),
             onTap: () => _openGalleryViewer(images, t + 1),
           );
         }
@@ -427,14 +448,20 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
               controller: _imageController,
               onPageChanged: (i) => setState(() => _currentImagePage = i),
               itemCount: images.length,
-              itemBuilder: (context, i) => GestureDetector(
+              itemBuilder: (context, i) => Semantics(
+                button: true,
+                label: _aPhotoOf(context, i + 1, images.length),
                 onTap: () => _openGalleryViewer(images, i),
-                // الصورة الرئيسية كبيرة على الشاشة: مقاس xl بدل bigger/الافتراضي.
-                child: _sizedNetworkImage(
-                  images[i],
-                  'xl',
-                  fallbackIcon: () =>
-                  const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
+                excludeSemantics: true,
+                child: GestureDetector(
+                  onTap: () => _openGalleryViewer(images, i),
+                  // الصورة الرئيسية كبيرة على الشاشة: مقاس xl بدل bigger/الافتراضي.
+                  child: _sizedNetworkImage(
+                    images[i],
+                    'xl',
+                    fallbackIcon: () =>
+                    const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
+                  ),
                 ),
               ),
             ),
@@ -446,6 +473,7 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
               bottom: 0,
               child: Center(
                 child: _ArrowButton(
+                  label: _aPrevPhoto(context),
                   icon: rtl ? Icons.chevron_right : Icons.chevron_left,
                   onTap: () => _imageController.previousPage(
                     duration: const Duration(milliseconds: 250),
@@ -460,6 +488,7 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
               bottom: 0,
               child: Center(
                 child: _ArrowButton(
+                  label: _aNextPhoto(context),
                   icon: rtl ? Icons.chevron_left : Icons.chevron_right,
                   onTap: () => _imageController.nextPage(
                     duration: const Duration(milliseconds: 250),
@@ -484,22 +513,30 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
               ),
             ),
           ],
-          PositionedDirectional(
-            top: 10,
-            end: 10,
-            child: GestureDetector(
-              onTap: () => setState(() => _isFavorite = !_isFavorite),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                child: Icon(
-                  _isFavorite ? Icons.favorite : Icons.favorite_border,
-                  size: 18,
-                  color: _isFavorite ? AppColors.error : AppColors.textSecondary,
+          if (_kSaveHotelEnabled)
+            PositionedDirectional(
+              top: 10,
+              end: 10,
+              child: Semantics(
+                button: true,
+                toggled: _isFavorite,
+                label: _aSave(context, _isFavorite),
+                onTap: () => setState(() => _isFavorite = !_isFavorite),
+                excludeSemantics: true,
+                child: GestureDetector(
+                  onTap: () => setState(() => _isFavorite = !_isFavorite),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    child: Icon(
+                      _isFavorite ? Icons.favorite : Icons.favorite_border,
+                      size: 18,
+                      color: _isFavorite ? AppColors.error : AppColors.textSecondary,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -1899,19 +1936,27 @@ class _PaymentChip extends StatelessWidget {
 class _ArrowButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _ArrowButton({required this.icon, required this.onTap});
+  /// اسم الزر لقارئات الشاشة (مثل "الصورة التالية").
+  final String label;
+  const _ArrowButton({required this.icon, required this.onTap, required this.label});
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white.withValues(alpha: 0.9),
-    shape: const CircleBorder(),
-    elevation: 2,
-    child: InkWell(
-      customBorder: const CircleBorder(),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Icon(icon, size: 24, color: AppColors.textSecondary),
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    onTap: onTap,
+    excludeSemantics: true,
+    child: Material(
+      color: Colors.white.withValues(alpha: 0.9),
+      shape: const CircleBorder(),
+      elevation: 2,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, size: 24, color: AppColors.textSecondary),
+        ),
       ),
     ),
   );
@@ -1921,38 +1966,46 @@ class _GalleryTile extends StatelessWidget {
   final String url;
   final String? overlayText;
   final VoidCallback onTap;
-  const _GalleryTile({required this.url, this.overlayText, required this.onTap});
+  /// اسم الصورة لقارئات الشاشة.
+  final String label;
+  const _GalleryTile({required this.url, this.overlayText, required this.onTap, required this.label});
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-    child: GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Container(
-            color: AppColors.divider,
-            child: _sizedNetworkImage(
-              url,
-              'bigger',
-              fallbackIcon: () => const Icon(Icons.hotel, color: AppColors.textHint),
-            ),
-          ),
-          if (overlayText != null)
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    onTap: onTap,
+    excludeSemantics: true,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
             Container(
-              color: Colors.black45,
-              alignment: Alignment.center,
-              child: Text(
-                overlayText!,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+              color: AppColors.divider,
+              child: _sizedNetworkImage(
+                url,
+                'bigger',
+                fallbackIcon: () => const Icon(Icons.hotel, color: AppColors.textHint),
               ),
             ),
-        ],
+            if (overlayText != null)
+              Container(
+                color: Colors.black45,
+                alignment: Alignment.center,
+                child: Text(
+                  overlayText!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     ),
   );
@@ -2023,6 +2076,7 @@ class _GalleryViewerState extends State<_GalleryViewer> {
                   bottom: 0,
                   child: Center(
                     child: _ArrowButton(
+                      label: _aPrevPhoto(context),
                       icon: rtl ? Icons.chevron_right : Icons.chevron_left,
                       onTap: () => _go(-1),
                     ),
@@ -2034,6 +2088,7 @@ class _GalleryViewerState extends State<_GalleryViewer> {
                   bottom: 0,
                   child: Center(
                     child: _ArrowButton(
+                      label: _aNextPhoto(context),
                       icon: rtl ? Icons.chevron_left : Icons.chevron_right,
                       onTap: () => _go(1),
                     ),
@@ -2044,6 +2099,7 @@ class _GalleryViewerState extends State<_GalleryViewer> {
                 top: 12,
                 end: 12,
                 child: IconButton(
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                   icon: const Icon(Icons.close, color: Colors.white, size: 28),
                   onPressed: () => Navigator.of(context).pop(),
                 ),

@@ -21,6 +21,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { atHotelFees, sellingPrice, toUsd } from '../_shared/hotelbeds.ts';
+import { isBlockedDestination, isBlockedUkraineLocation } from '../_shared/sanctions.ts';
 
 const HOTELBEDS_API_KEY = Deno.env.get('HOTELBEDS_API_KEY')!;
 const HOTELBEDS_SECRET = Deno.env.get('HOTELBEDS_SECRET')!;
@@ -288,6 +289,47 @@ async function fetchMainImages(codes: number[]): Promise<Map<number, string>> {
   return result;
 }
 
+// ─────────────────────────── العقوبات (OFAC) ───────────────────────────
+
+/// كود الدولة لوجهة HotelBeds (Content API). يُخزَّن في الذاكرة طوال عمر
+/// الـ Function. يرجع null إن تعذّر الاستعلام (لا نوقف البحث بسبب خطأ مؤقت؛
+/// الوجهات المعروضة في التطبيق أصلًا من جدول hotelbeds_destinations المحدود).
+const destinationCountryCache = new Map<string, string | null>();
+
+async function destinationCountry(destinationCode: string): Promise<string | null> {
+  const key = destinationCode.toUpperCase();
+  if (destinationCountryCache.has(key)) return destinationCountryCache.get(key)!;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), IMAGES_TIMEOUT_MS);
+  try {
+    const params = new URLSearchParams({
+      fields: 'code,countryCode',
+      codes: key,
+      language: 'ENG',
+      from: '1',
+      to: '1',
+    });
+    const res = await fetch(
+      `${HOTELBEDS_BASE_URL}/hotel-content-api/1.0/locations/destinations?${params.toString()}`,
+      { method: 'GET', headers: await hotelbedsHeaders(), signal: controller.signal },
+    );
+    if (!res.ok) {
+      console.log(`Destination country lookup failed ${key}: HTTP ${res.status}`);
+      return null;
+    }
+    const data = await res.json();
+    const country = (data?.destinations?.[0]?.countryCode ?? null) as string | null;
+    destinationCountryCache.set(key, country ? country.toUpperCase() : null);
+    return destinationCountryCache.get(key)!;
+  } catch (e) {
+    console.log(`Destination country lookup error ${key}: ${String(e)}`);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ─────────────────────────── المعالج ───────────────────────────
 
 serve(async (req) => {
@@ -301,6 +343,18 @@ serve(async (req) => {
 
     if (!destinationCode || !checkIn || !checkOut) {
       return json({ error: 'destinationCode, checkIn, and checkOut are required' }, 400);
+    }
+
+    // العقوبات الأمريكية: لا نبحث أصلًا في وجهة محظورة.
+    const country = await destinationCountry(String(destinationCode));
+    if (isBlockedDestination(country, String(destinationCode))) {
+      console.log(`SANCTIONS BLOCK destination=${destinationCode} country=${country}`);
+      return json({
+        hotels: [],
+        blocked: true,
+        error: 'This destination is not available on Flynoom.',
+        search: { destinationCode, checkIn, checkOut },
+      });
     }
 
     const roomSpecs = buildRoomSpecs(body);
@@ -342,16 +396,33 @@ serve(async (req) => {
       clearTimeout(timer);
     }
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      // سبب الرفض في Logs (403 غالبًا = انتهت الحصة اليومية في بيئة الاختبار،
+      // 401 = مشكلة في المفتاح/التوقيع).
+      console.log(
+        `AVAILABILITY FAILED ${destinationCode} ${checkIn}→${checkOut} HTTP ${response.status}: ` +
+          JSON.stringify(data).slice(0, 500),
+      );
       return json(
         { error: data?.error?.message ?? 'HotelBeds request failed', details: data },
         response.status,
       );
     }
 
-    const rawHotels: any[] = data?.hotels?.hotels ?? [];
+    let rawHotels: any[] = data?.hotels?.hotels ?? [];
+
+    // أوكرانيا: نستبعد فنادق القرم ودونيتسك ولوغانسك (عقوبات شاملة).
+    if (country === 'UA') {
+      const before = rawHotels.length;
+      rawHotels = rawHotels.filter(
+        (h) => !isBlockedUkraineLocation(toNum(h.latitude), toNum(h.longitude)),
+      );
+      if (rawHotels.length !== before) {
+        console.log(`SANCTIONS FILTER UA: removed ${before - rawHotels.length} hotels`);
+      }
+    }
 
     const codesForImages = rawHotels
       .slice(0, MAX_HOTELS_WITH_IMAGES)
@@ -432,6 +503,7 @@ serve(async (req) => {
     });
   } catch (e) {
     const isTimeout = e instanceof DOMException && e.name === 'AbortError';
+    console.log(isTimeout ? 'AVAILABILITY TIMEOUT' : `AVAILABILITY ERROR ${String(e)}`);
     return json(
       { error: isTimeout ? 'HotelBeds availability timeout' : String(e) },
       isTimeout ? 504 : 500,
