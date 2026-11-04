@@ -102,6 +102,12 @@ String _t3(
 /// أي يَعِد العميل بشيء لا يحدث. غيّرها إلى true عند جاهزية الميزة.
 const bool _kSaveHotelEnabled = false;
 
+/// أقسام "المعالم / المطاعم / النقل / أقرب المطارات" بيانات تجريبية ثابتة
+/// (National Museum، International Airport 18 km...) تظهر لكل فندق، أي ادعاء
+/// غير صحيح. مخفية حتى نربطها ببيانات حقيقية (HotelBeds Content API: حقل
+/// interestPoints/terminals، أو Google Places). غيّرها إلى true عند ذلك فقط.
+const bool _kAreaHighlightsEnabled = false;
+
 // ─── أسماء أزرار المعرض لقارئات الشاشة (إمكانية الوصول) ───
 String _aPrevPhoto(BuildContext c) => _t3(c, ar: 'الصورة السابقة', en: 'Previous photo', es: 'Foto anterior', tr: 'Önceki fotoğraf', id: 'Foto sebelumnya', hi: 'पिछली तस्वीर', ur: 'پچھلی تصویر', fr: 'Photo précédente', bn: 'আগের ছবি');
 String _aNextPhoto(BuildContext c) => _t3(c, ar: 'الصورة التالية', en: 'Next photo', es: 'Foto siguiente', tr: 'Sonraki fotoğraf', id: 'Foto berikutnya', hi: 'अगली तस्वीर', ur: 'اگلی تصویر', fr: 'Photo suivante', bn: 'পরের ছবি');
@@ -719,11 +725,12 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
 
                     const SizedBox(height: AppSizes.md),
 
-                    ..._areaHighlightCategories(context).map(
-                          (category) => _AreaCategorySection(category: category),
-                    ),
-
-                    const SizedBox(height: AppSizes.md),
+                    if (_kAreaHighlightsEnabled) ...[
+                      ..._areaHighlightCategories(context).map(
+                            (category) => _AreaCategorySection(category: category),
+                      ),
+                      const SizedBox(height: AppSizes.md),
+                    ],
                     const _PoliciesSection(),
 
                     const AppFooter(),
