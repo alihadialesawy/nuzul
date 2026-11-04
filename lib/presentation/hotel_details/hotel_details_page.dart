@@ -1827,8 +1827,10 @@ class _PoliciesSection extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSizes.md),
                 Text(
-                  _policyText(context, ar: 'طرق الدفع المقبولة', en: 'Property payment types', es: 'Métodos de pago aceptados', tr: 'Kabul edilen ödeme yöntemleri',
-                      id: 'Metode pembayaran yang diterima', hi: 'स्वीकृत भुगतान विधियां', ur: 'قابل قبول ادائیگی کے طریقے', fr: 'Moyens de paiement acceptés', bn: 'গৃহীত পেমেন্ট পদ্ধতি'),
+                  // ملاحظة: هذه البطاقات ثابتة (ليست من HotelBeds) وتمثّل ما يقبله Stripe
+                  // لدفع الحجز على Flynoom، لا ما يقبله كل فندق في الاستقبال.
+                  _policyText(context, ar: 'ادفع ثمن الحجز بأمان على Flynoom', en: 'Pay for your booking securely on Flynoom', es: 'Paga tu reserva de forma segura en Flynoom', tr: 'Rezervasyonunuzu Flynoom\'da güvenle ödeyin',
+                      id: 'Bayar pemesanan Anda dengan aman di Flynoom', hi: 'अपनी बुकिंग का भुगतान Flynoom पर सुरक्षित रूप से करें', ur: 'اپنی بکنگ کی ادائیگی Flynoom پر محفوظ طریقے سے کریں', fr: 'Payez votre réservation en toute sécurité sur Flynoom', bn: 'Flynoom-এ নিরাপদে আপনার বুকিংয়ের পেমেন্ট করুন'),
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
                 const SizedBox(height: 6),
@@ -1841,6 +1843,22 @@ class _PoliciesSection extends StatelessWidget {
                     _PaymentChip('American Express', 'assets/images/payment/amex.png'),
                     _PaymentChip('Discover', 'assets/images/payment/discover.png'),
                   ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _policyText(
+                    context,
+                    ar: 'المصاريف الإضافية في الفندق (مثل مبلغ التأمين أو ضريبة المدينة أو الميني بار) تُدفع للفندق مباشرة، وقد تختلف البطاقات التي يقبلها.',
+                    en: 'Extra charges at the hotel (such as a security deposit, city tax, or minibar) are paid directly to the property, and the cards it accepts may differ.',
+                    es: 'Los cargos adicionales en el hotel (como un depósito de garantía, la tasa turística o el minibar) se pagan directamente al alojamiento, y las tarjetas que acepta pueden ser distintas.',
+                    tr: 'Oteldeki ek ücretler (depozito, şehir vergisi veya minibar gibi) doğrudan tesise ödenir ve tesisin kabul ettiği kartlar farklı olabilir.',
+                    id: 'Biaya tambahan di hotel (seperti deposit jaminan, pajak kota, atau minibar) dibayar langsung ke properti, dan kartu yang diterima properti bisa berbeda.',
+                    hi: 'होटल में अतिरिक्त शुल्क (जैसे सिक्योरिटी डिपॉज़िट, सिटी टैक्स या मिनीबार) सीधे होटल को चुकाए जाते हैं, और होटल द्वारा स्वीकार किए जाने वाले कार्ड अलग हो सकते हैं।',
+                    ur: 'ہوٹل میں اضافی چارجز (جیسے سیکیورٹی ڈپازٹ، سٹی ٹیکس یا منی بار) براہ راست ہوٹل کو ادا کیے جاتے ہیں، اور ہوٹل کے قبول کردہ کارڈ مختلف ہو سکتے ہیں۔',
+                    fr: 'Les frais supplémentaires à l\'hôtel (dépôt de garantie, taxe de séjour ou minibar, par exemple) sont réglés directement à l\'établissement, et les cartes qu\'il accepte peuvent être différentes.',
+                    bn: 'হোটেলের অতিরিক্ত চার্জ (যেমন সিকিউরিটি ডিপোজিট, সিটি ট্যাক্স বা মিনিবার) সরাসরি হোটেলকে দিতে হয়, এবং হোটেল যে কার্ড গ্রহণ করে তা ভিন্ন হতে পারে।',
+                  ),
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: AppSizes.sm),
                 Text(
