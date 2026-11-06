@@ -752,7 +752,28 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                     ar: 'رقم الهاتف', en: 'Phone number', es: 'Teléfono', tr: 'Telefon',
                     id: 'Nomor telepon', hi: 'फ़ोन नंबर', ur: 'فون نمبر', fr: 'Téléphone',
                     bn: 'ফোন নম্বর')),
-                validator: requiredField,
+                // رقم صالح دوليًا: 8 إلى 15 رقمًا (معيار E.164)، مع السماح بـ + والمسافات
+                // والشرطات والأقواس. الفندق يتصل بهذا الرقم عند أي مشكلة في الحجز.
+                validator: (v) {
+                  final req = requiredField(v);
+                  if (req != null) return req;
+                  final raw = v!.trim();
+                  final digits = raw.replaceAll(RegExp(r'\D'), '');
+                  final okChars = RegExp(r'^\+?[0-9\s\-().]+$').hasMatch(raw);
+                  if (!okChars || digits.length < 8 || digits.length > 15) {
+                    return _tb(context,
+                        ar: 'أدخل رقم هاتف صحيحًا مع رمز البلد، مثل +1 313 555 0123',
+                        en: 'Enter a valid phone number with country code, e.g. +1 313 555 0123',
+                        es: 'Introduce un teléfono válido con el código de país, p. ej. +1 313 555 0123',
+                        tr: 'Ülke koduyla birlikte geçerli bir telefon numarası girin, ör. +1 313 555 0123',
+                        id: 'Masukkan nomor telepon yang valid dengan kode negara, mis. +1 313 555 0123',
+                        hi: 'देश कोड के साथ मान्य फ़ोन नंबर दर्ज करें, जैसे +1 313 555 0123',
+                        ur: 'ملک کے کوڈ کے ساتھ درست فون نمبر درج کریں، جیسے +1 313 555 0123',
+                        fr: 'Saisissez un numéro valide avec l\'indicatif du pays, ex. +1 313 555 0123',
+                        bn: 'দেশের কোডসহ সঠিক ফোন নম্বর দিন, যেমন +1 313 555 0123');
+                  }
+                  return null;
+                },
               ),
             ],
           ),
@@ -1104,11 +1125,23 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
-                              child: Text(
-                                room.label.isNotEmpty
-                                    ? '${room.label} × ${room.quantity} × $_nights'
-                                    : '×$_nights',
-                              ),
+                              // "King · Room Only — 1 room × 2 nights" بدل "× 1 × 2" الغامضة.
+                              child: Text(() {
+                                final q = room.quantity;
+                                final roomsTxt = q == 1
+                                    ? _tb(context, ar: 'غرفة واحدة', en: '1 room', es: '1 habitación', tr: '1 oda', id: '1 kamar',
+                                    hi: '1 कमरा', ur: '1 کمرہ', fr: '1 chambre', bn: '1টি রুম')
+                                    : _tb(context, ar: '$q غرف', en: '$q rooms', es: '$q habitaciones', tr: '$q oda', id: '$q kamar',
+                                    hi: '$q कमरे', ur: '$q کمرے', fr: '$q chambres', bn: '$qটি রুম');
+                                final n = _nights;
+                                final nightsTxt = n == 1
+                                    ? _tb(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche', tr: '1 gece', id: '1 malam',
+                                    hi: '1 रात', ur: '1 رات', fr: '1 nuit', bn: '1 রাত')
+                                    : _tb(context, ar: '$n ليالٍ', en: '$n nights', es: '$n noches', tr: '$n gece', id: '$n malam',
+                                    hi: '$n रातें', ur: '$n راتیں', fr: '$n nuits', bn: '$n রাত');
+                                final qty = '$roomsTxt × $nightsTxt';
+                                return room.label.isNotEmpty ? '${room.label} — $qty' : qty;
+                              }()),
                             ),
                             PriceText(sarAmount: room.subtotalPerNight * _nights),
                           ],

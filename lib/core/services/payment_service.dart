@@ -16,6 +16,10 @@ String _pt(BuildContext context, String key) {
     'incomplete': ['يُرجى إدخال بيانات البطاقة كاملة.', 'Please enter your full card details.', 'Introduce los datos completos de tu tarjeta.', 'Lütfen kart bilgilerinizi eksiksiz girin.', 'Harap masukkan detail kartu Anda dengan lengkap.', 'कृपया अपने कार्ड का पूरा विवरण दर्ज करें।', 'براہ کرم اپنے کارڈ کی مکمل تفصیلات درج کریں۔', 'Veuillez saisir toutes les informations de votre carte.', 'অনুগ্রহ করে কার্ডের সম্পূর্ণ তথ্য দিন।'],
     'failed': ['فشلت عملية الدفع.', 'Payment failed.', 'El pago no se pudo completar.', 'Ödeme başarısız oldu.', 'Pembayaran gagal.', 'भुगतान विफल रहा।', 'ادائیگی ناکام ہو گئی۔', 'Le paiement a échoué.', 'পেমেন্ট ব্যর্থ হয়েছে।'],
     'error': ['حدث خطأ أثناء الدفع، حاول مرة أخرى.', 'Something went wrong during payment. Please try again.', 'Ocurrió un error durante el pago. Inténtalo de nuevo.', 'Ödeme sırasında bir hata oluştu. Lütfen tekrar deneyin.', 'Terjadi kesalahan saat pembayaran. Silakan coba lagi.', 'भुगतान के दौरान कुछ गलत हो गया। कृपया फिर से प्रयास करें।', 'ادائیگی کے دوران کچھ غلط ہو گیا۔ براہ کرم دوبارہ کوشش کریں۔', 'Une erreur est survenue pendant le paiement. Veuillez réessayer.', 'পেমেন্টের সময় সমস্যা হয়েছে। আবার চেষ্টা করুন।'],
+    // رفض من البنك أو من Radar (لا نذكر السبب، ونطمئن أنه لم يُسحب شيء).
+    'declined': ["لم يقبل البنك هذه البطاقة، ولم يُسحب أي مبلغ. جرّب بطاقة أخرى.", "Your bank didn't accept this card. No money was taken. Please try a different card.", "Tu banco no aceptó esta tarjeta. No se ha cobrado nada. Prueba con otra tarjeta.", "Bankanız bu kartı kabul etmedi. Hiçbir ücret alınmadı. Lütfen başka bir kart deneyin.", "Bank Anda tidak menerima kartu ini. Tidak ada dana yang ditarik. Silakan coba kartu lain.", "आपके बैंक ने यह कार्ड स्वीकार नहीं किया। कोई राशि नहीं ली गई। कृपया दूसरा कार्ड आज़माएँ।", "آپ کے بینک نے یہ کارڈ قبول نہیں کیا۔ کوئی رقم نہیں لی گئی۔ براہ کرم دوسرا کارڈ آزمائیں۔", "Votre banque n'a pas accepté cette carte. Aucun montant n'a été débité. Veuillez essayer une autre carte.", "আপনার ব্যাংক এই কার্ডটি গ্রহণ করেনি। কোনো টাকা কাটা হয়নি। অনুগ্রহ করে অন্য কার্ড চেষ্টা করুন।"],
+    // أغلق الزبون نافذة التحقق (3D Secure) أو فشل فيها.
+    'authCancelled': ["لم تكتمل خطوة التحقق من البنك. حاول مرة أخرى.", "Bank verification was not completed. Please try again.", "No se completó la verificación del banco. Inténtalo de nuevo.", "Banka doğrulaması tamamlanmadı. Lütfen tekrar deneyin.", "Verifikasi bank tidak selesai. Silakan coba lagi.", "बैंक सत्यापन पूरा नहीं हुआ। कृपया फिर से प्रयास करें।", "بینک کی تصدیق مکمل نہیں ہوئی۔ براہ کرم دوبارہ کوشش کریں۔", "La vérification bancaire n'a pas été effectuée. Veuillez réessayer.", "ব্যাংক যাচাই সম্পন্ন হয়নি। আবার চেষ্টা করুন।"],
   };
   const order = ['ar', 'en', 'es', 'tr', 'id', 'hi', 'ur', 'fr', 'bn'];
   final i = order.indexOf(Localizations.localeOf(context).languageCode);
@@ -145,15 +149,22 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
       );
       if (mounted) Navigator.of(context).pop(true);
     } on StripeException catch (e) {
+      // رسالة واضحة بلغة الزبون بدل نص Stripe الإنجليزي.
+      final cancelled = e.error.code == FailureCode.Canceled;
       setState(() {
         _isProcessing = false;
-        _errorMessage = e.error.localizedMessage ?? _pt(context, 'failed');
+        _errorMessage = _pt(context, cancelled ? 'authCancelled' : 'declined');
       });
     } catch (e) {
+      // على الويب قد يصل رفض البطاقة كخطأ عام (ليس StripeException).
+      final msg = e.toString().toLowerCase();
+      final declined = msg.contains('declin') || msg.contains('blocked') || msg.contains('card_error');
+      final authFail = msg.contains('authenticat') || msg.contains('3d secure');
       setState(() {
         _isProcessing = false;
-        _errorMessage = _pt(context, 'error');
+        _errorMessage = _pt(context, declined ? 'declined' : authFail ? 'authCancelled' : 'error');
       });
+      debugPrint('Web card payment error: $e');
     }
   }
 

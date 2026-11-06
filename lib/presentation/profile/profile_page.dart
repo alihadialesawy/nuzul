@@ -232,10 +232,11 @@ Future<void> _updateEmailDialog(BuildContext context, WidgetRef ref, User? user)
 /// محتاجة أي تعديل لأنها أصلًا مكنتش بتعتمد على "this").
 Future<void> _editPhone(BuildContext context, WidgetRef ref, ProfileModel? profile, String? userId) async {
   final controller = TextEditingController(text: profile?.phone ?? '');
+  String? errorText;
   await showDialog(
     context: context,
     builder: (dialogContext) {
-      return AlertDialog(
+      return StatefulBuilder(builder: (dialogContext, setDialogState) => AlertDialog(
         title: Text(_t3(dialogContext, ar: 'ربط رقم الهاتف', en: 'Link phone number', es: 'Vincular teléfono', tr: 'Telefon numarasını bağla',
             id: 'Tautkan nomor telepon',
             hi: 'फ़ोन नंबर लिंक करें',
@@ -245,8 +246,15 @@ Future<void> _editPhone(BuildContext context, WidgetRef ref, ProfileModel? profi
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.phone,
+          onChanged: (_) {
+            if (errorText != null) setDialogState(() => errorText = null);
+          },
           decoration: InputDecoration(
-            labelText: '+9665xxxxxxxx',
+            labelText: '+1 313 555 0123',
+            helperText: _t3(dialogContext, ar: 'مع رمز البلد', en: 'Include your country code', es: 'Incluye el código de país',
+                tr: 'Ülke kodunu ekleyin', id: 'Sertakan kode negara', hi: 'देश कोड शामिल करें',
+                ur: 'ملک کا کوڈ شامل کریں', fr: 'Indiquez l\'indicatif du pays', bn: 'দেশের কোড দিন'),
+            errorText: errorText,
             prefixIcon: const Icon(Icons.phone_outlined, color: _FieldColors.phone),
             focusedBorder: OutlineInputBorder(
               borderSide: const BorderSide(color: _FieldColors.phone, width: 2),
@@ -267,7 +275,24 @@ Future<void> _editPhone(BuildContext context, WidgetRef ref, ProfileModel? profi
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: _FieldColors.phone),
             onPressed: () async {
-              final updated = (profile ?? ProfileModel(id: userId!)).copyWith(phone: controller.text);
+              // نفس قاعدة صفحة الحجز: 8–15 رقمًا (E.164) مع + ومسافات وشرطات وأقواس.
+              final raw = controller.text.trim();
+              final digits = raw.replaceAll(RegExp(r'\D'), '');
+              final okChars = RegExp(r'^\+?[0-9\s\-().]+$').hasMatch(raw);
+              if (!okChars || digits.length < 8 || digits.length > 15) {
+                setDialogState(() => errorText = _t3(dialogContext,
+                    ar: 'أدخل رقم هاتف صحيحًا مع رمز البلد',
+                    en: 'Enter a valid phone number with country code',
+                    es: 'Introduce un teléfono válido con el código de país',
+                    tr: 'Ülke koduyla geçerli bir telefon numarası girin',
+                    id: 'Masukkan nomor telepon yang valid dengan kode negara',
+                    hi: 'देश कोड के साथ मान्य फ़ोन नंबर दर्ज करें',
+                    ur: 'ملک کے کوڈ کے ساتھ درست فون نمبر درج کریں',
+                    fr: 'Saisissez un numéro valide avec l\'indicatif du pays',
+                    bn: 'দেশের কোডসহ সঠিক ফোন নম্বর দিন'));
+                return;
+              }
+              final updated = (profile ?? ProfileModel(id: userId!)).copyWith(phone: raw);
               final repo = ref.read(profileRepositoryProvider);
               final result = await repo.upsertMyProfile(updated);
               if (!dialogContext.mounted) return;
@@ -289,7 +314,7 @@ Future<void> _editPhone(BuildContext context, WidgetRef ref, ProfileModel? profi
                 bn: 'সংরক্ষণ করুন')),
           ),
         ],
-      );
+      ));
     },
   );
 }

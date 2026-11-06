@@ -44,6 +44,9 @@ import {
 } from '../_shared/hotelbeds.ts';
 import { sendEmail } from '../_shared/email.ts';
 
+/// أقصى عدد محاولات حجز/دفع للحساب الواحد في الساعة.
+const MAX_ATTEMPTS_PER_HOUR = Number(Deno.env.get('MAX_BOOKING_ATTEMPTS_PER_HOUR') ?? '5') || 5;
+
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
@@ -103,6 +106,24 @@ Deno.serve(async (req) => {
     const admin = adminClient();
     const user = await getUser(req, admin);
     if (!user) return fail('unauthorized', 'Please sign in to book.');
+
+    // ───── حد محاولات الدفع (يمنع "اختبار البطاقات" المسروقة عبر حسابنا) ─────
+    // كل محاولة تُنشئ صف حجز، فنعدّ صفوف الحساب في آخر ساعة.
+    {
+      const since = new Date(Date.now() - 3600 * 1000).toISOString();
+      const { count } = await admin
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', since);
+      if ((count ?? 0) >= MAX_ATTEMPTS_PER_HOUR) {
+        console.log(`RATE LIMITED user=${user.id} attempts=${count}`);
+        return fail(
+          'too_many_attempts',
+          'Too many booking attempts. Please wait an hour and try again, or contact support@flynoom.com.',
+        );
+      }
+    }
 
     const body = await req.json();
     const rateKey = clean(body.rateKey);
@@ -331,6 +352,10 @@ Deno.serve(async (req) => {
       currency: 'usd',
       capture_method: 'manual',
       payment_method_types: ['card'],
+      // 3D Secure لكل البطاقات بتفضيل التحقق الصامت (frictionless): أغلب الزبائن
+      // لا يرون شيئًا، والبنك يطلب رمزًا فقط عند الشك. عند نجاحه تنتقل مسؤولية
+      // الاحتيال غالبًا إلى البنك المُصدِر. للإيقاف: احذف هذا السطر.
+      payment_method_options: { card: { request_three_d_secure: 'any' } },
       receipt_email: email,
       description: `Flynoom hotel booking ${clientReference}`,
       metadata: {

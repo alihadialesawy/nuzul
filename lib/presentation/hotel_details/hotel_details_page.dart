@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app.dart';
 import '../../core/constants/app_colors.dart';
@@ -107,6 +108,21 @@ const bool _kSaveHotelEnabled = false;
 /// غير صحيح. مخفية حتى نربطها ببيانات حقيقية (HotelBeds Content API: حقل
 /// interestPoints/terminals، أو Google Places). غيّرها إلى true عند ذلك فقط.
 const bool _kAreaHighlightsEnabled = false;
+
+String _viewOnMap(BuildContext c) => _t3(c, ar: 'عرض على الخريطة', en: 'View on map', es: 'Ver en el mapa',
+    tr: 'Haritada göster', id: 'Lihat di peta', hi: 'मानचित्र पर देखें', ur: 'نقشے پر دیکھیں', fr: 'Voir sur la carte', bn: 'মানচিত্রে দেখুন');
+
+/// وصف محايد للمنطقة (لا ادعاءات عن القرب من معالم أو مرافق).
+String _aboutAreaNeutral(BuildContext c, String city) => _t3(c,
+    ar: 'يقع هذا الفندق في $city. راجع موقع الفندق على الخريطة قبل الحجز للتأكد من أنه يناسب خططك وتنقلاتك.',
+    en: 'This hotel is located in $city. Check the hotel\'s location on the map before booking to make sure it suits your plans.',
+    es: 'Este hotel está en $city. Revisa la ubicación del hotel en el mapa antes de reservar para asegurarte de que se ajusta a tus planes.',
+    tr: 'Bu otel $city konumundadır. Planlarınıza uygun olduğundan emin olmak için rezervasyondan önce otelin haritadaki konumunu kontrol edin.',
+    id: 'Hotel ini berada di $city. Periksa lokasi hotel di peta sebelum memesan untuk memastikan sesuai dengan rencana Anda.',
+    hi: 'यह होटल $city में स्थित है। बुकिंग से पहले मानचित्र पर होटल का स्थान देख लें, ताकि यह आपकी योजना के अनुकूल हो।',
+    ur: 'یہ ہوٹل $city میں واقع ہے۔ بکنگ سے پہلے نقشے پر ہوٹل کا مقام دیکھ لیں تاکہ یہ آپ کے منصوبوں کے مطابق ہو۔',
+    fr: 'Cet hôtel se trouve à $city. Vérifiez l\'emplacement de l\'hôtel sur la carte avant de réserver pour vous assurer qu\'il convient à vos projets.',
+    bn: 'এই হোটেলটি $city-এ অবস্থিত। বুকিং করার আগে মানচিত্রে হোটেলের অবস্থান দেখে নিন, যাতে এটি আপনার পরিকল্পনার সাথে মানানসই হয়।');
 
 // ─── أسماء أزرار المعرض لقارئات الشاشة (إمكانية الوصول) ───
 String _aPrevPhoto(BuildContext c) => _t3(c, ar: 'الصورة السابقة', en: 'Previous photo', es: 'Foto anterior', tr: 'Önceki fotoğraf', id: 'Foto sebelumnya', hi: 'पिछली तस्वीर', ur: 'پچھلی تصویر', fr: 'Photo précédente', bn: 'আগের ছবি');
@@ -611,11 +627,39 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                     ),
                     const SizedBox(height: 4),
-                    Row(
+                    // المدينة + الحي (zoneName من HotelBeds) + رابط الخريطة بالإحداثيات
+                    // الحقيقية، حتى يستطيع الزبون التحقق من الموقع قبل الحجز.
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 4,
+                      runSpacing: 4,
                       children: [
                         const Icon(Icons.location_on_outlined, size: 18, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(hotel.city, style: const TextStyle(color: AppColors.textSecondary)),
+                        Text(
+                          (hotel.neighborhood != null &&
+                              hotel.neighborhood!.trim().isNotEmpty &&
+                              hotel.neighborhood!.trim().toLowerCase() != hotel.city.trim().toLowerCase())
+                              ? '${hotel.neighborhood!.trim()}, ${hotel.city}'
+                              : hotel.city,
+                          style: const TextStyle(color: AppColors.textSecondary),
+                        ),
+                        if (hotel.latitude != null && hotel.longitude != null) ...[
+                          const SizedBox(width: 8),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              minimumSize: const Size(0, 32),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: () => launchUrl(
+                              Uri.parse('https://www.google.com/maps/search/?api=1&query='
+                                  '${hotel.latitude},${hotel.longitude}'),
+                              mode: LaunchMode.externalApplication,
+                            ),
+                            icon: const Icon(Icons.map_outlined, size: 18),
+                            label: Text(_viewOnMap(context)),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: AppSizes.sm),
@@ -717,7 +761,10 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                       child: Padding(
                         padding: const EdgeInsets.all(AppSizes.md),
                         child: Text(
-                          l10n.aboutAreaDescription(hotel.city),
+                          // نص محايد عمدًا: النص القديم في ملفات arb (aboutAreaDescription)
+                          // كان يقول لكل فندق "موقع مميز قريب من المعالم الرئيسية" — ادعاء
+                          // غير مثبت. لا تُرجعه قبل ربطه ببيانات حقيقية.
+                          _aboutAreaNeutral(context, hotel.city),
                           style: const TextStyle(color: AppColors.textSecondary, height: 1.5),
                         ),
                       ),
@@ -1092,7 +1139,7 @@ class _HotelBedsRoomsList extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: AppSizes.sm),
-                  ...([...room.rates]..sort((a, b) => a.totalUsd.compareTo(b.totalUsd))).map((rate) {
+                  ..._dedupeRates(room.rates).map((rate) {
                     // أسعار بالدولار من السيرفر (نفس معادلة الدفع). نمررها كريال
                     // بالسعر الثابت لأن PriceText يتوقع ريالًا.
                     const sarPerUsd = 3.75;
@@ -1113,6 +1160,35 @@ class _HotelBedsRoomsList extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// يرتّب الأسعار من الأرخص، ويحذف الأسعار التي تبدو متطابقة للزبون (نفس
+/// الوجبات، ونوع الاسترداد، وطريقة الدفع، والسعر، وسياسة الإلغاء، والعروض،
+/// والملاحظات). HotelBeds قد يُرجع عدة rateKey لنفس العرض عمليًا (عقود مختلفة)،
+/// وعرضها كلها يربك الزبون: "أي زر أضغط؟". عند التطابق نفضّل BOOKABLE على RECHECK.
+List<HotelBedsRate> _dedupeRates(List<HotelBedsRate> rates) {
+  final sorted = [...rates]..sort((a, b) => a.totalUsd.compareTo(b.totalUsd));
+  final byKey = <String, HotelBedsRate>{};
+  for (final r in sorted) {
+    final p = r.firstCancellationPolicy;
+    final key = [
+      r.boardCode ?? r.boardName ?? '',
+      r.rateClass ?? '',
+      r.paymentType,
+      r.totalUsd.toStringAsFixed(2),
+      r.priceUsd.toStringAsFixed(2),
+      p?.from ?? '',
+      p?.amount.toStringAsFixed(2) ?? '',
+      r.promotions.join('|'),
+      (r.rateComments ?? '').trim(),
+    ].join('#');
+    final existing = byKey[key];
+    if (existing == null || (existing.needsRecheck && !r.needsRecheck)) {
+      byKey[key] = r;
+    }
+  }
+  // الحفاظ على الترتيب من الأرخص.
+  return byKey.values.toList()..sort((a, b) => a.totalUsd.compareTo(b.totalUsd));
 }
 
 class _RateRow extends StatelessWidget {
@@ -1180,6 +1256,27 @@ class _RateRow extends StatelessWidget {
             ur: '$d تک مفت منسوخی (ہوٹل کا مقامی وقت)',
             fr: 'Annulation gratuite jusqu\'au $d (heure locale de l\'hôtel)',
             bn: '$d পর্যন্ত বিনামূল্যে বাতিল (হোটেলের স্থানীয় সময়)'),
+      );
+    }
+
+    // بدأت رسوم الإلغاء: نوضّح هل هي المبلغ كاملًا أم جزء منه. رسوم HotelBeds
+    // محسوبة على net وبعملته نفسها، فنقارن بـ net (لا بسعر البيع الذي فيه هامشنا).
+    final base = rate.net > 0 ? rate.net : rate.price;
+    final fullCharge = base > 0 && policy.amount >= base * 0.995;
+    if (fullCharge) {
+      return _ChoiceLine(
+        icon: Icons.block,
+        color: AppColors.textSecondary,
+        text: _t3(context,
+            ar: 'لا استرداد عند الإلغاء (يُحتسب المبلغ كاملًا)',
+            en: 'No refund if cancelled (full amount charged)',
+            es: 'Sin reembolso si cancelas (se cobra el importe total)',
+            tr: 'İptal halinde iade yok (tutarın tamamı tahsil edilir)',
+            id: 'Tidak ada pengembalian dana jika dibatalkan (dikenakan jumlah penuh)',
+            hi: 'रद्द करने पर कोई रिफ़ंड नहीं (पूरी राशि ली जाएगी)',
+            ur: 'منسوخی پر کوئی رقم واپس نہیں (پوری رقم وصول کی جائے گی)',
+            fr: 'Aucun remboursement en cas d\'annulation (montant total facturé)',
+            bn: 'বাতিল করলে কোনো ফেরত নেই (পুরো অর্থ কাটা হবে)'),
       );
     }
 

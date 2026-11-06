@@ -2440,6 +2440,10 @@ class _FlightHotelSearchResults extends ConsumerWidget {
   }
 }
 
+/// زر القلب في بطاقات النتائج مخفي حتى تُبنى ميزة "المحفوظات" (جدول
+/// saved_hotels + صفحة في الحساب). حاليًا يغيّر لونه فقط دون حفظ حقيقي.
+const bool _kSaveHotelInResults = false;
+
 class _HotelCard extends ConsumerWidget {
   final HotelModel hotel;
   final Map<String, dynamic> searchParams;
@@ -2608,23 +2612,25 @@ class _HotelCard extends ConsumerWidget {
                         color: AppColors.textHint,
                       ),
                     ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: GestureDetector(
-                        onTap: () =>
-                            ref.read(favoritesProvider.notifier).toggle(hotel.name),
-                        child: CircleAvatar(
-                          radius: 16,
-                          backgroundColor: Colors.white,
-                          child: Icon(
-                            isFavorite ? Icons.favorite : Icons.favorite_border,
-                            size: 18,
-                            color: isFavorite ? Colors.red : Colors.black87,
+                    // زر الحفظ مخفي حتى تُبنى ميزة المحفوظات فعلًا (مثل صفحة الفندق).
+                    if (_kSaveHotelInResults)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: () =>
+                              ref.read(favoritesProvider.notifier).toggle(hotel.name),
+                          child: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.white,
+                            child: Icon(
+                              isFavorite ? Icons.favorite : Icons.favorite_border,
+                              size: 18,
+                              color: isFavorite ? Colors.red : Colors.black87,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -2707,26 +2713,56 @@ class _HotelCard extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Expanded(
-                            child: Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.end,
-                              children: [
-                                PriceText(
-                                  sarAmount: hotel.pricePerNight,
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
+                            // قاعدة FTC للرسوم: السعر الشامل للإقامة (بما فيه رسوم الفندق
+                            // الإلزامية) هو الرقم الأبرز، وسعر الليلة ثانوي — مثل صفحة الفندق.
+                            child: Builder(builder: (context) {
+                              final ci = searchParams['checkIn'];
+                              final co = searchParams['checkOut'];
+                              final nights = (ci is DateTime && co is DateTime)
+                                  ? co.difference(ci).inDays.clamp(1, 365)
+                                  : 1;
+                              final nightsLabel = nights == 1
+                                  ? _t3(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche', tr: '1 gece', id: '1 malam',
+                                  hi: '1 रात', ur: '1 رات', fr: '1 nuit', bn: '1 রাত')
+                                  : _t3(context, ar: '$nights ليالٍ', en: '$nights nights', es: '$nights noches', tr: '$nights gece',
+                                  id: '$nights malam', hi: '$nights रातें', ur: '$nights راتیں', fr: '$nights nuits', bn: '$nights রাত');
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Wrap(
+                                    crossAxisAlignment: WrapCrossAlignment.end,
+                                    children: [
+                                      PriceText(
+                                        sarAmount: hotel.pricePerNight * nights,
+                                        style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                      Text(
+                                        '  ${_t3(context, ar: 'الإجمالي', en: 'Total', es: 'Total', tr: 'Toplam', id: 'Total', hi: 'कुल', ur: 'کل', fr: 'Total', bn: 'মোট')} · $nightsLabel',
+                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                Text(
-                                  ' ${l10n.perNight}',
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600,
+                                  Wrap(
+                                    crossAxisAlignment: WrapCrossAlignment.end,
+                                    children: [
+                                      PriceText(
+                                        sarAmount: hotel.pricePerNight,
+                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                      ),
+                                      Text(
+                                        ' ${l10n.perNight}',
+                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ],
-                            ),
+                                ],
+                              );
+                            }),
                           ),
                           SizedBox(
                             width: 150,

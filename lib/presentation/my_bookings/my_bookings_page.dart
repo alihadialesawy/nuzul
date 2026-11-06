@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -171,8 +172,20 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
     return out.isBefore(today);
   }
 
+  /// حجز فندق مؤكد بدأت إقامته ولم تنتهِ (اليوم بين الوصول والمغادرة).
+  /// HotelBeds لا يسمح عادةً بالإلغاء بعد تاريخ الوصول، فالإلغاء هنا عبر الدعم.
+  bool get _isInProgress {
+    final b = widget.item.hotelBooking;
+    if (widget.item.type != InboxItemType.hotelBooking || b == null) return false;
+    if (widget.item.status != 'confirmed' || _isCompleted) return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final inDay = DateTime(b.checkIn.year, b.checkIn.month, b.checkIn.day);
+    return !inDay.isAfter(today);
+  }
+
   Color get _statusColor {
-    if (_isCompleted) return AppColors.primary;
+    if (_isCompleted || _isInProgress) return AppColors.primary;
     switch (widget.item.status) {
       case 'confirmed':
         return AppColors.success;
@@ -188,6 +201,11 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
       return _tm(context,
           ar: 'مكتمل', en: 'Completed', es: 'Completada', tr: 'Tamamlandı', id: 'Selesai',
           hi: 'पूर्ण', ur: 'مکمل', fr: 'Terminé', bn: 'সম্পন্ন');
+    }
+    if (_isInProgress) {
+      return _tm(context,
+          ar: 'الإقامة جارية', en: 'Stay in progress', es: 'Estancia en curso', tr: 'Konaklama devam ediyor',
+          id: 'Sedang menginap', hi: 'ठहराव जारी है', ur: 'قیام جاری ہے', fr: 'Séjour en cours', bn: 'থাকা চলছে');
     }
     switch (widget.item.status) {
       case 'confirmed':
@@ -205,6 +223,9 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
   bool get _canCancel {
     if (widget.item.type != InboxItemType.hotelBooking) return false;
     if (_isCompleted) return false;
+    // بعد بدء الإقامة: الإلغاء عبر الدعم فقط. في وضع التطوير (localhost) يبقى
+    // الزر متاحًا لتنظيف حجوزات الاختبار في HotelBeds sandbox.
+    if (_isInProgress && !kDebugMode) return false;
     // حجوزات HotelBeds: الإلغاء فقط للمؤكدة (عبر الفندق + الاسترداد).
     if (widget.item.hotelBooking?.isHotelBeds == true) {
       return widget.item.status == 'confirmed';
@@ -413,7 +434,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _statusColor.withOpacity(0.12),
+                    color: _statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                   ),
                   child: Text(
@@ -429,6 +450,23 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
             ),
             const Divider(height: AppSizes.lg),
             _buildDetailsRow(context),
+            if (_isInProgress)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  _tm(context,
+                      ar: 'بدأت إقامتك. لأي تغيير أو إلغاء تواصل مع الدعم: support@flynoom.com',
+                      en: 'Your stay has started. To change or cancel, contact support: support@flynoom.com',
+                      es: 'Tu estancia ya ha comenzado. Para cambiarla o cancelarla, contacta con soporte: support@flynoom.com',
+                      tr: 'Konaklamanız başladı. Değişiklik veya iptal için destekle iletişime geçin: support@flynoom.com',
+                      id: 'Masa menginap Anda sudah dimulai. Untuk mengubah atau membatalkan, hubungi dukungan: support@flynoom.com',
+                      hi: 'आपका ठहराव शुरू हो गया है। बदलाव या रद्दीकरण के लिए सहायता से संपर्क करें: support@flynoom.com',
+                      ur: 'آپ کا قیام شروع ہو چکا ہے۔ تبدیلی یا منسوخی کے لیے سپورٹ سے رابطہ کریں: support@flynoom.com',
+                      fr: 'Votre séjour a commencé. Pour le modifier ou l\'annuler, contactez l\'assistance : support@flynoom.com',
+                      bn: 'আপনার থাকা শুরু হয়েছে। পরিবর্তন বা বাতিলের জন্য সাপোর্টে যোগাযোগ করুন: support@flynoom.com'),
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ),
             if (_hasVoucher) ...[
               const SizedBox(height: AppSizes.sm),
               // القسيمة للفندق (بلا سعر) + الإيصال للعميل (المبلغ المدفوع).

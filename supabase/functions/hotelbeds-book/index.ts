@@ -4,6 +4,8 @@
 //
 // 1) يتحقق أن الحجز يخص المستخدم، وأن حالته awaiting_payment.
 // 2) يتحقق من Stripe أن المبلغ محجوز فعلًا (requires_capture) وبنفس القيمة.
+// 2.5) بوابة الاحتيال (_shared/fraud.ts): المبلغ مجمّد فقط؛ إن بدت الدفعة
+//      مشبوهة نلغي التجميد ونتوقف قبل HotelBeds (لا سحب، لا تكلفة فندق).
 // 3) يقفل الحجز (processing) حتى لا يُنفَّذ مرتين.
 // 4) يرسل Booking لـ HotelBeds (مهلة 60+ ثانية، شرط HotelBeds).
 // 5) نجح → سحب المبلغ (capture) + حالة confirmed + رقم حجز HotelBeds.
@@ -29,6 +31,7 @@ import {
   ok,
 } from '../_shared/hotelbeds.ts';
 import { bookingConfirmationEmail, sendEmail } from '../_shared/email.ts';
+import { evaluateRisk, lookupIpCountry, PAYMENT_DECLINED_MESSAGE } from '../_shared/fraud.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16',
@@ -159,7 +162,7 @@ Deno.serve(async (req) => {
 
     // ───── التحقق من الدفع ─────
     const intent = await stripe.paymentIntents.retrieve(booking.payment_intent_id, {
-      expand: ['payment_method'],
+      expand: ['payment_method', 'latest_charge'],
     });
     const expectedCents = Math.round(Number(booking.charge_amount) * 100);
     if (
@@ -235,6 +238,78 @@ Deno.serve(async (req) => {
         })
         .eq('id', bookingId);
       if (billErr) console.log(`BILLING SAVE FAILED ${booking.client_reference}: ${billErr.message}`);
+    }
+
+    // ───── بوابة الاحتيال (قبل أي تكلفة علينا) ─────
+    {
+      const charge: any = typeof intent.latest_charge === 'object' ? intent.latest_charge : null;
+      const ip = clientIp(req);
+      const ipCountry = await lookupIpCountry(ip);
+
+      // البطاقات المختلفة التي جرّبها الحساب خلال 24 ساعة (غير هذا الحجز).
+      const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const { data: recent } = await admin
+        .from('bookings')
+        .select('card_brand, card_last4')
+        .eq('user_id', user.id)
+        .neq('id', bookingId)
+        .gte('created_at', since)
+        .not('card_last4', 'is', null);
+      const thisCard = card?.last4 ? `${card.brand ?? ''}-${card.last4}` : null;
+      const otherCards = new Set(
+        (recent ?? []).map((r: any) => `${r.card_brand ?? ''}-${r.card_last4}`).filter((k: string) => k !== thisCard),
+      );
+      const seenBefore = (recent ?? []).some((r: any) => `${r.card_brand ?? ''}-${r.card_last4}` === thisCard);
+
+      const decision = evaluateRisk({
+        charge,
+        amountUsd: Number(booking.charge_amount) || 0,
+        checkIn: String(booking.check_in ?? ''),
+        ipCountry,
+        otherCardsLast24h: otherCards.size,
+        isNewCard: !seenBefore,
+      });
+
+      const { error: riskLogErr } = await admin.from('payment_risk_events').insert({
+        booking_id: bookingId,
+        user_id: user.id,
+        payment_intent_id: intent.id,
+        decision: decision.allow ? 'allow' : 'reject',
+        reasons: decision.reasons,
+        signals: decision.signals,
+        risk_level: decision.riskLevel,
+        risk_score: decision.riskScore,
+        three_ds: decision.threeDS,
+        card_country: decision.cardCountry,
+        ip_country: ipCountry,
+        cvc_check: decision.cvcCheck,
+        postal_check: decision.postalCheck,
+        card_funding: decision.funding,
+        amount_usd: Number(booking.charge_amount) || 0,
+        ip,
+      });
+      if (riskLogErr) console.log('RISK LOG FAILED', bookingId, riskLogErr.message);
+
+      if (!decision.allow) {
+        console.log(
+          `RISK REJECTED ${booking.client_reference}: ${decision.reasons.join(',')} ` +
+            `signals=${decision.signals.join(',')} radar=${decision.riskLevel} 3ds=${decision.threeDS}`,
+        );
+        try {
+          await stripe.paymentIntents.cancel(
+            intent.id,
+            decision.markFraudulent ? { cancellation_reason: 'fraudulent' } : {},
+          );
+        } catch (e) {
+          console.log('Cancel intent failed', String(e));
+        }
+        await setStatus({ status: 'failed', failure_reason: `risk_rejected:${decision.reasons.join(',')}` });
+        return fail('payment_declined', PAYMENT_DECLINED_MESSAGE);
+      }
+      console.log(
+        `RISK OK ${booking.client_reference}: radar=${decision.riskLevel} 3ds=${decision.threeDS} ` +
+          `signals=${decision.signals.join(',') || '-'}`,
+      );
     }
 
     // ───── تسجيل موافقة المراجعة النهائية ─────

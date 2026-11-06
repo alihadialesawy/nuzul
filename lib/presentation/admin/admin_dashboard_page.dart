@@ -15,6 +15,7 @@ import 'admin_customer_lookup_page.dart';
 import 'admin_disputes_page.dart';
 import 'admin_financial_report_page.dart';
 import 'admin_group_requests_page.dart';
+import 'admin_risk_page.dart';
 import 'admin_stats_page.dart';
 
 /// شاشتا النظام القديم (فنادق محلية تجريبية): Legacy Bookings و Manage Hotels.
@@ -255,6 +256,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       ),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const AdminDisputesPage()),
+      ),
+      ),
+      (
+      icon: Icons.shield_outlined,
+      color: const Color(0xFF6C5CE7),
+      title: _t3(context, ar: 'الاحتيال والمخاطر', en: 'Fraud & Risk', es: 'Fraude y riesgo'),
+      description: _t3(
+        context,
+        ar: 'محاولات الدفع التي رفضتها بوابة الاحتيال وأسبابها، وإنذارات الاحتيال من البنوك وما فُعل بها',
+        en: 'Payments rejected by the fraud gate and why, plus bank fraud warnings and what was done',
+        es: 'Pagos rechazados por el filtro antifraude y alertas de fraude de los bancos',
+      ),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AdminRiskPage()),
       ),
       ),
       (
