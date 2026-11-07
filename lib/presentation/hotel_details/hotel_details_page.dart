@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app.dart';
+import '../../core/widgets/independent_service_notice.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/rating_badge.dart';
@@ -675,6 +676,8 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
 
                     const SizedBox(height: AppSizes.lg),
 
+                    const IndependentServiceNotice(),
+                    const SizedBox(height: AppSizes.sm),
                     // قسم أنواع الغرف - شكل جدول (Room type / Today's Price / Your choices / Select Rooms)
                     Text(
                       l10n.roomTypeSectionTitle,

@@ -63,6 +63,8 @@ const RESTRICTED_STATE_NAMES: Record<string, string> = {
   CA: 'California',
   FL: 'Florida',
   HI: 'Hawaii',
+  IA: 'Iowa', // Iowa Code 9D: تسجيل وكالة سفر + ضمان/تأمين E&O (أُضيفت 6 نوفمبر 2026)
+  MD: 'Maryland', // HB 994: تسجيل بائع سفر + تأمين E&O بمليون دولار (أُضيفت 6 نوفمبر 2026)
   WA: 'Washington',
 };
 
@@ -73,6 +75,8 @@ function restrictedStateFromZip(zip: string): string | null {
   if (z >= 900 && z <= 961) return 'CA';
   if (z >= 320 && z <= 349 && z !== 340) return 'FL'; // 340 = بريد عسكري (AA)
   if (z >= 967 && z <= 968) return 'HI';
+  if (z >= 500 && z <= 528) return 'IA';
+  if (z >= 206 && z <= 219) return 'MD';
   if (z >= 980 && z <= 994) return 'WA';
   return null;
 }
@@ -296,10 +300,11 @@ Deno.serve(async (req) => {
             `signals=${decision.signals.join(',')} radar=${decision.riskLevel} 3ds=${decision.threeDS}`,
         );
         try {
-          await stripe.paymentIntents.cancel(
-            intent.id,
-            decision.markFraudulent ? { cancellation_reason: 'fraudulent' } : {},
-          );
+          // ⚠️ بدون cancellation_reason: 'fraudulent' عمدًا: تعليم الدفعة كاحتيال
+          // قد يضيف بريد الزبون وبصمة بطاقته إلى قوائم الحظر الدائمة في Radar،
+          // فيُحظر زبون حقيقي رُفض بالخطأ من كل محاولاته اللاحقة. قرار البوابة
+          // احتياطي، لا تأكيد احتيال (التأكيد يأتي من البنك عبر Early Fraud Warning).
+          await stripe.paymentIntents.cancel(intent.id);
         } catch (e) {
           console.log('Cancel intent failed', String(e));
         }

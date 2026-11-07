@@ -31,8 +31,8 @@ class _LegalSection {
 class TermsOfServicePage extends StatefulWidget {
   const TermsOfServicePage({super.key});
 
-  static const String _lastUpdatedEn = 'November 2, 2026';
-  static const String _lastUpdatedAr = '2 نوفمبر 2026';
+  static const String _lastUpdatedEn = 'November 6, 2026';
+  static const String _lastUpdatedAr = '6 نوفمبر 2026';
 
   /// بريد خدمة العملاء (موحّد في كل الصفحات القانونية). يجب أن يصل فعلًا.
   static const String _contactEmail = 'support@flynoom.com';
@@ -60,9 +60,9 @@ class TermsOfServicePage extends StatefulWidget {
       titleEn: '3. Eligibility and Where We Operate',
       titleAr: '3. الأهلية ونطاق عملنا',
       bodyEn:
-      'You must be at least 18 years old and able to form a binding contract to create an account or make a booking. You are responsible for keeping your login details secure and for all activity under your account. The Service is intended for customers in the United States. At this time, we do not accept bookings from residents of California, Florida, Hawaii, Maryland, or Washington. By booking, you confirm that you are not a resident of any of these states. We may update this list as our registrations change. We also do not offer bookings in countries or regions subject to comprehensive U.S. sanctions (currently Cuba, Iran, North Korea, and the Crimea, Donetsk, and Luhansk regions of Ukraine), or to persons on U.S. government sanctions lists.',
+      'You must be at least 18 years old and able to form a binding contract to create an account or make a booking. You are responsible for keeping your login details secure and for all activity under your account. The Service is intended for customers in the United States. At this time, we do not accept bookings from residents of California, Florida, Hawaii, Iowa, Maryland, or Washington. By booking, you confirm that you are not a resident of any of these states. We may update this list as our registrations change. We also do not offer bookings in countries or regions subject to comprehensive U.S. sanctions (currently Cuba, Iran, North Korea, and the Crimea, Donetsk, and Luhansk regions of Ukraine), or to persons on U.S. government sanctions lists.',
       bodyAr:
-      'يجب أن يكون عمرك 18 عامًا على الأقل وأن تكون قادرًا على إبرام عقد ملزم لإنشاء حساب أو إجراء حجز. أنت مسؤول عن الحفاظ على سرية بيانات دخولك وعن كل نشاط يتم عبر حسابك. الخدمة موجهة للعملاء داخل الولايات المتحدة. ولا نقبل حاليًا حجوزات من المقيمين في ولايات كاليفورنيا وفلوريدا وهاواي وماريلاند وواشنطن. بإجرائك الحجز، فإنك تؤكد أنك لست مقيمًا في أي من هذه الولايات. قد نحدّث هذه القائمة بحسب تغيّر تسجيلاتنا. كما لا نقدّم حجوزات في الدول أو المناطق الخاضعة لعقوبات أمريكية شاملة (حاليًا كوبا وإيران وكوريا الشمالية ومناطق القرم ودونيتسك ولوغانسك في أوكرانيا)، ولا للأشخاص المدرجين في قوائم العقوبات الحكومية الأمريكية.',
+      'يجب أن يكون عمرك 18 عامًا على الأقل وأن تكون قادرًا على إبرام عقد ملزم لإنشاء حساب أو إجراء حجز. أنت مسؤول عن الحفاظ على سرية بيانات دخولك وعن كل نشاط يتم عبر حسابك. الخدمة موجهة للعملاء داخل الولايات المتحدة. ولا نقبل حاليًا حجوزات من المقيمين في ولايات كاليفورنيا وفلوريدا وهاواي وآيوا وماريلاند وواشنطن. بإجرائك الحجز، فإنك تؤكد أنك لست مقيمًا في أي من هذه الولايات. قد نحدّث هذه القائمة بحسب تغيّر تسجيلاتنا. كما لا نقدّم حجوزات في الدول أو المناطق الخاضعة لعقوبات أمريكية شاملة (حاليًا كوبا وإيران وكوريا الشمالية ومناطق القرم ودونيتسك ولوغانسك في أوكرانيا)، ولا للأشخاص المدرجين في قوائم العقوبات الحكومية الأمريكية.',
     ),
     _LegalSection(
       titleEn: '4. Prices, Currency, and Fees',

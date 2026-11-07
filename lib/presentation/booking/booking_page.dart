@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/independent_service_notice.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/utils/formatters.dart';
@@ -572,6 +573,9 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                       bn: 'টাকাটি আপনার কার্ডে আটকে রাখা হয় এবং হোটেল নিশ্চিত করলে তবেই কাটা হয়।'),
                   style: const TextStyle(fontSize: 12, color: AppColors.textHint),
                 ),
+                const Divider(height: AppSizes.lg),
+                // بيانات البائع قبل الدفع (ماساتشوستس 940 CMR 15).
+                const IndependentServiceNotice(showSeller: true, padding: EdgeInsets.zero),
               ],
             ),
           ),
@@ -679,6 +683,8 @@ class _BookingPageState extends ConsumerState<BookingPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // قبل طلب أي بيانات شخصية (إلينوي SB 2013 / ماساتشوستس 940 CMR 15).
+              const IndependentServiceNotice(showSeller: true, padding: EdgeInsets.only(bottom: AppSizes.md)),
               Text(
                 _tb(context,
                     ar: 'بيانات صاحب الحجز (كما في الهوية)',
@@ -873,15 +879,15 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                 if (v && _acceptedTerms) _errorMessage = null;
               }),
               text: _tb(context,
-                  ar: 'أؤكد أنني لست مقيمًا في كاليفورنيا أو فلوريدا أو هاواي أو ماريلاند أو واشنطن.',
-                  en: 'I confirm that I am not a resident of California, Florida, Hawaii, Maryland, or Washington.',
-                  es: 'Confirmo que no resido en California, Florida, Hawái, Maryland ni Washington.',
-                  tr: 'California, Florida, Hawaii, Maryland veya Washington\'da ikamet etmediğimi onaylıyorum.',
-                  id: 'Saya menyatakan bahwa saya bukan penduduk California, Florida, Hawaii, Maryland, atau Washington.',
-                  hi: 'मैं पुष्टि करता/करती हूं कि मैं कैलिफ़ोर्निया, फ़्लोरिडा, हवाई, मैरीलैंड या वॉशिंगटन का निवासी नहीं हूं।',
-                  ur: 'میں تصدیق کرتا/کرتی ہوں کہ میں کیلیفورنیا، فلوریڈا، ہوائی، میری لینڈ یا واشنگٹن کا رہائشی نہیں ہوں۔',
-                  fr: 'Je confirme ne pas résider en Californie, en Floride, à Hawaï, dans le Maryland ou dans l\'État de Washington.',
-                  bn: 'আমি নিশ্চিত করছি যে আমি ক্যালিফোর্নিয়া, ফ্লোরিডা, হাওয়াই, মেরিল্যান্ড বা ওয়াশিংটনের বাসিন্দা নই।'),
+                  ar: 'أؤكد أنني لست مقيمًا في كاليفورنيا أو فلوريدا أو هاواي أو آيوا أو ماريلاند أو واشنطن.',
+                  en: 'I confirm that I am not a resident of California, Florida, Hawaii, Iowa, Maryland, or Washington.',
+                  es: 'Confirmo que no resido en California, Florida, Hawái, Iowa, Maryland ni Washington.',
+                  tr: 'California, Florida, Hawaii, Iowa, Maryland veya Washington\'da ikamet etmediğimi onaylıyorum.',
+                  id: 'Saya menyatakan bahwa saya bukan penduduk California, Florida, Hawaii, Iowa, Maryland, atau Washington.',
+                  hi: 'मैं पुष्टि करता/करती हूं कि मैं कैलिफ़ोर्निया, फ़्लोरिडा, हवाई, आयोवा, मैरीलैंड या वॉशिंगटन का निवासी नहीं हूं।',
+                  ur: 'میں تصدیق کرتا/کرتی ہوں کہ میں کیلیفورنیا، فلوریڈا، ہوائی، آئیووا، میری لینڈ یا واشنگٹن کا رہائشی نہیں ہوں۔',
+                  fr: 'Je confirme ne pas résider en Californie, en Floride, à Hawaï, dans l\'Iowa, dans le Maryland ou dans l\'État de Washington.',
+                  bn: 'আমি নিশ্চিত করছি যে আমি ক্যালিফোর্নিয়া, ফ্লোরিডা, হাওয়াই, আইওয়া, মেরিল্যান্ড বা ওয়াশিংটনের বাসিন্দা নই।'),
             ),
           ],
         ),

@@ -1,5 +1,6 @@
 import '../../fast_scroll_behavior.dart';
 import 'dart:async';
+import '../../core/widgets/independent_service_notice.dart';
 import '../../core/config/features.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 import 'widgets/us_destinations_section.dart';
@@ -2225,10 +2226,12 @@ class _SearchResults extends ConsumerWidget {
             : ListView.builder(
           controller: scrollController,
           padding: const EdgeInsets.all(AppSizes.md),
-          itemCount: filteredHotels.length + 1,
+          // +2: إفصاح "خدمة مستقلة" أولًا (إلينوي SB 2013)، ثم الفنادق، ثم الفوتر.
+          itemCount: filteredHotels.length + 2,
           itemBuilder: (context, index) {
-            if (index == filteredHotels.length) return const AppFooter();
-            return _HotelCard(hotel: filteredHotels[index], searchParams: params, holySite: holySite);
+            if (index == 0) return const IndependentServiceNotice(padding: EdgeInsets.only(bottom: AppSizes.sm));
+            if (index == filteredHotels.length + 1) return const AppFooter();
+            return _HotelCard(hotel: filteredHotels[index - 1], searchParams: params, holySite: holySite);
           },
         );
 
