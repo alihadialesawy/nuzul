@@ -18,6 +18,7 @@ import '../../data/models/selected_room.dart';
 import '../../localization/app_localizations.dart';
 import '../auth/controllers/auth_controller.dart';
 import '../../data/repositories/hotelbeds_repository.dart';
+import '../../data/repositories/hotel_info_repository.dart';
 
 /// صور HotelBeds متوفرة بعدة مقاسات حسب المسار:
 ///   giata/ ≈320px · giata/bigger/ ≈800px · giata/xl/ ≈1024px · giata/xxl/ ≈2048px
@@ -231,12 +232,23 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
   /// null = الصفحة فُتحت بدون بحث أو انتهت صلاحية الأسعار.
   HotelBedsResult? _hbResult;
 
+  /// معلومات الفندق الحقيقية (العنوان، أوقات الوصول/المغادرة، المعالم القريبة).
+  /// null حتى تصل، أو إن لم تتوفر — فتبقى النصوص العامة.
+  HotelInfo? _info;
+
+  Future<void> _loadInfo() async {
+    final info = await HotelInfoRepository().fetch(widget.hotel.id);
+    if (!mounted || info == null) return;
+    setState(() => _info = info);
+  }
+
   bool get _isHotelBeds => widget.hotel.id.startsWith('hb_');
 
   @override
   void initState() {
     super.initState();
     if (_isHotelBeds) {
+      _loadInfo();
       _hbResult = HotelBedsSearchCache.lookup(
         code: widget.hotel.id.replaceFirst('hb_', ''),
         checkIn: widget.checkIn,
@@ -772,6 +784,13 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                         ),
                       ),
                     ),
+                    if (_info != null &&
+                        (_info!.address != null ||
+                            _info!.pointsOfInterest.isNotEmpty ||
+                            _info!.terminals.isNotEmpty)) ...[
+                      const SizedBox(height: AppSizes.sm),
+                      _RealAreaCard(info: _info!),
+                    ],
 
                     const SizedBox(height: AppSizes.md),
 
@@ -781,7 +800,7 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                       ),
                       const SizedBox(height: AppSizes.md),
                     ],
-                    const _PoliciesSection(),
+                    _PoliciesSection(info: _info),
 
                     const AppFooter(),
                   ],
@@ -1853,8 +1872,78 @@ String _policyText(
 /// (مش مسحوبة من HotelBeds لكل فندق تحديدًا، عشان نتجنب استهلاك كوتة
 /// إضافية لكل فتح صفحة فندق). بتُعرض كإرشادات عامة متوقعة، مش كبيانات
 /// دقيقة 100% خاصة بالفندق ده تحديدًا.
+String _fmtDistanceM(double m) =>
+    m < 1000 ? '${m.round()} m' : '${(m / 1000).toStringAsFixed(m < 10000 ? 1 : 0)} km';
+
+/// العنوان الحقيقي + المعالم القريبة + أقرب المطارات/المحطات (من بيانات الفندق).
+class _RealAreaCard extends StatelessWidget {
+  final HotelInfo info;
+  const _RealAreaCard({required this.info});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget row(IconData icon, String text, [String? trailing]) => Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, size: 18, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 13, height: 1.4))),
+        if (trailing != null)
+          Text(trailing, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+      ]),
+    );
+    Widget heading(String t) => Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 6),
+      child: Text(t, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.md),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (info.address != null) ...[
+            heading(_t3(context, ar: 'العنوان', en: 'Address', es: 'Dirección', tr: 'Adres', id: 'Alamat',
+                hi: 'पता', ur: 'پتا', fr: 'Adresse', bn: 'ঠিকানা')),
+            row(Icons.location_on_outlined, info.address!),
+          ],
+          if (info.pointsOfInterest.isNotEmpty) ...[
+            heading(_t3(context, ar: 'أماكن قريبة', en: 'Nearby places', es: 'Lugares cercanos', tr: 'Yakındaki yerler',
+                id: 'Tempat terdekat', hi: 'आस-पास की जगहें', ur: 'قریبی مقامات', fr: 'À proximité', bn: 'কাছাকাছি স্থান')),
+            ...info.pointsOfInterest.map((p) => row(Icons.place_outlined, p.name, _fmtDistanceM(p.distanceM))),
+          ],
+          if (info.terminals.isNotEmpty) ...[
+            heading(_t3(context, ar: 'أقرب المطارات والمحطات', en: 'Nearest airports and stations',
+                es: 'Aeropuertos y estaciones cercanos', tr: 'En yakın havalimanları ve istasyonlar',
+                id: 'Bandara dan stasiun terdekat', hi: 'निकटतम हवाई अड्डे और स्टेशन',
+                ur: 'قریب ترین ہوائی اڈے اور اسٹیشن', fr: 'Aéroports et gares les plus proches',
+                bn: 'নিকটতম বিমানবন্দর ও স্টেশন')),
+            ...info.terminals.map((t) => row(Icons.flight_outlined,
+                t.name != null ? '${t.name} (${t.code})' : t.code, _fmtDistanceM(t.distanceKm * 1000))),
+          ],
+          const SizedBox(height: 4),
+          Text(
+            _t3(context,
+                ar: 'المسافات تقريبية بخط مستقيم، حسب بيانات الفندق.',
+                en: 'Distances are approximate, in a straight line, based on the hotel\'s information.',
+                es: 'Las distancias son aproximadas, en línea recta, según la información del hotel.',
+                tr: 'Mesafeler, otelin bilgilerine göre kuş uçuşu yaklaşık değerlerdir.',
+                id: 'Jarak bersifat perkiraan dalam garis lurus, berdasarkan informasi hotel.',
+                hi: 'दूरियां होटल की जानकारी के आधार पर सीधी रेखा में अनुमानित हैं।',
+                ur: 'فاصلے ہوٹل کی معلومات کے مطابق سیدھی لکیر میں تخمینی ہیں۔',
+                fr: 'Distances approximatives à vol d\'oiseau, selon les informations de l\'hôtel.',
+                bn: 'দূরত্বগুলো হোটেলের তথ্য অনুযায়ী সরলরেখায় আনুমানিক।'),
+            style: const TextStyle(fontSize: 11, color: AppColors.textHint),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
 class _PoliciesSection extends StatelessWidget {
-  const _PoliciesSection();
+  /// معلومات الفندق الحقيقية إن توفرت (أوقات الوصول/المغادرة والعمر).
+  final HotelInfo? info;
+  const _PoliciesSection({this.info});
 
   @override
   Widget build(BuildContext context) {
@@ -1873,25 +1962,67 @@ class _PoliciesSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ⚠️ السياسات هنا عامة عمدًا: لا نعرض أوقاتًا أو أعمارًا أو سياسات أطفال
-                // ثابتة لكل الفنادق (ادعاء مضلل قانونيًا). لاحقًا: جلب السياسات الحقيقية
-                // من HotelBeds Content API وعرض ما يتوفر منها فقط.
+                // ⚠️ لا قيم ثابتة لكل الفنادق (ادعاء مضلل قانونيًا). نعرض أوقات الوصول
+                // والمغادرة والعمر فقط إن جاءت من بيانات الفندق نفسه (hotelbeds-hotel-info).
+                if (info != null && info!.hasPolicies) ...[
+                  _PolicyGroup(
+                    title: _policyText(context, ar: 'من بيانات الفندق', en: 'From the hotel\'s information',
+                        es: 'Según la información del hotel', tr: 'Otelin bilgilerine göre', id: 'Dari informasi hotel',
+                        hi: 'होटल की जानकारी के अनुसार', ur: 'ہوٹل کی معلومات کے مطابق', fr: 'D\'après les informations de l\'hôtel',
+                        bn: 'হোটেলের তথ্য অনুযায়ী'),
+                    lines: [
+                      if (info!.checkIn != null)
+                        _policyText(context,
+                            ar: 'تسجيل الوصول من الساعة ${info!.checkIn}', en: 'Check-in from ${info!.checkIn}',
+                            es: 'Entrada desde las ${info!.checkIn}', tr: 'Giriş saati: ${info!.checkIn} itibarıyla',
+                            id: 'Check-in mulai pukul ${info!.checkIn}', hi: 'चेक-इन ${info!.checkIn} से',
+                            ur: 'چیک اِن ${info!.checkIn} سے', fr: 'Arrivée à partir de ${info!.checkIn}',
+                            bn: 'চেক-ইন ${info!.checkIn} থেকে'),
+                      if (info!.checkOut != null)
+                        _policyText(context,
+                            ar: 'تسجيل المغادرة حتى الساعة ${info!.checkOut}', en: 'Check-out until ${info!.checkOut}',
+                            es: 'Salida hasta las ${info!.checkOut}', tr: 'Çıkış saati: en geç ${info!.checkOut}',
+                            id: 'Check-out paling lambat pukul ${info!.checkOut}', hi: 'चेक-आउट ${info!.checkOut} तक',
+                            ur: 'چیک آؤٹ ${info!.checkOut} تک', fr: 'Départ jusqu\'à ${info!.checkOut}',
+                            bn: 'চেক-আউট ${info!.checkOut} পর্যন্ত'),
+                      if (info!.minAge != null)
+                        _policyText(context,
+                            ar: 'الحد الأدنى لعمر صاحب الحجز عند الوصول: ${info!.minAge} سنة',
+                            en: 'Minimum check-in age: ${info!.minAge}',
+                            es: 'Edad mínima para el registro: ${info!.minAge} años',
+                            tr: 'Asgari giriş yaşı: ${info!.minAge}',
+                            id: 'Usia minimum check-in: ${info!.minAge} tahun',
+                            hi: 'न्यूनतम चेक-इन आयु: ${info!.minAge} वर्ष',
+                            ur: 'چیک اِن کی کم از کم عمر: ${info!.minAge} سال',
+                            fr: 'Âge minimum pour l\'enregistrement : ${info!.minAge} ans',
+                            bn: 'চেক-ইনের ন্যূনতম বয়স: ${info!.minAge} বছর'),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.md),
+                ],
                 _PolicyGroup(
-                  title: _policyText(context, ar: 'تسجيل الوصول والمغادرة والأطفال', en: 'Check-in, check-out, and children',
+                  title: (info != null && info!.hasPolicies)
+                      ? _policyText(context, ar: 'الأطفال والأسرّة الإضافية', en: 'Children and extra beds',
+                      es: 'Niños y camas adicionales', tr: 'Çocuklar ve ilave yataklar', id: 'Anak-anak dan tempat tidur tambahan',
+                      hi: 'बच्चे और अतिरिक्त बिस्तर', ur: 'بچے اور اضافی بستر', fr: 'Enfants et lits d\'appoint',
+                      bn: 'শিশু ও অতিরিক্ত বিছানা')
+                      : _policyText(context, ar: 'تسجيل الوصول والمغادرة والأطفال', en: 'Check-in, check-out, and children',
                       es: 'Entrada, salida y niños', tr: 'Giriş, çıkış ve çocuklar', id: 'Check-in, check-out, dan anak-anak',
                       hi: 'चेक-इन, चेक-आउट और बच्चे', ur: 'چیک اِن، چیک آؤٹ اور بچے', fr: 'Arrivée, départ et enfants',
                       bn: 'চেক-ইন, চেক-আউট ও শিশু'),
                   lines: [
-                    _policyText(context,
-                        ar: 'أوقات تسجيل الوصول والمغادرة، والحد الأدنى للعمر، وسياسات الأطفال والأسرّة الإضافية يحددها كل فندق وتختلف من فندق لآخر.',
-                        en: 'Check-in and check-out times, minimum check-in age, and policies on children and extra beds are set by each hotel and vary by property.',
-                        es: 'Los horarios de entrada y salida, la edad mínima para el registro y las políticas sobre niños y camas adicionales los fija cada hotel y varían según el alojamiento.',
-                        tr: 'Giriş ve çıkış saatleri, asgari giriş yaşı ile çocuklar ve ilave yataklarla ilgili politikalar her otel tarafından belirlenir ve tesise göre değişir.',
-                        id: 'Waktu check-in dan check-out, usia minimum check-in, serta kebijakan tentang anak-anak dan tempat tidur tambahan ditetapkan oleh masing-masing hotel dan berbeda-beda.',
-                        hi: 'चेक-इन और चेक-आउट का समय, न्यूनतम चेक-इन आयु, और बच्चों व अतिरिक्त बिस्तरों से जुड़ी नीतियां हर होटल तय करता है और ये होटल के अनुसार अलग होती हैं।',
-                        ur: 'چیک اِن اور چیک آؤٹ کے اوقات، چیک اِن کی کم از کم عمر، اور بچوں اور اضافی بستروں سے متعلق پالیسیاں ہر ہوٹل خود طے کرتا ہے اور یہ ہوٹل کے لحاظ سے مختلف ہوتی ہیں۔',
-                        fr: 'Les heures d\'arrivée et de départ, l\'âge minimum requis et les politiques concernant les enfants et les lits d\'appoint sont fixés par chaque hôtel et varient selon l\'établissement.',
-                        bn: 'চেক-ইন ও চেক-আউটের সময়, চেক-ইনের ন্যূনতম বয়স এবং শিশু ও অতিরিক্ত বিছানা সংক্রান্ত নীতি প্রতিটি হোটেল নিজে নির্ধারণ করে এবং তা হোটেলভেদে ভিন্ন হয়।'),
+                    // يظهر فقط حين لا تتوفر أوقات الفندق الحقيقية (وإلا يكون مكررًا).
+                    if (info == null || !info!.hasPolicies)
+                      _policyText(context,
+                          ar: 'أوقات تسجيل الوصول والمغادرة، والحد الأدنى للعمر، وسياسات الأطفال والأسرّة الإضافية يحددها كل فندق وتختلف من فندق لآخر.',
+                          en: 'Check-in and check-out times, minimum check-in age, and policies on children and extra beds are set by each hotel and vary by property.',
+                          es: 'Los horarios de entrada y salida, la edad mínima para el registro y las políticas sobre niños y camas adicionales los fija cada hotel y varían según el alojamiento.',
+                          tr: 'Giriş ve çıkış saatleri, asgari giriş yaşı ile çocuklar ve ilave yataklarla ilgili politikalar her otel tarafından belirlenir ve tesise göre değişir.',
+                          id: 'Waktu check-in dan check-out, usia minimum check-in, serta kebijakan tentang anak-anak dan tempat tidur tambahan ditetapkan oleh masing-masing hotel dan berbeda-beda.',
+                          hi: 'चेक-इन और चेक-आउट का समय, न्यूनतम चेक-इन आयु, और बच्चों व अतिरिक्त बिस्तरों से जुड़ी नीतियां हर होटल तय करता है और ये होटल के अनुसार अलग होती हैं।',
+                          ur: 'چیک اِن اور چیک آؤٹ کے اوقات، چیک اِن کی کم از کم عمر، اور بچوں اور اضافی بستروں سے متعلق پالیسیاں ہر ہوٹل خود طے کرتا ہے اور یہ ہوٹل کے لحاظ سے مختلف ہوتی ہیں۔',
+                          fr: 'Les heures d\'arrivée et de départ, l\'âge minimum requis et les politiques concernant les enfants et les lits d\'appoint sont fixés par chaque hôtel et varient selon l\'établissement.',
+                          bn: 'চেক-ইন ও চেক-আউটের সময়, চেক-ইনের ন্যূনতম বয়স এবং শিশু ও অতিরিক্ত বিছানা সংক্রান্ত নীতি প্রতিটি হোটেল নিজে নির্ধারণ করে এবং তা হোটেলভেদে ভিন্ন হয়।'),
                     _policyText(context,
                         ar: 'تظهر التفاصيل المتوفرة في تأكيد الحجز. إن كنت تسافر مع أطفال أو تحتاج إلى سرير إضافي أو ستصل متأخرًا، فيُرجى التأكد من الفندق قبل الوصول.',
                         en: 'Available details appear in your booking confirmation. If you are traveling with children, need an extra bed, or will arrive late, please check with the hotel before you arrive.',
