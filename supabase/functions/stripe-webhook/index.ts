@@ -30,7 +30,7 @@ import {
   round2,
   toNum,
 } from '../_shared/hotelbeds.ts';
-import { sendEmail } from '../_shared/email.ts';
+import { cancellationEmail, sendEmail } from '../_shared/email.ts';
 import { upsertDispute } from '../_shared/disputes.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
@@ -130,6 +130,12 @@ async function handleEarlyFraudWarning(efw: any): Promise<{ action: string; book
     failure_reason: refundError ? `EFW refund failed: ${refundError}` : 'early_fraud_warning',
     updated_at: new Date().toISOString(),
   }).eq('id', booking.id);
+
+  // إشعار الضيف: الحجز أُلغي والمبلغ أُعيد (رسالة الإلغاء العادية، دون ذكر الاحتيال).
+  // ضروري حتى لا يصل أحد إلى الفندق ومعه بريد تأكيد لحجز لم يعد موجودًا.
+  if (!refundError) {
+    await sendEmail(booking.holder_email, cancellationEmail(booking, 0, charge, { byFlynoom: true })).catch(() => false);
+  }
 
   return { action: refundError ? 'hotel_cancelled_refund_failed' : 'auto_cancelled_refunded', booking };
 }

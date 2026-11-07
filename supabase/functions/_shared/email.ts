@@ -169,7 +169,14 @@ ${row('Lead guest', esc([b.holder_first_name, b.holder_last_name].filter(Boolean
   };
 }
 
-export function cancellationEmail(b: any, fee: number, refund: number): { subject: string; html: string } {
+/// opts.byFlynoom: الإلغاء تم من طرفنا (مثل تنبيه من البنك) لا بطلب الضيف — نص محايد
+/// لا يذكر الاحتيال، ويدعو للتواصل مع الدعم.
+export function cancellationEmail(
+  b: any,
+  fee: number,
+  refund: number,
+  opts: { byFlynoom?: boolean } = {},
+): { subject: string; html: string } {
   const content =
     section('Cancelled booking', `<table style="border-collapse:collapse">
 ${row('Hotel', esc(b.hotel_name))}
@@ -188,7 +195,10 @@ ${row('Refund', `${usd(refund)} USD`)}
     subject: `Booking cancelled: ${b.hotel_name} (Ref ${b.supplier_reference})`,
     html: layout(
       'Your booking has been cancelled',
-      `Hi ${esc(b.holder_first_name ?? '')}, your booking has been cancelled as requested.`,
+      opts.byFlynoom
+        ? `Hi ${esc(b.holder_first_name ?? '')}, we were unable to keep this booking, so it has been cancelled and your payment refunded in full. ` +
+          `If you didn't expect this or still need a room, please contact support@flynoom.com.`
+        : `Hi ${esc(b.holder_first_name ?? '')}, your booking has been cancelled as requested.`,
       content,
     ),
   };

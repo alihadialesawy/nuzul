@@ -108,14 +108,18 @@ Deno.serve(async (req) => {
     if (!user) return fail('unauthorized', 'Please sign in to book.');
 
     // ───── حد محاولات الدفع (يمنع "اختبار البطاقات" المسروقة عبر حسابنا) ─────
-    // كل محاولة تُنشئ صف حجز، فنعدّ صفوف الحساب في آخر ساعة.
+    // كل محاولة تُنشئ صف حجز، فنعدّ صفوف الحساب الفاشلة بسبب البطاقة في آخر ساعة.
     {
       const since = new Date(Date.now() - 3600 * 1000).toISOString();
       const { count } = await admin
         .from('bookings')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .gte('created_at', since);
+        .gte('created_at', since)
+        // نحسب فقط المحاولات المرتبطة بالبطاقة: دفع لم يكتمل (رفض البنك/Radar أو
+        // ترك النافذة) أو رفض من بوابة الاحتيال. لا نحسب فشل المورد (تغيّر السعر،
+        // خطأ HotelBeds) ولا الحجوزات الناجحة، حتى لا يُعاقب زبون حقيقي على خطأ غيره.
+        .or('status.eq.awaiting_payment,failure_reason.like.risk_rejected*');
       if ((count ?? 0) >= MAX_ATTEMPTS_PER_HOUR) {
         console.log(`RATE LIMITED user=${user.id} attempts=${count}`);
         return fail(
