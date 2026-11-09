@@ -124,10 +124,21 @@ extension AppCurrencySymbol on AppCurrency {
   }
 }
 
+/// اختيار عملة العرض معطّل حاليًا: Flynoom للمقيمين في الولايات المتحدة فقط،
+/// والدفع دائمًا بالدولار. عرض سعر تقريبي بعملة أخرى يختلف عمّا يُسحب فعلًا
+/// (خطر قانون الرسوم المخفية FTC)، ويوحي باستهداف مقيمين خارج أمريكا.
+/// لإعادة تفعيله عند التوسع لدول أخرى: اجعله true (يظهر الزر في الشريط العلوي
+/// والفوتر تلقائيًا).
+const bool kCurrencySelectorEnabled = false;
+
 class CurrencyNotifier extends StateNotifier<AppCurrency> {
   CurrencyNotifier() : super(AppCurrency.usd);
 
-  void select(AppCurrency currency) => state = currency;
+  void select(AppCurrency currency) {
+    // وهو معطّل: الدولار دائمًا، مهما استُدعيت الدالة من أي مكان.
+    if (!kCurrencySelectorEnabled && currency != AppCurrency.usd) return;
+    state = currency;
+  }
 }
 
 final selectedCurrencyProvider =

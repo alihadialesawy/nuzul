@@ -31,6 +31,21 @@ String independentServiceText(BuildContext c) => _pick(c, const {
   'bn': 'Flynoom একটি স্বাধীন বুকিং সেবা এবং দেখানো হোটেলগুলোর সাথে সম্পর্কিত নয়। আপনি সরাসরি হোটেলের সাথে নয়, Flynoom-এর মাধ্যমে বুকিং করছেন।',
 });
 
+/// "Flynoom متاح للمقيمين في الولايات المتحدة فقط" — يظهر مع الإفصاح في النتائج
+/// وصفحة الفندق وصفحة الحجز، حتى يعرف الزائر من خارج أمريكا قبل أن يختار فندقًا
+/// (لا عند الدفع فقط). الخادم يفرضه أيضًا (رمز بريدي أمريكي، hotelbeds-book).
+String usResidentsOnlyText(BuildContext c) => _pick(c, const {
+  'ar': 'الحجز عبر Flynoom متاح للمقيمين في الولايات المتحدة فقط، ببطاقة عنوان فاتورتها أمريكي. ويمكنك الحجز لنزلاء من أي بلد.',
+  'en': 'Booking on Flynoom is available only to U.S. residents, with a card that has a U.S. billing address. You can book for guests from any country.',
+  'es': 'Las reservas en Flynoom solo están disponibles para residentes de EE. UU., con una tarjeta con dirección de facturación en EE. UU. Puedes reservar para huéspedes de cualquier país.',
+  'tr': 'Flynoom üzerinden rezervasyon yalnızca ABD\'de ikamet edenler içindir ve ABD fatura adresli bir kart gerekir. Her ülkeden misafir için rezervasyon yapabilirsiniz.',
+  'id': 'Pemesanan di Flynoom hanya tersedia bagi penduduk AS, dengan kartu yang memiliki alamat penagihan di AS. Anda dapat memesan untuk tamu dari negara mana pun.',
+  'hi': 'Flynoom पर बुकिंग केवल अमेरिका के निवासियों के लिए है, ऐसे कार्ड से जिसका बिलिंग पता अमेरिका का हो। आप किसी भी देश के मेहमानों के लिए बुकिंग कर सकते हैं।',
+  'ur': 'Flynoom پر بکنگ صرف امریکہ کے رہائشیوں کے لیے ہے، ایسے کارڈ سے جس کا بلنگ ایڈریس امریکہ کا ہو۔ آپ کسی بھی ملک کے مہمانوں کے لیے بکنگ کر سکتے ہیں۔',
+  'fr': 'La réservation sur Flynoom est réservée aux résidents des États-Unis, avec une carte dont l\'adresse de facturation est aux États-Unis. Vous pouvez réserver pour des voyageurs de n\'importe quel pays.',
+  'bn': 'Flynoom-এ বুকিং শুধু মার্কিন যুক্তরাষ্ট্রের বাসিন্দাদের জন্য, এমন কার্ডে যার বিলিং ঠিকানা যুক্তরাষ্ট্রে। আপনি যেকোনো দেশের অতিথির জন্য বুকিং করতে পারেন।',
+});
+
 /// "البائع: FLYNOOM LLC · العنوان · الهاتف · البريد"
 String sellerDetailsText(BuildContext c) {
   final label = _pick(c, const {
@@ -74,9 +89,16 @@ class IndependentServiceNotice extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(independentServiceText(context), style: TextStyle(fontSize: 12, color: color)),
+                const SizedBox(height: 2),
+                Text(
+                  usResidentsOnlyText(context),
+                  style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
+                ),
                 if (showSeller) ...[
                   const SizedBox(height: 2),
-                  SelectableText(sellerDetailsText(context), style: TextStyle(fontSize: 12, color: color)),
+                  // Text لا SelectableText: على الويب يتحول SelectableText إلى textarea
+                  // معطّل بلا اسم (Lighthouse: "Form elements do not have associated labels").
+                  Text(sellerDetailsText(context), style: TextStyle(fontSize: 12, color: color)),
                 ],
               ],
             ),

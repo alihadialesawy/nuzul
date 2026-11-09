@@ -195,7 +195,7 @@ class _ContentGuidelinesPageState extends State<ContentGuidelinesPage> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  SelectableText(
+                  Text(
                     s.$2,
                     style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary),
                   ),

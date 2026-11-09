@@ -141,11 +141,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ar: 'لم تفعّل حسابك بعد. افتح رسالة التفعيل في بريدك واضغط الرابط، ثم سجّل الدخول.',
               en: "Your account isn't activated yet. Open the confirmation email and tap the link, then sign in.",
               es: 'Tu cuenta aún no está activada. Abre el correo de confirmación y toca el enlace; luego inicia sesión.')
+              : _isInvalidCredentials(m)
+              ? _t3(context,
+              ar: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+              en: 'Incorrect email or password.',
+              es: 'Correo o contraseña incorrectos.')
               : message;
         });
       },
     );
   }
+
+  /// رسالة "بيانات الدخول غير صحيحة" قد تصل من Supabase بالإنجليزية أو من
+  /// طبقة المستودع بالعربية؛ نعرضها دائمًا بلغة الواجهة.
+  bool _isInvalidCredentials(String m) =>
+      m.contains('invalid login credentials') ||
+          m.contains('invalid_credentials') ||
+          m.contains('غير صحيحة');
 
   Future<void> _resendConfirmation() async {
     final email = _emailController.text.trim();
@@ -207,22 +219,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     } catch (_) {}
     if (!mounted) return;
 
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(_t3(ctx, ar: 'تحقق من بريدك', en: 'Check your email', es: 'Revisa tu correo')),
-        content: Text(_t3(ctx,
-            ar: 'إذا كان هناك حساب بالبريد $email فستصلك رسالة فيها رابط لتعيين كلمة مرور جديدة. '
-                'افتح الرابط على هذا الجهاز وهذا المتصفح نفسه. تحقق أيضًا من مجلد Spam.',
-            en: "If an account exists for $email, you'll receive an email with a link to set a new password. "
-                'Open the link on this same device and browser. Check your spam folder too.',
-            es: 'Si existe una cuenta con $email, recibirás un correo con un enlace para crear una nueva contraseña. '
-                'Ábrelo en este mismo dispositivo y navegador. Revisa también la carpeta de spam.')),
-        actions: [
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-        ],
-      ),
-    );
+    // ننتقل مباشرة لصفحة الرمز: يكتب الزبون الرمز المكوّن من 6 أرقام الذي
+    // وصله (يعمل مهما فتح الإيميل)، أو يضغط الرابط على نفس المتصفح.
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 8),
+      content: Text(_t3(context,
+          ar: 'إذا كان هناك حساب بالبريد $email فستصلك رسالة فيها رمز من 6 أرقام. تحقق أيضًا من مجلد Spam.',
+          en: "If an account exists for $email, you'll receive an email with a 6-digit code. Check your spam folder too.",
+          es: 'Si existe una cuenta con $email, recibirás un correo con un código de 6 dígitos. Revisa también la carpeta de spam.')),
+    ));
+    context.go('${AppRoutes.resetPassword}?email=${Uri.encodeComponent(email)}');
   }
 
   /// تسجيل الدخول عبر Google (Supabase OAuth، تدفق PKCE الافتراضي).
@@ -567,9 +573,9 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
             children: [
               Text(
                 _t3(context,
-                    ar: 'أدخل بريدك الإلكتروني وسنرسل لك رابطًا لتعيين كلمة مرور جديدة.',
-                    en: "Enter your email and we'll send you a link to set a new password.",
-                    es: 'Introduce tu correo y te enviaremos un enlace para crear una nueva contraseña.'),
+                    ar: 'أدخل بريدك الإلكتروني وسنرسل لك رمزًا من 6 أرقام لتعيين كلمة مرور جديدة.',
+                    en: "Enter your email and we'll send you a 6-digit code to set a new password.",
+                    es: 'Introduce tu correo y te enviaremos un código de 6 dígitos para crear una nueva contraseña.'),
               ),
               const SizedBox(height: AppSizes.md),
               TextFormField(
@@ -590,7 +596,7 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
         ),
         FilledButton(
           onPressed: _submit,
-          child: Text(_t3(context, ar: 'أرسل الرابط', en: 'Send link', es: 'Enviar enlace')),
+          child: Text(_t3(context, ar: 'أرسل الرمز', en: 'Send code', es: 'Enviar código')),
         ),
       ],
     );

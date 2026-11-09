@@ -8,6 +8,8 @@ import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
 import '../providers/locale_provider.dart';
 import 'currency_selector_button.dart';
+import 'usd_currency_badge.dart';
+import '../providers/currency_provider.dart';
 import '../../presentation/auth/controllers/auth_controller.dart';
 import '../../presentation/auth/controllers/admin_controller.dart';
 
@@ -188,7 +190,10 @@ class _BannerIconWrap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // MergeSemantics: يدمج الزر وأيقونته ونص التلميح في عقدة وصول واحدة.
+    // بدونه يولّد Flutter Web سمة aria-owns تشير إلى عقد أبناء غير موجودة
+    // (Lighthouse: "[aria-*] attributes do not have valid values").
+    return MergeSemantics(child: Container(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.14),
         shape: BoxShape.circle,
@@ -206,7 +211,7 @@ class _BannerIconWrap extends StatelessWidget {
         ),
         child: child,
       ),
-    );
+    ));
   }
 }
 
@@ -225,9 +230,11 @@ class _BannerAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: label,
-      child: _BannerIconWrap(child: child),
+    return MergeSemantics(
+      child: Tooltip(
+        message: label,
+        child: _BannerIconWrap(child: child),
+      ),
     );
   }
 }
@@ -547,10 +554,20 @@ class AppBanner extends ConsumerWidget implements PreferredSizeWidget {
                                   _BannerDivider(horizontalMargin: dividerMargin),
                                 ],
 
-                                _BannerAction(
-                                  label: appBannerText(context, ar: 'العملة', en: 'Currency', es: 'Moneda', tr: 'Para birimi', id: 'Mata uang', hi: 'मुद्रा', ur: 'کرنسی', fr: 'Devise', bn: 'মুদ্রা'),
-                                  child: const CurrencySelectorButton(),
-                                ),
+                                // العملات معطّلة حاليًا (الدولار فقط) — انظر currency_provider.dart.
+                                if (kCurrencySelectorEnabled)
+                                  _BannerAction(
+                                    label: appBannerText(context, ar: 'العملة', en: 'Currency', es: 'Moneda', tr: 'Para birimi', id: 'Mata uang', hi: 'मुद्रा', ur: 'کرنسی', fr: 'Devise', bn: 'মুদ্রা'),
+                                    child: const CurrencySelectorButton(),
+                                  )
+                                else
+                                // علامة ثابتة 🇺🇸 USD (غير قابلة للضغط): الأسعار بالدولار دائمًا.
+                                  const _BannerIconWrap(
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+                                      child: UsdCurrencyBadge(),
+                                    ),
+                                  ),
                                 _BannerIconWrap(
                                   child: PopupMenuButton<Locale>(
                                     tooltip: appBannerText(context, ar: 'اللغة', en: 'Language', es: 'Idioma', tr: 'Dil', id: 'Bahasa', hi: 'भाषा', ur: 'زبان', fr: 'Langue', bn: 'ভাষা'),

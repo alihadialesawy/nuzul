@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/a11y_tap.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -692,7 +693,7 @@ class ProfilePage extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: AppSizes.sm),
-                    GestureDetector(
+                    A11yTap(
                       onTap: () async {
                         final picked = await showDatePicker(
                           context: sheetContext,
@@ -759,7 +760,7 @@ class ProfilePage extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: AppSizes.sm),
-                    GestureDetector(
+                    A11yTap(
                       onTap: () async {
                         final now = DateTime.now();
                         final picked = await showDatePicker(
@@ -1891,7 +1892,7 @@ class _ProfileMainContent extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: AppSizes.sm),
-                  GestureDetector(
+                  A11yTap(
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: sheetContext,
@@ -2286,7 +2287,7 @@ class _ProfileMainContent extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: AppSizes.sm),
-                    GestureDetector(
+                    A11yTap(
                       onTap: () async {
                         final now = DateTime.now();
                         final picked = await showDatePicker(

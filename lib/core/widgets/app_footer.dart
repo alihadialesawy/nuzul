@@ -7,6 +7,8 @@ import '../config/features.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
 import 'currency_selector_button.dart';
+import 'usd_currency_badge.dart';
+import '../providers/currency_provider.dart';
 
 /// فوتر مشترك يُضاف في نهاية كل صفحة رئيسية بالتطبيق. كل قسم
 /// (Support/Discover/Terms/About) عمود مستقل بجانب الباقي،
@@ -421,7 +423,11 @@ class AppFooter extends StatelessWidget {
               spacing: AppSizes.md,
               runSpacing: AppSizes.sm,
               children: [
-                const CurrencySelectorButton(footerStyle: true),
+                // العملات معطّلة حاليًا (الدولار فقط) — انظر currency_provider.dart.
+                if (kCurrencySelectorEnabled)
+                  const CurrencySelectorButton(footerStyle: true)
+                else
+                  const UsdCurrencyBadge(footerStyle: true),
                 _SocialLinks(label: _followUsLabel(languageCode)),
               ],
             ),

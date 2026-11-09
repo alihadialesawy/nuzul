@@ -118,6 +118,32 @@ function restrictedStateFromIntent(intent: any): string | null {
   return zip ? restrictedStateFromZip(zip) : null;
 }
 
+/// الخدمة للمقيمين في الولايات المتحدة فقط (شروط الخدمة، البند 3).
+/// نتحقق من عنوان فاتورة البطاقة: رمز بريدي أمريكي صحيح من 5 أرقام، ودولة US
+/// إن أرسلها Stripe. لا نرفض البطاقات الأجنبية بحد ذاتها (كثير من الجاليات
+/// يحملون بطاقات من بلدانهم) — المهم عنوان فاتورة داخل أمريكا.
+/// يمكن تعطيله مؤقتًا بالسر REQUIRE_US_BILLING=false (مثلًا إن ظهر أن تطبيق
+/// الجوال لا يرسل الرمز البريدي).
+const REQUIRE_US_BILLING = (Deno.env.get('REQUIRE_US_BILLING') ?? 'true').toLowerCase() !== 'false';
+
+/// يرجع سبب الرفض إن لم يكن عنوان الفاتورة أمريكيًا، أو null.
+function nonUsBillingReason(intent: any): string | null {
+  const pm = intent?.payment_method;
+  if (!pm || typeof pm !== 'object') return null; // لا نعرف: لا نرفض (يُسجَّل أدناه)
+  const addr = pm.billing_details?.address ?? {};
+  const country = String(addr.country ?? '').toUpperCase();
+  if (country && country !== 'US') return `billing_country:${country}`;
+  const zip = String(addr.postal_code ?? '').trim();
+  if (!zip) return 'billing_zip_missing';
+  const digits = zip.replace(/-/g, '');
+  if (!/^\d{5}(\d{4})?$/.test(digits)) return 'billing_zip_not_us';
+  // البريد العسكري الأمريكي (APO/FPO) عنوان أمريكي صحيح لكنه ليس ضمن جدول الولايات.
+  const z3 = Number(digits.slice(0, 3));
+  const military = (z3 >= 90 && z3 <= 98) || z3 === 340 || (z3 >= 962 && z3 <= 966);
+  if (!military && !usStateFromZip(digits.slice(0, 5))) return 'billing_zip_not_us';
+  return null;
+}
+
 /// رسائل HotelBeds التي تعني أن الحجز لم يتم يقينًا، حتى لو جاءت برمز 5xx.
 const PRICE_CHANGED_PATTERN = /price has changed|price difference exceeds/i;
 const DEFINITE_REJECT_PATTERN =
@@ -200,6 +226,25 @@ Deno.serve(async (req) => {
         `We can't accept bookings from residents of ${RESTRICTED_STATE_NAMES[restricted]} yet. ` +
           'Your card has not been charged.',
       );
+    }
+
+    // ───── المقيمون في أمريكا فقط (عنوان فاتورة أمريكي) ─────
+    if (REQUIRE_US_BILLING) {
+      const nonUs = nonUsBillingReason(intent);
+      if (nonUs) {
+        console.log(`NON-US BILLING ${booking.client_reference}: ${nonUs}`);
+        try {
+          await stripe.paymentIntents.cancel(intent.id);
+        } catch (e) {
+          console.log('Cancel intent failed', String(e));
+        }
+        await setStatus({ status: 'failed', failure_reason: `non_us_billing:${nonUs}` });
+        return fail(
+          'us_residents_only',
+          'Flynoom is currently available only to U.S. residents with a U.S. card billing address ' +
+            '(5-digit ZIP code). Your card has not been charged.',
+        );
+      }
     }
 
     // ───── نوع البطاقة وآخر 4 أرقام (للتحقق من هوية العميل عند الاتصال) ─────

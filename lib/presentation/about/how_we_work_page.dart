@@ -322,7 +322,7 @@ class HowWeWorkPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  SelectableText(
+                  Text(
                     pick(4 + i * 2, _sections[i].bodyEn, _sections[i].bodyAr),
                     style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary),
                   ),

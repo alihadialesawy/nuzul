@@ -20,6 +20,8 @@ String _pt(BuildContext context, String key) {
     'declined': ["لم يقبل البنك هذه البطاقة، ولم يُسحب أي مبلغ. جرّب بطاقة أخرى.", "Your bank didn't accept this card. No money was taken. Please try a different card.", "Tu banco no aceptó esta tarjeta. No se ha cobrado nada. Prueba con otra tarjeta.", "Bankanız bu kartı kabul etmedi. Hiçbir ücret alınmadı. Lütfen başka bir kart deneyin.", "Bank Anda tidak menerima kartu ini. Tidak ada dana yang ditarik. Silakan coba kartu lain.", "आपके बैंक ने यह कार्ड स्वीकार नहीं किया। कोई राशि नहीं ली गई। कृपया दूसरा कार्ड आज़माएँ।", "آپ کے بینک نے یہ کارڈ قبول نہیں کیا۔ کوئی رقم نہیں لی گئی۔ براہ کرم دوسرا کارڈ آزمائیں۔", "Votre banque n'a pas accepté cette carte. Aucun montant n'a été débité. Veuillez essayer une autre carte.", "আপনার ব্যাংক এই কার্ডটি গ্রহণ করেনি। কোনো টাকা কাটা হয়নি। অনুগ্রহ করে অন্য কার্ড চেষ্টা করুন।"],
     // أغلق الزبون نافذة التحقق (3D Secure) أو فشل فيها.
     'authCancelled': ["لم تكتمل خطوة التحقق من البنك. حاول مرة أخرى.", "Bank verification was not completed. Please try again.", "No se completó la verificación del banco. Inténtalo de nuevo.", "Banka doğrulaması tamamlanmadı. Lütfen tekrar deneyin.", "Verifikasi bank tidak selesai. Silakan coba lagi.", "बैंक सत्यापन पूरा नहीं हुआ। कृपया फिर से प्रयास करें।", "بینک کی تصدیق مکمل نہیں ہوئی۔ براہ کرم دوبارہ کوشش کریں۔", "La vérification bancaire n'a pas été effectuée. Veuillez réessayer.", "ব্যাংক যাচাই সম্পন্ন হয়নি। আবার চেষ্টা করুন।"],
+    // اسم مقروء لخانة البطاقة (قارئ الشاشة يسمعه عند الوصول إليها بـ Tab).
+    'cardField': ['بيانات البطاقة: الرقم، وتاريخ الانتهاء، ورمز CVC، والرمز البريدي', 'Card details: number, expiry date, CVC and ZIP code', 'Datos de la tarjeta: número, fecha de vencimiento, CVC y código postal', 'Kart bilgileri: numara, son kullanma tarihi, CVC ve posta kodu', 'Detail kartu: nomor, tanggal kedaluwarsa, CVC, dan kode pos', 'कार्ड विवरण: नंबर, समाप्ति तिथि, CVC और ZIP कोड', 'کارڈ کی تفصیلات: نمبر، میعاد ختم ہونے کی تاریخ، CVC اور زپ کوڈ', 'Informations de la carte : numéro, date d\'expiration, CVC et code postal', 'কার্ডের তথ্য: নম্বর, মেয়াদ শেষের তারিখ, CVC ও জিপ কোড'],
   };
   const order = ['ar', 'en', 'es', 'tr', 'id', 'hi', 'ur', 'fr', 'bn'];
   final i = order.indexOf(Localizations.localeOf(context).languageCode);
@@ -128,6 +130,38 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
   bool _isProcessing = false;
   String? _errorMessage;
   CardFieldInputDetails? _card;
+  // إمكانية الوصول: خانة Stripe (iframe) خارج إدارة Flutter للتركيز، فلا يصل
+  // إليها Tab. هذا "الجسر" عنصر تركيز غير مرئي قبل الخانة: عندما يصل إليه
+  // التركيز (تلقائيًا عند فتح النافذة، أو بـ Tab/Shift+Tab) ننقل التركيز إلى
+  // داخل خانة Stripe، فيكتب الزبون مباشرة ويقرأ قارئ الشاشة حقول Stripe.
+  final _cardController = CardEditController();
+  final _cardBridgeFocus = FocusNode(debugLabel: 'cardBridge');
+
+  void _focusStripeCard() {
+    // ننتظر قليلًا حتى ينهي محرك Flutter نقل تركيز DOM إلى الجسر، ثم ننقله
+    // إلى خانة Stripe (وإلا يستعيد المحرك التركيز بعدنا).
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (!mounted || !_cardBridgeFocus.hasFocus) return;
+      try {
+        _cardController.focus();
+      } catch (_) {
+        // الخانة لم تُركَّب بعد (أول لحظة بعد فتح النافذة): أعد المحاولة مرة.
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (!mounted || !_cardBridgeFocus.hasFocus) return;
+          try {
+            _cardController.focus();
+          } catch (_) {}
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _cardController.dispose();
+    _cardBridgeFocus.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     if (_card == null || !_card!.complete) {
@@ -171,6 +205,7 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      semanticLabel: _pt(context, 'title'),
       title: Text(_pt(context, 'title')),
       content: SizedBox(
         width: 400,
@@ -182,9 +217,22 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
             // يُبعدان الخانة عن إدارة Flutter للتركيز وعن طبقة قارئ الشاشة،
             // فيبقى التركيز داخلها. الخانة نفسها HTML من Stripe يقرؤه قارئ الشاشة
             // مباشرة. لا تحذفهما.
+            Focus(
+              focusNode: _cardBridgeFocus,
+              autofocus: true,
+              onFocusChange: (has) {
+                if (has) _focusStripeCard();
+              },
+              child: Semantics(
+                textField: true,
+                label: _pt(context, 'cardField'),
+                child: const SizedBox(height: 1, width: double.infinity),
+              ),
+            ),
             ExcludeSemantics(
               child: ExcludeFocus(
                 child: CardField(
+                  controller: _cardController,
                   // الرمز البريدي إلزامي: نعرف منه ولاية البطاقة (منع الولايات غير
                   // المسجّل فيها في hotelbeds-book) ويتحقق منه بنك العميل.
                   enablePostalCode: true,

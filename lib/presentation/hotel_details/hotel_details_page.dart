@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../core/widgets/a11y_tap.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -483,20 +484,17 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
               controller: _imageController,
               onPageChanged: (i) => setState(() => _currentImagePage = i),
               itemCount: images.length,
-              itemBuilder: (context, i) => Semantics(
-                button: true,
-                label: _aPhotoOf(context, i + 1, images.length),
-                onTap: () => _openGalleryViewer(images, i),
+              itemBuilder: (context, i) => A11yTap(
+                semanticLabel: _aPhotoOf(context, i + 1, images.length),
                 excludeSemantics: true,
-                child: GestureDetector(
-                  onTap: () => _openGalleryViewer(images, i),
-                  // الصورة الرئيسية كبيرة على الشاشة: مقاس xl بدل bigger/الافتراضي.
-                  child: _sizedNetworkImage(
-                    images[i],
-                    'xl',
-                    fallbackIcon: () =>
-                    const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
-                  ),
+                focusRadius: BorderRadius.zero,
+                onTap: () => _openGalleryViewer(images, i),
+                // الصورة الرئيسية كبيرة على الشاشة: مقاس xl بدل bigger/الافتراضي.
+                child: _sizedNetworkImage(
+                  images[i],
+                  'xl',
+                  fallbackIcon: () =>
+                  const Icon(Icons.hotel, size: 48, color: AppColors.textHint),
                 ),
               ),
             ),
@@ -552,22 +550,18 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
             PositionedDirectional(
               top: 10,
               end: 10,
-              child: Semantics(
-                button: true,
+              child: A11yTap(
                 toggled: _isFavorite,
-                label: _aSave(context, _isFavorite),
-                onTap: () => setState(() => _isFavorite = !_isFavorite),
+                semanticLabel: _aSave(context, _isFavorite),
                 excludeSemantics: true,
-                child: GestureDetector(
-                  onTap: () => setState(() => _isFavorite = !_isFavorite),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    child: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      size: 18,
-                      color: _isFavorite ? AppColors.error : AppColors.textSecondary,
-                    ),
+                onTap: () => setState(() => _isFavorite = !_isFavorite),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  child: Icon(
+                    _isFavorite ? Icons.favorite : Icons.favorite_border,
+                    size: 18,
+                    color: _isFavorite ? AppColors.error : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -2199,41 +2193,38 @@ class _GalleryTile extends StatelessWidget {
   const _GalleryTile({required this.url, this.overlayText, required this.onTap, required this.label});
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: label,
-    onTap: onTap,
+  Widget build(BuildContext context) => A11yTap(
+    semanticLabel: label,
     excludeSemantics: true,
+    focusRadius: BorderRadius.circular(AppSizes.radiusSm),
+    onTap: onTap,
     child: ClipRRect(
       borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(
-              color: AppColors.divider,
-              child: _sizedNetworkImage(
-                url,
-                'bigger',
-                fallbackIcon: () => const Icon(Icons.hotel, color: AppColors.textHint),
-              ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(
+            color: AppColors.divider,
+            child: _sizedNetworkImage(
+              url,
+              'bigger',
+              fallbackIcon: () => const Icon(Icons.hotel, color: AppColors.textHint),
             ),
-            if (overlayText != null)
-              Container(
-                color: Colors.black45,
-                alignment: Alignment.center,
-                child: Text(
-                  overlayText!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+          ),
+          if (overlayText != null)
+            Container(
+              color: Colors.black45,
+              alignment: Alignment.center,
+              child: Text(
+                overlayText!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     ),
   );

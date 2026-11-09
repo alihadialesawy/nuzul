@@ -241,13 +241,16 @@ class SearchFiltersSidebar extends ConsumerWidget {
   }
 
   Widget _buildBudgetSection(BuildContext context, HotelFilterState filters, HotelFiltersNotifier notifier) {
-    final prices = hotels.map(hotelNightlyUsd).where((p) => p > 0).toList();
+    final prices = hotels.map(hotelNightlyUsd).where((p) => p > 0).toList()..sort();
     if (prices.length < 2) return const SizedBox.shrink();
-    final minP = prices.reduce((a, b) => a < b ? a : b).floorToDouble();
-    var maxP = prices.reduce((a, b) => a > b ? a : b).ceilToDouble();
+    final minP = prices.first.floorToDouble();
+    // الحد الأعلى للمنزلق = أعلى سعر بعد استبعاد الأسعار الشاذة (أعلى 10%)،
+    // حتى لا يجعل جناح واحد بآلاف الدولارات المنزلق عديم الفائدة.
+    // أقصى اليمين يعني "فما فوق" (بلا حد أعلى)، فلا يُخفى أي فندق غالٍ.
+    final p90 = prices[((prices.length - 1) * 0.9).floor()];
+    var maxP = p90.ceilToDouble();
     if (maxP <= minP) maxP = minP + 1;
 
-    // النطاق الحالي مقيّد بحدود هذه النتائج (قد يكون من بحث سابق).
     final current = filters.budgetRange;
     final values = current == null
         ? RangeValues(minP, maxP)
@@ -255,6 +258,7 @@ class SearchFiltersSidebar extends ConsumerWidget {
       current.start.clamp(minP, maxP).toDouble(),
       current.end.clamp(minP, maxP).toDouble(),
     );
+    final openEnded = current == null || current.end.isInfinite || values.end >= maxP;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,21 +270,42 @@ class SearchFiltersSidebar extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          '\$${values.start.round()} – \$${values.end.round()}',
+          '\$${values.start.round()} – \$${values.end.round()}${openEnded ? '+' : ''}',
           style: const TextStyle(fontSize: 14),
         ),
-        RangeSlider(
-          values: values,
-          min: minP,
-          max: maxP,
-          onChanged: (r) {
-            // إرجاع المنزلقين للطرفين = إلغاء فلتر الميزانية.
-            if (r.start <= minP && r.end >= maxP) {
-              notifier.clearBudget();
-            } else {
-              notifier.setBudgetRange(r);
-            }
-          },
+        // قارئ الشاشة: "Minimum $50" / "Maximum $28159" بدل "0%" و"100%".
+        // ملاحظة: Flutter لا يضع aria-label على مقبضي RangeSlider، لذلك قد يبقى
+        // Lighthouse يُبلغ عن "Form elements do not have associated labels" هنا
+        // (قيد في Flutter نفسه)؛ القيمة المقروءة أصبحت مفهومة رغم ذلك.
+        Semantics(
+          container: true,
+          label: _t3(context, ar: 'نطاق السعر لليلة', en: 'Price range per night', es: 'Rango de precio por noche',
+              tr: 'Gecelik fiyat aralığı', id: 'Kisaran harga per malam', hi: 'प्रति रात मूल्य सीमा', ur: 'فی رات قیمت کی حد',
+              fr: 'Fourchette de prix par nuit', bn: 'প্রতি রাতের মূল্যসীমা'),
+          child: RangeSlider(
+            semanticFormatterCallback: (v) {
+              final isStart = (v - values.start).abs() <= (v - values.end).abs();
+              final word = isStart
+                  ? _t3(context, ar: 'الحد الأدنى', en: 'Minimum', es: 'Mínimo', tr: 'En az', id: 'Minimum',
+                  hi: 'न्यूनतम', ur: 'کم از کم', fr: 'Minimum', bn: 'সর্বনিম্ন')
+                  : _t3(context, ar: 'الحد الأعلى', en: 'Maximum', es: 'Máximo', tr: 'En çok', id: 'Maksimum',
+                  hi: 'अधिकतम', ur: 'زیادہ سے زیادہ', fr: 'Maximum', bn: 'সর্বোচ্চ');
+              return '$word \$${v.round()}';
+            },
+            values: values,
+            min: minP,
+            max: maxP,
+            onChanged: (r) {
+              final atMin = r.start <= minP;
+              final atMax = r.end >= maxP;
+              if (atMin && atMax) {
+                notifier.clearBudget();
+              } else {
+                // أقصى اليمين = بلا حد أعلى.
+                notifier.setBudgetRange(RangeValues(r.start, atMax ? double.infinity : r.end));
+              }
+            },
+          ),
         ),
       ],
     );
@@ -305,24 +330,42 @@ class SearchFiltersSidebar extends ConsumerWidget {
         const SizedBox(height: 4),
         ...counts.keys.map((label) {
           final isSelected = notifier.isSelected(group, label);
-          return InkWell(
-            onTap: () => notifier.toggle(group, label),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Row(
-                children: [
-                  Checkbox(
-                    value: isSelected,
-                    onChanged: (_) => notifier.toggle(group, label),
-                  ),
-                  Expanded(
-                    child: Text(_labelText(context, label), style: const TextStyle(fontSize: 14)),
-                  ),
-                  Text(
-                    '${counts[label] ?? 0}',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                  ),
-                ],
+          // إمكانية الوصول: عنصر واحد يصل إليه Tab (مربع الاختيار نفسه)، ويُقرأ
+          // "5 stars, 46, checkbox, not checked"، وSpace يغيّره.
+          // (كان excludeSemantics يُخفي مربع الاختيار، فيتخطاه Tab وNVDA.)
+          return MergeSemantics(
+            child: InkWell(
+              // النقر على السطر كله للماوس فقط؛ التركيز يذهب إلى مربع الاختيار.
+              canRequestFocus: false,
+              excludeFromSemantics: true,
+              onTap: () => notifier.toggle(group, label),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: isSelected,
+                      onChanged: (_) => notifier.toggle(group, label),
+                    ),
+                    Expanded(
+                      child: Semantics(
+                        label: '${_labelText(context, label)}, ${counts[label] ?? 0}',
+                        excludeSemantics: true,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(_labelText(context, label), style: const TextStyle(fontSize: 14)),
+                            ),
+                            Text(
+                              '${counts[label] ?? 0}',
+                              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );

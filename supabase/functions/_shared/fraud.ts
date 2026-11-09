@@ -9,6 +9,7 @@
 // القواعد (عدّلها هنا فقط):
 //   رفض مباشر (مهما كان):
 //     • بطاقة صادرة من دولة خاضعة لعقوبات أمريكية شاملة (sanctions.ts).
+//     • زائر من دولة خاضعة لعقوبات شاملة (حسب عنوان IP).
 //     • فشل فحص CVC.
 //     • تقييم Radar = highest.
 //     • تجاوز عدد البطاقات المختلفة للحساب خلال 24 ساعة (MAX_CARDS_PER_DAY).
@@ -56,7 +57,7 @@ export interface RiskDecision {
   cvcCheck: string | null;
   postalCheck: string | null;
   funding: string | null;
-  /** هل نعلّم الإلغاء عند Stripe كـ fraudulent (لتحسين Radar). */
+  /** للسجل فقط: هل سبب الرفض قوي (Radar/CVC/عقوبات). لا نعلّم الدفعة fraudulent عند Stripe. */
   markFraudulent: boolean;
 }
 
@@ -80,6 +81,8 @@ export function evaluateRisk(i: RiskInput): RiskDecision {
 
   // ───── رفض مباشر ─────
   if (cardCountry && BLOCKED_COUNTRY_CODES.has(cardCountry)) reasons.push(`sanctioned_card_country:${cardCountry}`);
+  // الزائر نفسه في دولة خاضعة لعقوبات شاملة (حسب عنوان IP) → رفض مهما كانت البطاقة.
+  if (i.ipCountry && BLOCKED_COUNTRY_CODES.has(i.ipCountry)) reasons.push(`sanctioned_ip_country:${i.ipCountry}`);
   if (cvcCheck === 'fail') reasons.push('cvc_fail');
   if (riskLevel === 'highest') reasons.push('radar_highest');
   if (i.isNewCard && i.otherCardsLast24h >= MAX_CARDS_PER_DAY) {

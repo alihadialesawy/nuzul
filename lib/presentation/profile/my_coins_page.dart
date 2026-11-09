@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/a11y_tap.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -55,6 +56,8 @@ class MyCoinsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final displayName = user?.email?.split('@').first ?? '';
+    // " اسم" بعد التحية في اللغات غير العربية والإنجليزية.
+    final n = displayName.isEmpty ? '' : ' $displayName';
 
     return Scaffold(
       appBar: const AppBanner(assetVariant: 'rewards'),
@@ -116,13 +119,13 @@ class MyCoinsPage extends ConsumerWidget {
                               en: displayName.isEmpty
                                   ? 'Hi there, congrats on being a Silver Tier Member'
                                   : 'Hi $displayName, congrats on being a Silver Tier Member',
-                              es: 'Hola, felicidades por ser miembro del nivel Plata',
-                              tr: 'Merhaba, Gümüş Seviye Üye olduğunuz için tebrikler',
-                              id: 'Halo, selamat menjadi Anggota Tingkat Perak',
-                              hi: 'नमस्ते, सिल्वर टियर सदस्य बनने पर बधाई',
-                              ur: 'ہیلو، سلور ٹیئر ممبر بننے پر مبارک ہو',
-                              fr: 'Bonjour, félicitations pour votre statut de membre Argent',
-                              bn: 'হ্যালো, সিলভার টায়ার সদস্য হওয়ার জন্য অভিনন্দন',
+                              es: 'Hola$n, felicidades por ser miembro del nivel Plata',
+                              tr: 'Merhaba$n, Gümüş Seviye Üye olduğunuz için tebrikler',
+                              id: 'Halo$n, selamat menjadi Anggota Tingkat Perak',
+                              hi: 'नमस्ते$n, सिल्वर टियर सदस्य बनने पर बधाई',
+                              ur: 'ہیلو$n، سلور ٹیئر ممبر بننے پر مبارک ہو',
+                              fr: 'Bonjour$n, félicitations pour votre statut de membre Argent',
+                              bn: 'হ্যালো$n, সিলভার টায়ার সদস্য হওয়ার জন্য অভিনন্দন',
                             ),
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                           ),
@@ -231,15 +234,15 @@ class MyCoinsPage extends ConsumerWidget {
 
                           const SizedBox(height: AppSizes.xl),
                           Text(
-                            _t3(context, ar: 'الأعضاء يستمتعون بمزايا حصرية وعروض للأعضاء فقط وخدمات ذات أولوية. انضم إلينا لفتحها كلها!',
-                                en: 'members enjoy exclusive perks, member-only deals, and priority services. Join us to unlock them all!',
-                                es: 'los miembros disfrutan de ventajas exclusivas, ofertas solo para miembros y servicios prioritarios. ¡Únete para desbloquearlos todos!',
-                                tr: 'üyeler özel avantajlardan, yalnızca üyelere özel fırsatlardan ve öncelikli hizmetlerden yararlanır. Hepsini açmak için bize katılın!',
-                                id: 'anggota menikmati keuntungan eksklusif, penawaran khusus anggota, dan layanan prioritas. Bergabunglah untuk membuka semuanya!',
-                                hi: 'सदस्य विशेष लाभ, सदस्य-केवल ऑफ़र और प्राथमिकता सेवाओं का आनंद लेते हैं। सभी को अनलॉक करने के लिए हमसे जुड़ें!',
-                                ur: 'ممبران خصوصی فوائد، صرف ممبران کے لیے آفرز، اور ترجیحی خدمات سے لطف اندوز ہوتے ہیں۔ سب کچھ کھولنے کے لیے ہمارے ساتھ شامل ہوں!',
-                                fr: 'les membres profitent d\'avantages exclusifs, d\'offres réservées aux membres et de services prioritaires. Rejoignez-nous pour tout débloquer !',
-                                bn: 'সদস্যরা একচেটিয়া সুবিধা, শুধুমাত্র সদস্যদের জন্য অফার এবং অগ্রাধিকার পরিষেবা উপভোগ করেন। সবকিছু আনলক করতে আমাদের সাথে যোগ দিন!'),
+                            _t3(context, ar: 'أعضاء Flynoom يستمتعون بمزايا حصرية وعروض للأعضاء فقط وخدمات ذات أولوية. انضم إلينا لفتحها كلها!',
+                                en: 'Flynoom members enjoy exclusive perks, member-only deals, and priority services. Join us to unlock them all!',
+                                es: 'Los miembros de Flynoom disfrutan de ventajas exclusivas, ofertas solo para miembros y servicios prioritarios. ¡Únete para desbloquearlos todos!',
+                                tr: 'Flynoom üyeleri özel avantajlardan, yalnızca üyelere özel fırsatlardan ve öncelikli hizmetlerden yararlanır. Hepsini açmak için bize katılın!',
+                                id: 'Anggota Flynoom menikmati keuntungan eksklusif, penawaran khusus anggota, dan layanan prioritas. Bergabunglah untuk membuka semuanya!',
+                                hi: 'Flynoom सदस्य विशेष लाभ, सदस्य-केवल ऑफ़र और प्राथमिकता सेवाओं का आनंद लेते हैं। सभी को अनलॉक करने के लिए हमसे जुड़ें!',
+                                ur: 'Flynoom ممبران خصوصی فوائد، صرف ممبران کے لیے آفرز، اور ترجیحی خدمات سے لطف اندوز ہوتے ہیں۔ سب کچھ کھولنے کے لیے ہمارے ساتھ شامل ہوں!',
+                                fr: 'Les membres Flynoom profitent d\'avantages exclusifs, d\'offres réservées aux membres et de services prioritaires. Rejoignez-nous pour tout débloquer !',
+                                bn: 'Flynoom সদস্যরা একচেটিয়া সুবিধা, শুধুমাত্র সদস্যদের জন্য অফার এবং অগ্রাধিকার পরিষেবা উপভোগ করেন। সবকিছু আনলক করতে আমাদের সাথে যোগ দিন!'),
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           ),
@@ -310,7 +313,7 @@ class _TiersComparisonTable extends StatelessWidget {
       (
       _t3(context, ar: 'اكسب عملات', en: 'Earn Coins', es: 'Gana monedas', tr: 'Puan Kazan', id: 'Dapatkan Koin', hi: 'कॉइन कमाएं', ur: 'کوائنز کمائیں', fr: 'Gagnez des points', bn: 'কয়েন অর্জন করুন'),
       [
-        _t3(context, ar: 'اكسب عملات عادي', en: 'Earn Coins', es: 'Gana monedas', tr: 'Puan Kazan', id: 'Dapatkan Koin', hi: 'कॉइन कमाएं', ur: 'کوائنز کمائیں', fr: 'Gagnez des points', bn: 'কয়েন অর্জন করুন'),
+        _t3(context, ar: 'اكسب العملات', en: 'Earn Coins', es: 'Gana monedas', tr: 'Puan Kazan', id: 'Dapatkan Koin', hi: 'कॉइन कमाएं', ur: 'کوائنز کمائیں', fr: 'Gagnez des points', bn: 'কয়েন অর্জন করুন'),
         _t3(context, ar: 'اكسب 20% أكثر', en: 'Earn 20% More', es: 'Gana 20% más', tr: '%20 Daha Fazla Kazan', id: 'Dapatkan 20% Lebih', hi: '20% अधिक कमाएं', ur: '20% زیادہ کمائیں', fr: 'Gagnez 20% de plus', bn: '20% বেশি অর্জন করুন'),
         _t3(context, ar: 'اكسب 50% أكثر', en: 'Earn 50% More', es: 'Gana 50% más', tr: '%50 Daha Fazla Kazan', id: 'Dapatkan 50% Lebih', hi: '50% अधिक कमाएं', ur: '50% زیادہ کمائیں', fr: 'Gagnez 50% de plus', bn: '50% বেশি অর্জন করুন'),
         _t3(context, ar: 'اكسب 100% أكثر', en: 'Earn 100% More', es: 'Gana 100% más', tr: '%100 Daha Fazla Kazan', id: 'Dapatkan 100% Lebih', hi: '100% अधिक कमाएं', ur: '100% زیادہ کمائیں', fr: 'Gagnez 100% de plus', bn: '100% বেশি অর্জন করুন'),
@@ -353,7 +356,7 @@ class _TiersComparisonTable extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 16,
-                        backgroundColor: tier.color.withOpacity(0.15),
+                        backgroundColor: tier.color.withValues(alpha: 0.15),
                         child: Icon(Icons.workspace_premium, color: tier.color, size: 18),
                       ),
                       const SizedBox(height: 4),
@@ -425,7 +428,7 @@ class _FaqSectionState extends State<_FaqSection> {
           (
           q: _t3(context, ar: 'كيف أترقّى بين المستويات؟', en: 'How to progress?', es: '¿Cómo progreso?', tr: 'Nasıl ilerlerim?',
               id: 'Bagaimana cara naik tingkat?', hi: 'प्रगति कैसे करें?', ur: 'ترقی کیسے کریں؟', fr: 'Comment progresser ?', bn: 'কীভাবে অগ্রসর হবেন?'),
-          a: _t3(context, ar: 'كل ما تكمّل حجوزات أكتر عبر Flynoom، كل ما تترقّى لمستوى أعلى ومزايا أكثر.',
+          a: _t3(context, ar: 'كلما أكملت حجوزات أكثر عبر Flynoom، ارتقيت إلى مستوى أعلى وحصلت على مزايا أكثر.',
               en: 'The more bookings you complete through Flynoom, the higher your tier climbs and the more perks you unlock.',
               es: 'Cuantas más reservas completes en Flynoom, más alto será tu nivel y más ventajas desbloquearás.',
               tr: 'Flynoom üzerinden ne kadar çok rezervasyon tamamlarsanız, seviyeniz o kadar yükselir ve daha fazla avantaj açarsınız.',
@@ -436,9 +439,9 @@ class _FaqSectionState extends State<_FaqSection> {
               bn: 'Flynoom-এর মাধ্যমে আপনি যত বেশি বুকিং সম্পন্ন করবেন, আপনার স্তর তত উঁচুতে উঠবে এবং তত বেশি সুবিধা আনলক হবে।'),
           ),
           (
-          q: _t3(context, ar: 'إزاي أحافظ على مستواي؟', en: 'How do I maintain my tier?', es: '¿Cómo mantengo mi nivel?', tr: 'Seviyemi nasıl korurum?',
+          q: _t3(context, ar: 'كيف أحافظ على مستواي؟', en: 'How do I maintain my tier?', es: '¿Cómo mantengo mi nivel?', tr: 'Seviyemi nasıl korurum?',
               id: 'Bagaimana cara mempertahankan tingkat saya?', hi: 'मैं अपना स्तर कैसे बनाए रखूं?', ur: 'میں اپنا ٹیئر کیسے برقرار رکھوں؟', fr: 'Comment maintenir mon niveau ?', bn: 'কীভাবে আমার স্তর বজায় রাখব?'),
-          a: _t3(context, ar: 'المستويات بتتجدد سنويًا حسب عدد الحجوزات المكتملة خلال آخر 12 شهر.',
+          a: _t3(context, ar: 'تُراجَع المستويات سنويًا حسب عدد الحجوزات المكتملة خلال آخر 12 شهرًا.',
               en: 'Tiers are reassessed annually based on the number of completed bookings over the previous 12 months.',
               es: 'Los niveles se reevalúan anualmente según el número de reservas completadas en los últimos 12 meses.',
               tr: 'Seviyeler, son 12 aydaki tamamlanan rezervasyon sayısına göre yıllık olarak yeniden değerlendirilir.',
@@ -449,9 +452,9 @@ class _FaqSectionState extends State<_FaqSection> {
               bn: 'বিগত 12 মাসে সম্পন্ন বুকিং সংখ্যার ভিত্তিতে স্তরসমূহ বার্ষিক পুনর্মূল্যায়ন করা হয়।'),
           ),
           (
-          q: _t3(context, ar: 'إزاي بتتحسب الحجوزات والمبالغ المصروفة؟', en: 'How are bookings and spending amounts calculated?', es: '¿Cómo se calculan las reservas y los gastos?', tr: 'Rezervasyonlar ve harcamalar nasıl hesaplanır?',
+          q: _t3(context, ar: 'كيف تُحتسب الحجوزات والمبالغ المدفوعة؟', en: 'How are bookings and spending amounts calculated?', es: '¿Cómo se calculan las reservas y los gastos?', tr: 'Rezervasyonlar ve harcamalar nasıl hesaplanır?',
               id: 'Bagaimana pemesanan dan jumlah pengeluaran dihitung?', hi: 'बुकिंग और खर्च की गणना कैसे होती है?', ur: 'بکنگز اور اخراجات کیسے شمار ہوتے ہیں؟', fr: 'Comment sont calculées les réservations et les dépenses ?', bn: 'বুকিং ও ব্যয়ের পরিমাণ কীভাবে গণনা করা হয়?'),
-          a: _t3(context, ar: 'بنحسب بس الحجوزات المؤكدة والمكتملة فعليًا (مش الملغاة)، بناءً على قيمة الحجز الإجمالية وقت الدفع.',
+          a: _t3(context, ar: 'تُحتسب الحجوزات المؤكدة والمكتملة فعليًا فقط (لا الملغاة)، بناءً على القيمة الإجمالية للحجز وقت الدفع.',
               en: 'Only confirmed, completed bookings count (not cancelled ones), based on the total booking value at the time of payment.',
               es: 'Solo cuentan las reservas confirmadas y completadas (no las canceladas), según el valor total al momento del pago.',
               tr: 'Yalnızca onaylanmış ve tamamlanmış rezervasyonlar sayılır (iptal edilenler değil), ödeme anındaki toplam rezervasyon tutarına göre.',
@@ -462,9 +465,9 @@ class _FaqSectionState extends State<_FaqSection> {
               bn: 'শুধুমাত্র নিশ্চিত ও সম্পন্ন বুকিং গণনা করা হয় (বাতিল করা নয়), পেমেন্টের সময় মোট বুকিং মূল্যের ভিত্তিতে।'),
           ),
           (
-          q: _t3(context, ar: 'هيحصل إيه لو ألغيت حجز اتحسب في تقدّمي للترقية؟', en: 'What happens if I cancel a booking that was already calculated into my upgrade progress?', es: '¿Qué pasa si cancelo una reserva que ya se contó en mi progreso?', tr: 'Yükseltme ilerlememe dahil edilmiş bir rezervasyonu iptal edersem ne olur?',
+          q: _t3(context, ar: 'ماذا يحدث إذا ألغيت حجزًا احتُسب في تقدّمي نحو الترقية؟', en: 'What happens if I cancel a booking that was already calculated into my upgrade progress?', es: '¿Qué pasa si cancelo una reserva que ya se contó en mi progreso?', tr: 'Yükseltme ilerlememe dahil edilmiş bir rezervasyonu iptal edersem ne olur?',
               id: 'Apa yang terjadi jika saya membatalkan pemesanan yang sudah dihitung dalam progres upgrade saya?', hi: 'अगर मैं वह बुकिंग रद्द कर दूं जो पहले से मेरी अपग्रेड प्रगति में गिनी गई थी तो क्या होगा?', ur: 'اگر میں وہ بکنگ منسوخ کر دوں جو پہلے سے میری اپ گریڈ پیش رفت میں شمار ہو چکی ہے تو کیا ہوگا؟', fr: 'Que se passe-t-il si j\'annule une réservation déjà comptée dans ma progression ?', bn: 'যদি আমি এমন একটি বুকিং বাতিল করি যা ইতিমধ্যে আমার আপগ্রেড অগ্রগতিতে গণনা করা হয়েছে তাহলে কী হবে?'),
-          a: _t3(context, ar: 'بيتشال تأثيرها من إجمالي تقدّمك تلقائيًا، وممكن يرجّعك لمستوى أقل لو كنت معتمد عليها في الترقية.',
+          a: _t3(context, ar: 'يُحذف أثره من إجمالي تقدّمك تلقائيًا، وقد يعيدك ذلك إلى مستوى أدنى إن كنت تعتمد عليه في الترقية.',
               en: 'Its contribution is automatically removed from your total progress, which may drop you back a tier if you relied on it to upgrade.',
               es: 'Su contribución se elimina automáticamente de tu progreso total, lo que podría bajarte de nivel si dependías de ella.',
               tr: 'Katkısı toplam ilerlemenizden otomatik olarak çıkarılır; yükseltme için ona bağlıysanız bu sizi bir alt seviyeye düşürebilir.',
@@ -478,9 +481,9 @@ class _FaqSectionState extends State<_FaqSection> {
       case 1: // Member Rewards
         return [
           (
-          q: _t3(context, ar: 'إزاي أستخدم مزايا مستواي؟', en: 'How do I use my tier perks?', es: '¿Cómo uso las ventajas de mi nivel?', tr: 'Seviye avantajlarımı nasıl kullanırım?',
+          q: _t3(context, ar: 'كيف أستخدم مزايا مستواي؟', en: 'How do I use my tier perks?', es: '¿Cómo uso las ventajas de mi nivel?', tr: 'Seviye avantajlarımı nasıl kullanırım?',
               id: 'Bagaimana cara menggunakan keuntungan tingkat saya?', hi: 'मैं अपने स्तर के लाभ कैसे उपयोग करूं?', ur: 'میں اپنے ٹیئر کے فوائد کیسے استعمال کروں؟', fr: 'Comment utiliser les avantages de mon niveau ?', bn: 'আমি কীভাবে আমার স্তরের সুবিধা ব্যবহার করব?'),
-          a: _t3(context, ar: 'المزايا (زي صالة كبار الشخصيات وترقيات النقل) بتتفعّل تلقائيًا وقت الحجز حسب مستواك الحالي، من غير أي خطوة إضافية منك.',
+          a: _t3(context, ar: 'تُفعَّل المزايا (مثل صالة كبار الشخصيات وترقيات النقل) تلقائيًا وقت الحجز حسب مستواك الحالي، دون أي خطوة إضافية منك.',
               en: 'Perks (like lounge access and transfer upgrades) are applied automatically at booking based on your current tier — no extra steps needed.',
               es: 'Las ventajas (como acceso a sala VIP y mejoras de traslado) se aplican automáticamente al reservar según tu nivel actual, sin pasos adicionales.',
               tr: 'Avantajlar (VIP salon erişimi ve transfer yükseltmeleri gibi) rezervasyon sırasında mevcut seviyenize göre otomatik olarak uygulanır, ekstra adım gerekmez.',
@@ -491,9 +494,9 @@ class _FaqSectionState extends State<_FaqSection> {
               bn: 'সুবিধা (যেমন লাউঞ্জ অ্যাক্সেস ও ট্রান্সফার আপগ্রেড) আপনার বর্তমান স্তরের ভিত্তিতে বুকিংয়ের সময় স্বয়ংক্রিয়ভাবে প্রয়োগ হয় — কোনো অতিরিক্ত পদক্ষেপ প্রয়োজন নেই।'),
           ),
           (
-          q: _t3(context, ar: 'هل المزايا بتنتهي صلاحيتها؟', en: 'Do perks expire?', es: '¿Las ventajas caducan?', tr: 'Avantajların süresi doluyor mu?',
+          q: _t3(context, ar: 'هل تنتهي صلاحية المزايا؟', en: 'Do perks expire?', es: '¿Las ventajas caducan?', tr: 'Avantajların süresi doluyor mu?',
               id: 'Apakah keuntungan memiliki masa berlaku?', hi: 'क्या लाभ समाप्त हो जाते हैं?', ur: 'کیا فوائد کی میعاد ختم ہوتی ہے؟', fr: 'Les avantages expirent-ils ?', bn: 'সুবিধাগুলোর মেয়াদ কি শেষ হয়ে যায়?'),
-          a: _t3(context, ar: 'المزايا مرتبطة بمستواك الحالي، فطالما محتفظ بيه، مزاياك تفضل متاحة طول العام.',
+          a: _t3(context, ar: 'المزايا مرتبطة بمستواك الحالي، فما دمت محتفظًا به تبقى مزاياك متاحة طوال العام.',
               en: 'Perks are tied to your current tier — as long as you keep it, your perks remain available throughout the year.',
               es: 'Las ventajas están vinculadas a tu nivel actual; mientras lo mantengas, seguirán disponibles durante todo el año.',
               tr: 'Avantajlar mevcut seviyenize bağlıdır; onu korudukça avantajlarınız yıl boyunca kullanılabilir kalır.',
@@ -507,9 +510,9 @@ class _FaqSectionState extends State<_FaqSection> {
       case 2: // Coins
         return [
           (
-          q: _t3(context, ar: 'إزاي أكسب عملات؟', en: 'How do I earn coins?', es: '¿Cómo gano monedas?', tr: 'Puanları nasıl kazanırım?',
+          q: _t3(context, ar: 'كيف أكسب العملات؟', en: 'How do I earn coins?', es: '¿Cómo gano monedas?', tr: 'Puanları nasıl kazanırım?',
               id: 'Bagaimana cara mendapatkan koin?', hi: 'मैं कॉइन कैसे कमाऊं?', ur: 'میں کوائنز کیسے کماؤں؟', fr: 'Comment gagner des points ?', bn: 'কীভাবে কয়েন অর্জন করব?'),
-          a: _t3(context, ar: 'بتكسب عملات تلقائيًا مقابل كل حجز مكتمل عبر Flynoom، والنسبة بتزيد كل ما مستواك يعلى.',
+          a: _t3(context, ar: 'تكسب العملات تلقائيًا مقابل كل حجز مكتمل عبر Flynoom، وتزيد النسبة كلما ارتفع مستواك.',
               en: 'You earn coins automatically for every completed booking through Flynoom, and the earning rate increases as your tier goes up.',
               es: 'Ganas monedas automáticamente por cada reserva completada en Flynoom, y la tasa aumenta con tu nivel.',
               tr: 'Flynoom üzerinden tamamlanan her rezervasyon için otomatik olarak puan kazanırsınız ve seviyeniz yükseldikçe kazanım oranı artar.',
@@ -520,9 +523,9 @@ class _FaqSectionState extends State<_FaqSection> {
               bn: 'Flynoom-এর মাধ্যমে প্রতিটি সম্পন্ন বুকিংয়ের জন্য আপনি স্বয়ংক্রিয়ভাবে কয়েন অর্জন করেন, এবং আপনার স্তর বাড়ার সাথে সাথে অর্জনের হারও বাড়ে।'),
           ),
           (
-          q: _t3(context, ar: 'إزاي أستخدم عملاتي؟', en: 'How do I redeem my coins?', es: '¿Cómo canjeo mis monedas?', tr: 'Puanlarımı nasıl kullanırım?',
+          q: _t3(context, ar: 'كيف أستخدم عملاتي؟', en: 'How do I redeem my coins?', es: '¿Cómo canjeo mis monedas?', tr: 'Puanlarımı nasıl kullanırım?',
               id: 'Bagaimana cara menukarkan koin saya?', hi: 'मैं अपने कॉइन कैसे भुनाऊं?', ur: 'میں اپنے کوائنز کیسے استعمال کروں؟', fr: 'Comment utiliser mes points ?', bn: 'কীভাবে আমার কয়েন ব্যবহার করব?'),
-          a: _t3(context, ar: 'العملات هتبقى قابلة للاستبدال بخصومات على حجوزاتك الجاية بمجرد ما ميزة الاستبدال تتفعّل بالكامل.',
+          a: _t3(context, ar: 'ستصبح العملات قابلة للاستبدال بخصومات على حجوزاتك القادمة فور تفعيل ميزة الاستبدال بالكامل.',
               en: 'Coins will be redeemable for discounts on future bookings once the redemption feature is fully activated.',
               es: 'Las monedas se podrán canjear por descuentos en futuras reservas una vez que la función de canje esté totalmente activada.',
               tr: 'İtfa özelliği tam olarak etkinleştirildiğinde puanlar gelecekteki rezervasyonlarda indirim için kullanılabilir olacaktır.',
@@ -538,7 +541,7 @@ class _FaqSectionState extends State<_FaqSection> {
           (
           q: _t3(context, ar: 'أين أجد الشروط الكاملة؟', en: 'Where can I find the full terms?', es: '¿Dónde encuentro los términos completos?', tr: 'Tam şartları nerede bulabilirim?',
               id: 'Di mana saya bisa menemukan syarat lengkap?', hi: 'मुझे पूरी शर्तें कहाँ मिलेंगी?', ur: 'مکمل شرائط کہاں ملیں گی؟', fr: 'Où puis-je trouver les conditions complètes ?', bn: 'সম্পূর্ণ শর্তাবলী কোথায় পাব?'),
-          a: _t3(context, ar: 'برنامج المكافآت لسه في مرحلة التطوير، والشروط والأحكام التفصيلية هتُنشر بشكل رسمي قبل الإطلاق الكامل للميزة.',
+          a: _t3(context, ar: 'برنامج المكافآت ما زال قيد التطوير، وستُنشر الشروط والأحكام التفصيلية رسميًا قبل الإطلاق الكامل للميزة.',
               en: 'The rewards program is still in development, and the detailed terms and conditions will be published officially before the feature\'s full launch.',
               es: 'El programa de recompensas aún está en desarrollo, y los términos y condiciones detallados se publicarán oficialmente antes del lanzamiento completo.',
               tr: 'Ödül programı hâlâ geliştirme aşamasındadır; ayrıntılı şartlar ve koşullar, özelliğin tam lansmanından önce resmi olarak yayınlanacaktır.',
@@ -575,7 +578,8 @@ class _FaqSectionState extends State<_FaqSection> {
               final isActive = index == _activeTab;
               return Padding(
                 padding: const EdgeInsetsDirectional.only(end: AppSizes.sm),
-                child: GestureDetector(
+                child: A11yTap(
+                  selected: isActive,
                   onTap: () => setState(() => _activeTab = index),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -601,7 +605,7 @@ class _FaqSectionState extends State<_FaqSection> {
           Text(
             _t3(
               context,
-              ar: 'يوجد حاليًا 4 مستويات في برنامج Flynoom Rewards: فضي، ذهبي، بلاتيني، وماسي. كل ما تحجز أكتر، كل ما ترتقي لمستوى أعلى ومكافآت أكبر.',
+              ar: 'يوجد حاليًا 4 مستويات في برنامج Flynoom Rewards: فضي، ذهبي، بلاتيني، وماسي. كلما حجزت أكثر، ارتقيت إلى مستوى أعلى ومكافآت أكبر.',
               en: 'There are currently 4 Flynoom Rewards tiers: Silver, Gold, Platinum, and Diamond. More bookings, higher tiers, greater rewards.',
               es: 'Actualmente hay 4 niveles en Flynoom Rewards: Plata, Oro, Platino y Diamante. Más reservas, niveles más altos, mayores recompensas.',
               tr: 'Şu anda 4 Flynoom Rewards seviyesi bulunmaktadır: Gümüş, Altın, Platin ve Elmas. Daha fazla rezervasyon, daha yüksek seviye, daha büyük ödüller.',
@@ -617,10 +621,10 @@ class _FaqSectionState extends State<_FaqSection> {
           const SizedBox(height: AppSizes.md),
           Row(
             children: [
-              _TierBadgeStep(label: 'Silver', color: Colors.blueGrey, showArrow: true),
-              _TierBadgeStep(label: 'Gold', color: Colors.amber.shade800, showArrow: true),
-              _TierBadgeStep(label: 'Platinum', color: Colors.blue.shade700, showArrow: true),
-              _TierBadgeStep(label: 'Diamond', color: Colors.purple.shade700, showArrow: false),
+              _TierBadgeStep(label: _t3(context, ar: 'فضي', en: 'Silver', es: 'Plata', tr: 'Gümüş', id: 'Perak', hi: 'सिल्वर', ur: 'سلور', fr: 'Argent', bn: 'সিলভার'), color: Colors.blueGrey, showArrow: true),
+              _TierBadgeStep(label: _t3(context, ar: 'ذهبي', en: 'Gold', es: 'Oro', tr: 'Altın', id: 'Emas', hi: 'गोल्ड', ur: 'گولڈ', fr: 'Or', bn: 'গোল্ড'), color: Colors.amber.shade800, showArrow: true),
+              _TierBadgeStep(label: _t3(context, ar: 'بلاتيني', en: 'Platinum', es: 'Platino', tr: 'Platin', id: 'Platinum', hi: 'प्लैटिनम', ur: 'پلاٹینم', fr: 'Platine', bn: 'প্ল্যাটিনাম'), color: Colors.blue.shade700, showArrow: true),
+              _TierBadgeStep(label: _t3(context, ar: 'ماسي', en: 'Diamond', es: 'Diamante', tr: 'Elmas', id: 'Berlian', hi: 'डायमंड', ur: 'ڈائمنڈ', fr: 'Diamant', bn: 'ডায়মন্ড'), color: Colors.purple.shade700, showArrow: false),
             ],
           ),
           const SizedBox(height: AppSizes.md),
@@ -642,12 +646,12 @@ class _TierBadgeStep extends StatelessWidget {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: AppSizes.md),
-        decoration: BoxDecoration(color: color.withOpacity(0.08)),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.08)),
         child: Column(
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
               child: Icon(Icons.workspace_premium, color: color, size: 18),
             ),
             const SizedBox(height: 4),

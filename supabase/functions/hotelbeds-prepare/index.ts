@@ -42,7 +42,9 @@ import {
   toUsd,
   toUsdRaw,
 } from '../_shared/hotelbeds.ts';
-import { sendEmail } from '../_shared/email.ts';
+import { emailLocale, sendEmail } from '../_shared/email.ts';
+import { blockedHotelReason } from '../_shared/sanctions.ts';
+import { HAJJ_SEASON_MESSAGE, hajjSeasonConflict } from '../_shared/hajj.ts';
 
 /// أقصى عدد محاولات حجز/دفع للحساب الواحد في الساعة.
 const MAX_ATTEMPTS_PER_HOUR = Number(Deno.env.get('MAX_BOOKING_ATTEMPTS_PER_HOUR') ?? '5') || 5;
@@ -196,6 +198,29 @@ Deno.serve(async (req) => {
       return fail('unsupported_rate', 'This rate cannot be booked online yet.');
     }
 
+    // ───── العقوبات الأمريكية (OFAC): نعيد فحص الفندق هنا أيضًا، لا في البحث فقط ─────
+    {
+      const sanctioned = await blockedHotelReason(hotel);
+      if (sanctioned) {
+        console.log(`SANCTIONS BLOCKED hotel=${hotelCode} ${sanctioned}`);
+        return fail('destination_not_available', 'This destination is not available on Flynoom.');
+      }
+    }
+
+    // ───── موسم الحج: لا حجوزات في مكة خلال فترة منع الدخول (انظر _shared/hajj.ts) ─────
+    {
+      const hajj = hajjSeasonConflict(
+        String(hotel?.destinationCode ?? ''),
+        // تواريخ HotelBeds الفعلية من CheckRate أولًا (rateKey يحددها)، ثم تواريخ الطلب.
+        String(hotel?.checkIn ?? checkIn),
+        String(hotel?.checkOut ?? checkOut),
+      );
+      if (hajj) {
+        console.log(`HAJJ SEASON BLOCKED hotel=${hotelCode} ${checkIn}→${checkOut} window=${hajj.from}..${hajj.to}`);
+        return fail('hajj_season', HAJJ_SEASON_MESSAGE);
+      }
+    }
+
     const supplierCurrency: string = String(hotel.currency ?? 'USD').toUpperCase();
     const net = toNum(rate.net) ?? 0;
     const sellingRate = toNum(rate.sellingRate);
@@ -321,6 +346,8 @@ Deno.serve(async (req) => {
         cancellation_policies: policies,
         pay_at_hotel_usd: atHotel.totalUsd,
         pay_at_hotel_fees: atHotel.fees,
+        // لغة الزبون: إيميلات الحجز تُرسل بها (انظر _shared/email.ts).
+        locale: emailLocale(consent.locale),
       })
       .select('id')
       .single();

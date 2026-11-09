@@ -269,6 +269,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        semanticLabel: l10n.cancelBookingConfirmTitle,
         title: Text(l10n.cancelBookingConfirmTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -374,6 +375,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        semanticLabel: l10n.cancelBookingConfirmTitle,
         title: Text(l10n.cancelBookingConfirmTitle),
         content: Text(booking.hotelName ?? ''),
         actions: [

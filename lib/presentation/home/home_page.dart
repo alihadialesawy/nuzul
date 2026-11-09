@@ -5,6 +5,8 @@ import '../../core/config/features.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 import 'widgets/us_destinations_section.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../core/widgets/a11y_tap.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,6 +14,7 @@ import 'widgets/travel_inspiration_section.dart';
 import 'package:flutter/gestures.dart';
 import '../../app.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/hajj_season.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../core/providers/currency_provider.dart';
@@ -163,6 +166,10 @@ class _HomePageState extends ConsumerState<HomePage> {
   DestinationModel? _selectedDestination;
   List<DestinationModel> _destinationSuggestions = [];
   Timer? _destinationDebounce;
+  // لوحة المفاتيح وقارئ الشاشة: السهم ↓ من حقل المدينة ينقل إلى أول اقتراح،
+  // وبعد اختيار اقتراح يعود التركيز إلى حقل المدينة.
+  final _cityFocus = FocusNode(debugLabel: 'cityField');
+  final _firstSuggestionFocus = FocusNode(debugLabel: 'firstSuggestion');
   DateTime _checkIn = DateTime.now().add(const Duration(days: 1));
   DateTime _checkOut = DateTime.now().add(const Duration(days: 3));
   int _guests = 2;
@@ -231,6 +238,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void dispose() {
     _cityController.dispose();
+    _cityFocus.dispose();
+    _firstSuggestionFocus.dispose();
     _flightFromController.dispose();
     _flightToController.dispose();
     _carPickupController.dispose();
@@ -265,6 +274,14 @@ class _HomePageState extends ConsumerState<HomePage> {
       _selectedDestination = destination;
       _destinationSuggestions = [];
     });
+    // عند الاختيار بلوحة المفاتيح فقط: أعد التركيز إلى حقل المدينة (وإلا يضيع
+    // التركيز لأن قائمة الاقتراحات تختفي). لا نفعل ذلك مع اللمس حتى لا تظهر
+    // لوحة مفاتيح الجوال من جديد.
+    if (FocusManager.instance.highlightMode == FocusHighlightMode.traditional) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _cityFocus.requestFocus();
+      });
+    }
   }
 
   /// يفتح شاشة "تصفّح حسب الدولة" (bottom sheet) عشان المستخدم يقدر
@@ -347,8 +364,15 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ),
       );
+      // لوحة المفاتيح: إن كانت هناك اقتراحات ظاهرة، انقل التركيز إلى أولها
+      // مباشرة، فيكفي Enter للاختيار (بدل أن يبحث الكفيف عن القائمة).
+      if (_destinationSuggestions.isNotEmpty &&
+          FocusManager.instance.highlightMode == FocusHighlightMode.traditional) {
+        _firstSuggestionFocus.requestFocus();
+      }
       return;
     }
+    if (_blockIfHajjSeason(_selectedDestination!.code)) return;
     setState(() {
       _staysFormExpanded = false;
       _searchParams = {
@@ -1016,25 +1040,40 @@ class _HomePageState extends ConsumerState<HomePage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: TextField(
-        controller: _cityController,
-        style: const TextStyle(color: Colors.black87),
-        decoration: InputDecoration(
-          hintText: l10n.whereTo,
-          hintStyle: const TextStyle(color: Colors.black45),
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        ),
-        onChanged: _onCityTextChanged,
-        onSubmitted: (_) => _runSearch(),
-        onTap: () {
-          if (_cityController.text.trim().isEmpty) _openCountryBrowser();
+      child: Focus(
+        // لا يضيف محطة Tab جديدة؛ فقط يلتقط السهم ↓ من حقل المدينة.
+        canRequestFocus: false,
+        skipTraversal: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.arrowDown &&
+              _destinationSuggestions.isNotEmpty) {
+            _firstSuggestionFocus.requestFocus();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
         },
+        child: TextField(
+          focusNode: _cityFocus,
+          controller: _cityController,
+          style: const TextStyle(color: Colors.black87),
+          decoration: InputDecoration(
+            hintText: l10n.whereTo,
+            hintStyle: const TextStyle(color: Colors.black45),
+            border: InputBorder.none,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ),
+          onChanged: _onCityTextChanged,
+          onSubmitted: (_) => _runSearch(),
+          onTap: () {
+            if (_cityController.text.trim().isEmpty) _openCountryBrowser();
+          },
+        ),
       ),
     );
 
-    final datesPill = GestureDetector(
+    final datesPill = A11yTap(
       key: _dateFieldKey,
       behavior: HitTestBehavior.opaque,
       onTap: _pickDateRange,
@@ -1078,7 +1117,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
     );
 
-    final guestsPill = GestureDetector(
+    final guestsPill = A11yTap(
       behavior: HitTestBehavior.opaque,
       onTap: () async {
         await showModalBottomSheet(
@@ -1173,17 +1212,29 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
     );
 
-    final searchButton = ElevatedButton.icon(
-      onPressed: _runSearch,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF87CEEB),
-        foregroundColor: Colors.white,
-        shape: const StadiumBorder(),
-        minimumSize: Size.zero,
+    // A11yTap بدل ElevatedButton: في اختبار NVDA كان زر البحث يعمل بالماوس فقط،
+    // بينما أزرار A11yTap (التواريخ/الضيوف) تعمل بـ Enter وSpace. نفس الشكل تمامًا.
+    final searchButton = A11yTap(
+      onTap: _runSearch,
+      focusRadius: const BorderRadius.all(Radius.circular(24)),
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: const ShapeDecoration(
+          color: Color(0xFF87CEEB),
+          shape: StadiumBorder(),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.search, size: 18, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              l10n.search,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14),
+            ),
+          ],
+        ),
       ),
-      icon: const Icon(Icons.search, size: 18),
-      label: Text(l10n.search),
     );
 
     // أيقونة "تصفّح حسب الدولة" -- بلون بارز (كهرماني) بدل الرمادي
@@ -1206,21 +1257,57 @@ class _HomePageState extends ConsumerState<HomePage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
         ),
-        constraints: const BoxConstraints(maxHeight: 220),
-        child: ListView.builder(
-          shrinkWrap: true,
-          padding: EdgeInsets.zero,
-          itemCount: _destinationSuggestions.length,
-          itemBuilder: (context, index) {
-            final d = _destinationSuggestions[index];
-            return ListTile(
-              dense: true,
-              leading: const Icon(Icons.place_outlined, size: 18),
-              title: Text(d.name),
-              subtitle: d.countryCode != null ? Text(d.countryCode!) : null,
-              onTap: () => _selectDestinationSuggestion(d),
-            );
-          },
+        constraints: const BoxConstraints(maxHeight: 250),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // liveRegion: قارئ الشاشة يعلن عدد الاقتراحات فور ظهورها.
+            Semantics(
+              liveRegion: true,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+                child: Text(
+                  _t3(context,
+                      ar: _destinationSuggestions.length == 1 ? 'اقتراح واحد — اضغط ↓ للاختيار' : '${_destinationSuggestions.length} اقتراحات — اضغط ↓ للاختيار',
+                      en: _destinationSuggestions.length == 1 ? '1 suggestion — press ↓ to choose' : '${_destinationSuggestions.length} suggestions — press ↓ to choose',
+                      es: _destinationSuggestions.length == 1 ? '1 sugerencia — pulsa ↓ para elegir' : '${_destinationSuggestions.length} sugerencias — pulsa ↓ para elegir',
+                      tr: '${_destinationSuggestions.length} öneri — seçmek için ↓ tuşuna basın',
+                      id: '${_destinationSuggestions.length} saran — tekan ↓ untuk memilih',
+                      hi: '${_destinationSuggestions.length} सुझाव — चुनने के लिए ↓ दबाएँ',
+                      ur: '${_destinationSuggestions.length} تجاویز — منتخب کرنے کے لیے ↓ دبائیں',
+                      fr: _destinationSuggestions.length == 1 ? '1 suggestion — appuyez sur ↓ pour choisir' : '${_destinationSuggestions.length} suggestions — appuyez sur ↓ pour choisir',
+                      bn: '${_destinationSuggestions.length}টি পরামর্শ — বেছে নিতে ↓ চাপুন'),
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ),
+            ),
+            Flexible(
+              // على الويب الأسهم تمرّر الصفحة افتراضيًا؛ هنا تنقل بين الاقتراحات.
+              child: Shortcuts(
+                shortcuts: const <ShortcutActivator, Intent>{
+                  SingleActivator(LogicalKeyboardKey.arrowDown): NextFocusIntent(),
+                  SingleActivator(LogicalKeyboardKey.arrowUp): PreviousFocusIntent(),
+                },
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  itemCount: _destinationSuggestions.length,
+                  itemBuilder: (context, index) {
+                    final d = _destinationSuggestions[index];
+                    return ListTile(
+                      focusNode: index == 0 ? _firstSuggestionFocus : null,
+                      dense: true,
+                      leading: const Icon(Icons.place_outlined, size: 18),
+                      title: Text(d.name),
+                      subtitle: d.countryCode != null ? Text(d.countryCode!) : null,
+                      onTap: () => _selectDestinationSuggestion(d),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     )
@@ -1303,7 +1390,29 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   // ═══════════════════════ تبويب العمرة ═══════════════════════
 
+  /// موسم الحج: تنبيه مبكر قبل البحث (الخادم يمنع الحجز أيضًا في hotelbeds-prepare).
+  bool _blockIfHajjSeason(String? destinationCode) {
+    if (!isMakkahHajjSeasonConflict(destinationCode, _checkIn, _checkOut)) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 10),
+        content: Text(_t3(context,
+            ar: 'لا يمكن حجز فنادق مكة المكرمة على Flynoom في هذه التواريخ: خلال موسم الحج يقتصر دخول مكة على حاملي تصريح الحج، ويُرتَّب سكن الحج عبر منصة نسك حج الرسمية فقط. اختر تواريخ أخرى أو فندقًا في المدينة المنورة.',
+            en: 'Hotels in Makkah can\'t be booked on Flynoom for these dates: during the Hajj season, entry to Makkah is limited to Hajj permit holders, and Hajj accommodation is arranged only through the official Nusuk Hajj platform. Please choose other dates or a hotel in Madinah.',
+            es: 'No se pueden reservar hoteles en La Meca en Flynoom para estas fechas: durante la temporada del Hajj, la entrada a La Meca se limita a quienes tienen permiso de Hajj, y el alojamiento del Hajj solo se gestiona a través de la plataforma oficial Nusuk Hajj. Elige otras fechas o un hotel en Medina.',
+            tr: 'Bu tarihler için Mekke otelleri Flynoom\'da rezerve edilemez: Hac döneminde Mekke\'ye giriş Hac izni olanlarla sınırlıdır ve Hac konaklaması yalnızca resmi Nusuk Hac platformu üzerinden ayarlanır. Lütfen başka tarihler veya Medine\'de bir otel seçin.',
+            id: 'Hotel di Makkah tidak dapat dipesan di Flynoom untuk tanggal ini: selama musim haji, masuk ke Makkah hanya untuk pemegang izin haji, dan akomodasi haji hanya diatur melalui platform resmi Nusuk Hajj. Silakan pilih tanggal lain atau hotel di Madinah.',
+            hi: 'इन तारीखों के लिए Flynoom पर मक्का के होटल बुक नहीं किए जा सकते: हज के मौसम में मक्का में प्रवेश केवल हज परमिट धारकों तक सीमित रहता है, और हज आवास केवल आधिकारिक नुसुक हज प्लेटफ़ॉर्म से व्यवस्थित होता है। कृपया दूसरी तारीखें या मदीना का होटल चुनें।',
+            ur: 'ان تاریخوں کے لیے Flynoom پر مکہ مکرمہ کے ہوٹل بک نہیں ہو سکتے: حج کے موسم میں مکہ میں داخلہ صرف حج اجازت نامہ رکھنے والوں تک محدود ہوتا ہے، اور حج کی رہائش صرف سرکاری نسک حج پلیٹ فارم کے ذریعے ہوتی ہے۔ براہ کرم دوسری تاریخیں یا مدینہ منورہ کا ہوٹل منتخب کریں۔',
+            fr: 'Les hôtels de La Mecque ne peuvent pas être réservés sur Flynoom à ces dates : pendant la saison du Hajj, l\'entrée à La Mecque est réservée aux titulaires d\'un permis de Hajj, et l\'hébergement du Hajj passe uniquement par la plateforme officielle Nusuk Hajj. Choisissez d\'autres dates ou un hôtel à Médine.',
+            bn: 'এই তারিখগুলোর জন্য Flynoom-এ মক্কার হোটেল বুক করা যাবে না: হজের মৌসুমে মক্কায় প্রবেশ শুধু হজ পারমিটধারীদের জন্য সীমিত থাকে, এবং হজের থাকার ব্যবস্থা শুধু অফিসিয়াল নুসুক হজ প্ল্যাটফর্মের মাধ্যমে হয়। অনুগ্রহ করে অন্য তারিখ বা মদিনার হোটেল বেছে নিন।')),
+      ),
+    );
+    return true;
+  }
+
   void _runUmrahSearch() {
+    if (_blockIfHajjSeason(_umrahCity)) return;
     setState(() {
       _umrahFormExpanded = false;
       _umrahBannerCity = _umrahCity;
@@ -1402,7 +1511,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       ],
     );
 
-    final datesPill = GestureDetector(
+    final datesPill = A11yTap(
       key: _umrahDateFieldKey,
       behavior: HitTestBehavior.opaque,
       onTap: () => _pickDateRange(_umrahDateFieldKey),
@@ -1572,7 +1681,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               final isSelected = _flightTripType == entry.key;
               return Padding(
                 padding: const EdgeInsetsDirectional.only(end: AppSizes.lg),
-                child: GestureDetector(
+                child: A11yTap(
+                  selected: isSelected,
                   behavior: HitTestBehavior.opaque,
                   onTap: () => setState(() => _flightTripType = entry.key),
                   child: Column(
@@ -1654,7 +1764,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                     ),
                   ),
-                  GestureDetector(
+                  A11yTap(
+                    semanticLabel: _t3(context, ar: 'تبديل المغادرة والوجهة', en: 'Swap origin and destination', es: 'Intercambiar origen y destino', tr: 'Kalkış ve varışı değiştir', id: 'Tukar asal dan tujuan', hi: 'प्रस्थान और गंतव्य बदलें', ur: 'روانگی اور منزل تبدیل کریں', fr: 'Inverser départ et destination', bn: 'যাত্রা ও গন্তব্য অদলবদল করুন'),
                     behavior: HitTestBehavior.opaque,
                     onTap: _swapFlightLocations,
                     child: Container(
@@ -1709,7 +1820,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  GestureDetector(
+                  A11yTap(
                     key: _flightDateFieldKey,
                     behavior: HitTestBehavior.opaque,
                     onTap: _pickFlightDateRange,
@@ -1725,7 +1836,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ],
                     ),
                   ),
-                  GestureDetector(
+                  A11yTap(
                     behavior: HitTestBehavior.opaque,
                     onTap: _pickFlightTravelers,
                     child: Row(
@@ -1812,7 +1923,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                 ),
               ),
-              GestureDetector(
+              A11yTap(
+                semanticLabel: _t3(context, ar: 'تبديل المغادرة والوجهة', en: 'Swap origin and destination', es: 'Intercambiar origen y destino', tr: 'Kalkış ve varışı değiştir', id: 'Tukar asal dan tujuan', hi: 'प्रस्थान और गंतव्य बदलें', ur: 'روانگی اور منزل تبدیل کریں', fr: 'Inverser départ et destination', bn: 'যাত্রা ও গন্তব্য অদলবদল করুন'),
                 behavior: HitTestBehavior.opaque,
                 onTap: _swapFlightLocations,
                 child: Container(
@@ -1913,7 +2025,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              GestureDetector(
+              A11yTap(
                 key: _flightHotelDateFieldKey,
                 behavior: HitTestBehavior.opaque,
                 onTap: () => _pickDateRange(_flightHotelDateFieldKey),
@@ -1948,7 +2060,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ],
                 ),
               ),
-              GestureDetector(
+              A11yTap(
                 behavior: HitTestBehavior.opaque,
                 onTap: () async {
                   await showModalBottomSheet(
@@ -2140,7 +2252,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              GestureDetector(
+              A11yTap(
                 key: _carDateFieldKey,
                 behavior: HitTestBehavior.opaque,
                 onTap: _pickCarDateRange,
@@ -2229,7 +2341,34 @@ class _SearchResults extends ConsumerWidget {
           // +2: إفصاح "خدمة مستقلة" أولًا (إلينوي SB 2013)، ثم الفنادق، ثم الفوتر.
           itemCount: filteredHotels.length + 2,
           itemBuilder: (context, index) {
-            if (index == 0) return const IndependentServiceNotice(padding: EdgeInsets.only(bottom: AppSizes.sm));
+            if (index == 0) {
+              final n = filteredHotels.length;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // liveRegion: قارئ الشاشة يعلن عدد النتائج فور ظهورها أو تغيّرها بالفلاتر.
+                  Semantics(
+                    liveRegion: true,
+                    header: true,
+                    child: Text(
+                      _t3(context,
+                          ar: n == 1 ? 'تم العثور على فندق واحد' : 'تم العثور على $n فندق',
+                          en: n == 1 ? '1 hotel found' : '$n hotels found',
+                          es: n == 1 ? '1 hotel encontrado' : '$n hoteles encontrados',
+                          tr: '$n otel bulundu',
+                          id: '$n hotel ditemukan',
+                          hi: '$n होटल मिले',
+                          ur: '$n ہوٹل ملے',
+                          fr: n == 1 ? '1 hôtel trouvé' : '$n hôtels trouvés',
+                          bn: '$nটি হোটেল পাওয়া গেছে'),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const IndependentServiceNotice(padding: EdgeInsets.only(bottom: AppSizes.sm)),
+                ],
+              );
+            }
             if (index == filteredHotels.length + 1) return const AppFooter();
             return _HotelCard(hotel: filteredHotels[index - 1], searchParams: params, holySite: holySite);
           },
@@ -2689,7 +2828,7 @@ class _HotelCard extends ConsumerWidget {
                                       ),
                                     ),
                                     const Text(' · ', style: TextStyle(color: AppColors.textSecondary)),
-                                    GestureDetector(
+                                    A11yTap(
                                       onTap: () => _openInMap(context),
                                       child: Text(
                                         _t3(context, ar: 'الخريطة', en: 'Map', es: 'Mapa', tr: 'Harita', id: 'Peta',
@@ -3902,7 +4041,8 @@ class _TravelTabsBar extends StatelessWidget {
             final isActive = tab.id == selectedTab;
             return Padding(
               padding: const EdgeInsetsDirectional.only(end: AppSizes.sm),
-              child: GestureDetector(
+              child: A11yTap(
+                selected: isActive,
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
                   if (tab.id == 'stays' || tab.id == 'umrah' || tab.id == 'groups' || tab.id == 'flights' || tab.id == 'flightHotel' || tab.id == 'carRental') {
@@ -4061,6 +4201,25 @@ class _UmrahEntryNotice extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          // نسك مسار + موسم الحج (منذ 10 يونيو 2025: لا تأشيرة عمرة دون عقد سكن
+          // مسجّل في نسك مسار عبر مقدّم خدمات عمرة مرخّص). حجوزات Flynoom ليست كذلك.
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 28),
+            child: Text(
+              _t3(context,
+                  ar: 'مهم: حجوزات Flynoom غير مسجّلة في منصة «نسك مسار»، فلا تصلح لاستخراج تأشيرة عمرة. هي مناسبة لحاملي التأشيرة السياحية أو أي تأشيرة سعودية تسمح بأداء العمرة، ويُستخرج تصريح العمرة من تطبيق نسك. لا نبيع باقات أو سكن حج، ولا يمكن حجز فنادق مكة خلال موسم الحج.',
+                  en: 'Important: Flynoom bookings are not registered on the Nusuk Masar platform, so they cannot be used to obtain an Umrah visa. They are suitable for travelers with a Saudi tourist visa or another visa that allows Umrah; Umrah permits are issued through the Nusuk app. We do not sell Hajj packages or Hajj accommodation, and Makkah hotels cannot be booked during the Hajj season.',
+                  es: 'Importante: las reservas de Flynoom no están registradas en la plataforma Nusuk Masar, por lo que no sirven para obtener un visado de Umrah. Son adecuadas para viajeros con visado turístico saudí u otro visado que permita la Umrah; los permisos de Umrah se emiten en la app Nusuk. No vendemos paquetes ni alojamiento de Hajj, y los hoteles de La Meca no se pueden reservar durante la temporada del Hajj.',
+                  tr: 'Önemli: Flynoom rezervasyonları Nusuk Masar platformuna kayıtlı değildir; bu nedenle Umre vizesi almak için kullanılamaz. Suudi turist vizesi veya Umreye izin veren başka bir vizeyle seyahat edenler için uygundur; Umre izinleri Nusuk uygulamasından alınır. Hac paketi veya Hac konaklaması satmıyoruz ve Hac döneminde Mekke otelleri rezerve edilemez.',
+                  id: 'Penting: pemesanan Flynoom tidak terdaftar di platform Nusuk Masar, sehingga tidak dapat digunakan untuk mengurus visa umrah. Pemesanan ini cocok bagi pemegang visa turis Saudi atau visa lain yang membolehkan umrah; izin umrah diterbitkan melalui aplikasi Nusuk. Kami tidak menjual paket atau akomodasi haji, dan hotel di Makkah tidak dapat dipesan selama musim haji.',
+                  hi: 'महत्वपूर्ण: Flynoom की बुकिंग नुसुक मसार प्लेटफ़ॉर्म पर पंजीकृत नहीं होतीं, इसलिए इनसे उमरा वीज़ा नहीं लिया जा सकता। ये सऊदी पर्यटक वीज़ा या उमरा की अनुमति देने वाले किसी अन्य वीज़ा वाले यात्रियों के लिए उपयुक्त हैं; उमरा परमिट नुसुक ऐप से जारी होते हैं। हम हज पैकेज या हज आवास नहीं बेचते, और हज के मौसम में मक्का के होटल बुक नहीं किए जा सकते।',
+                  ur: 'اہم: Flynoom کی بکنگ نسک مسار پلیٹ فارم پر رجسٹرڈ نہیں ہوتیں، اس لیے ان سے عمرہ ویزا حاصل نہیں کیا جا سکتا۔ یہ سعودی سیاحتی ویزا یا عمرہ کی اجازت دینے والے کسی اور ویزا کے حامل مسافروں کے لیے موزوں ہیں؛ عمرہ اجازت نامے نسک ایپ سے جاری ہوتے ہیں۔ ہم حج پیکج یا حج کی رہائش فروخت نہیں کرتے، اور حج کے موسم میں مکہ کے ہوٹل بک نہیں ہو سکتے۔',
+                  fr: 'Important : les réservations Flynoom ne sont pas enregistrées sur la plateforme Nusuk Masar et ne permettent donc pas d\'obtenir un visa Omra. Elles conviennent aux voyageurs titulaires d\'un visa touristique saoudien ou d\'un autre visa autorisant la Omra ; les permis de Omra sont délivrés via l\'application Nusuk. Nous ne vendons ni forfaits ni hébergement pour le Hajj, et les hôtels de La Mecque ne peuvent pas être réservés pendant la saison du Hajj.',
+                  bn: 'গুরুত্বপূর্ণ: Flynoom-এর বুকিং নুসুক মাসার প্ল্যাটফর্মে নিবন্ধিত নয়, তাই এগুলো দিয়ে উমরাহ ভিসা নেওয়া যায় না। সৌদি পর্যটন ভিসা বা উমরাহর অনুমতি দেয় এমন অন্য ভিসাধারী ভ্রমণকারীদের জন্য এগুলো উপযুক্ত; উমরাহ পারমিট নুসুক অ্যাপ থেকে দেওয়া হয়। আমরা হজ প্যাকেজ বা হজের আবাসন বিক্রি করি না, এবং হজের মৌসুমে মক্কার হোটেল বুক করা যায় না।'),
+              style: const TextStyle(fontSize: 13, height: 1.4, fontWeight: FontWeight.w600),
+            ),
           ),
           const SizedBox(height: 10),
           Padding(

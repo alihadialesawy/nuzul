@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/a11y_tap.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
@@ -211,7 +212,8 @@ class _TravelStyleSectionState extends State<TravelStyleSection> {
                         final color = _styleColors[key] ?? AppColors.primary;
                         return Padding(
                           padding: const EdgeInsetsDirectional.only(end: 8),
-                          child: GestureDetector(
+                          child: A11yTap(
+                            selected: isActive,
                             behavior: HitTestBehavior.opaque,
                             onTap: () => setState(() => _activeStyle = key),
                             child: AnimatedContainer(

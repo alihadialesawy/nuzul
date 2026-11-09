@@ -30,8 +30,8 @@ class _AccessibilityStatementPageState extends State<AccessibilityStatementPage>
   /// في اللغات المترجمة: عرض النص الإنجليزي المعتمد بدل الترجمة.
   bool _showEnglish = false;
 
-  static const String _lastUpdatedEn = 'October 12, 2026';
-  static const String _lastUpdatedAr = '12 أكتوبر 2026';
+  static const String _lastUpdatedEn = 'November 7, 2026';
+  static const String _lastUpdatedAr = '7 نوفمبر 2026';
 
   /// بريد خدمة العملاء (موحّد في كل الصفحات القانونية). يجب أن يصل فعلًا.
   static const String _contactEmail = 'support@flynoom.com';
@@ -73,9 +73,9 @@ class _AccessibilityStatementPageState extends State<AccessibilityStatementPage>
       titleEn: '5. Known Limitations',
       titleAr: '5. القيود المعروفة',
       bodyEn:
-      'Some content on Flynoom comes from third parties, including hotel photos and descriptions from our suppliers and flight information from airlines. This content may not always include text descriptions of images or meet every accessibility standard. Some parts of our own interface may also not yet fully meet WCAG 2.1 Level AA. We are working to improve these areas over time.',
+      'Some content on Flynoom comes from third parties, including hotel photos and descriptions from our suppliers and flight information from airlines. This content may not always include text descriptions of images or meet every accessibility standard. Some parts of our own interface may also not yet fully meet WCAG 2.1 Level AA. We are working to improve these areas over time. We test the website with the NVDA screen reader and Google Lighthouse. Specific known limitations of the website: (a) on mobile browsers, pinch-to-zoom is turned off by the software framework we use; you can still enlarge text with your device\'s text-size or accessibility zoom settings, and on a computer with your browser\'s zoom (Ctrl or Cmd and +). (b) Screen readers do not announce page items when you move the mouse over them; please navigate with the keyboard (Tab, Shift+Tab, the arrow keys and your screen reader\'s quick-navigation keys), which is fully supported. (c) The card details field during payment is provided by our payment processor, Stripe, in a secure frame, and uses Stripe\'s own accessibility labels. If any of these prevents you from booking, contact us and we will help you complete your booking.',
       bodyAr:
-      'بعض المحتوى في Flynoom مصدره جهات خارجية، بما في ذلك صور الفنادق وأوصافها من مزودينا ومعلومات الرحلات من شركات الطيران. قد لا يتضمن هذا المحتوى دائمًا وصفًا نصيًا للصور، وقد لا يستوفي كل معايير إمكانية الوصول. كما أن بعض أجزاء واجهتنا قد لا تستوفي بعد المستوى AA من WCAG 2.1 بالكامل. نعمل على تحسين هذه الجوانب مع الوقت.',
+      'بعض المحتوى في Flynoom مصدره جهات خارجية، بما في ذلك صور الفنادق وأوصافها من مزودينا ومعلومات الرحلات من شركات الطيران. قد لا يتضمن هذا المحتوى دائمًا وصفًا نصيًا للصور، وقد لا يستوفي كل معايير إمكانية الوصول. كما أن بعض أجزاء واجهتنا قد لا تستوفي بعد المستوى AA من WCAG 2.1 بالكامل. نعمل على تحسين هذه الجوانب مع الوقت. نختبر الموقع باستخدام قارئ الشاشة NVDA وأداة Google Lighthouse. القيود المعروفة تحديدًا في الموقع: (أ) في متصفحات الجوال يكون تكبير الشاشة بإصبعين معطّلًا بسبب إطار البرمجة الذي نستخدمه، ويمكنك تكبير النص من إعدادات حجم الخط أو التكبير في جهازك، وعلى الكمبيوتر من تكبير المتصفح (Ctrl أو Cmd مع +). (ب) لا تقرأ قارئات الشاشة عناصر الصفحة عند تمرير الماوس فوقها؛ يُرجى التنقل بلوحة المفاتيح (Tab وShift+Tab والأسهم ومفاتيح التنقل السريع في قارئ الشاشة)، وهي مدعومة بالكامل. (ج) خانة بيانات البطاقة أثناء الدفع يوفّرها معالج الدفع Stripe داخل إطار آمن، وتستخدم تسميات إمكانية الوصول الخاصة بـ Stripe. إذا منعك أي من ذلك من الحجز، فتواصل معنا وسنساعدك على إتمام حجزك.',
     ),
     _LegalSection(
       titleEn: '6. Feedback and Help With Booking',
@@ -138,7 +138,7 @@ class _AccessibilityStatementPageState extends State<AccessibilityStatementPage>
                     ),
                   ),
                   const SizedBox(height: 6),
-                  SelectableText(
+                  Text(
                     s.$2,
                     style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary),
                   ),
@@ -184,7 +184,7 @@ class _ContactCard extends StatelessWidget {
             children: [
               const Icon(Icons.email_outlined, size: 18, color: AppColors.textSecondary),
               const SizedBox(width: 8),
-              Expanded(child: SelectableText(email, style: const TextStyle(fontSize: 14))),
+              Expanded(child: Text(email, style: const TextStyle(fontSize: 14))),
               IconButton(
                 tooltip: lang != null ? legalUi(lang!, 'copy_email') : (isArabic ? 'نسخ البريد' : 'Copy email'),
                 icon: const Icon(Icons.copy, size: 18),

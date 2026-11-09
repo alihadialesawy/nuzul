@@ -113,6 +113,17 @@ class BookingPage extends ConsumerStatefulWidget {
 
 class _BookingPageState extends ConsumerState<BookingPage> {
   bool _isSubmitting = false;
+  // إمكانية الوصول: الزر يُعطَّل أثناء المعالجة فيفقد التركيز؛ نعيده إليه
+  // بعد إغلاق نافذة المراجعة (Cancel) حتى لا يقفز قارئ الشاشة لأعلى الصفحة.
+  final _confirmButtonFocus = FocusNode(debugLabel: 'confirmBooking');
+
+  void _restoreConfirmFocus() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && FocusManager.instance.highlightMode == FocusHighlightMode.traditional) {
+        _confirmButtonFocus.requestFocus();
+      }
+    });
+  }
   String? _errorMessage;
 
   // بيانات صاحب الحجز (فنادق HotelBeds فقط) — كما في الهوية.
@@ -204,6 +215,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
 
   @override
   void dispose() {
+    _confirmButtonFocus.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
@@ -322,6 +334,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     if (!mounted) return;
     if (agreed != true) {
       setState(() => _isSubmitting = false);
+      _restoreConfirmFocus();
       return;
     }
 
@@ -376,6 +389,8 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        // اسم النافذة لقارئ الشاشة (Lighthouse: role="dialog" بلا اسم).
+        semanticLabel: _tb(ctx, ar: 'راجع حجزك قبل الدفع', en: 'Review before payment', es: 'Revisa antes de pagar', tr: 'Ödemeden önce gözden geçirin', id: 'Tinjau sebelum membayar', hi: 'भुगतान से पहले समीक्षा करें', ur: 'ادائیگی سے پہلے جائزہ لیں', fr: 'Vérifiez avant de payer', bn: 'পেমেন্টের আগে পর্যালোচনা করুন'),
         title: Text(_tb(ctx,
             ar: 'راجع حجزك قبل الدفع', en: 'Review before payment', es: 'Revisa antes de pagar',
             tr: 'Ödemeden önce gözden geçirin', id: 'Tinjau sebelum membayar',
@@ -605,6 +620,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        semanticLabel: confirmed ? 'Booking confirmed' : 'Booking being confirmed',
         icon: Icon(
           confirmed ? Icons.check_circle : Icons.hourglass_top,
           color: confirmed ? AppColors.success : AppColors.primary,
@@ -879,15 +895,15 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                 if (v && _acceptedTerms) _errorMessage = null;
               }),
               text: _tb(context,
-                  ar: 'أؤكد أنني لست مقيمًا في كاليفورنيا أو فلوريدا أو هاواي أو آيوا أو ماريلاند أو واشنطن.',
-                  en: 'I confirm that I am not a resident of California, Florida, Hawaii, Iowa, Maryland, or Washington.',
-                  es: 'Confirmo que no resido en California, Florida, Hawái, Iowa, Maryland ni Washington.',
-                  tr: 'California, Florida, Hawaii, Iowa, Maryland veya Washington\'da ikamet etmediğimi onaylıyorum.',
-                  id: 'Saya menyatakan bahwa saya bukan penduduk California, Florida, Hawaii, Iowa, Maryland, atau Washington.',
-                  hi: 'मैं पुष्टि करता/करती हूं कि मैं कैलिफ़ोर्निया, फ़्लोरिडा, हवाई, आयोवा, मैरीलैंड या वॉशिंगटन का निवासी नहीं हूं।',
-                  ur: 'میں تصدیق کرتا/کرتی ہوں کہ میں کیلیفورنیا، فلوریڈا، ہوائی، آئیووا، میری لینڈ یا واشنگٹن کا رہائشی نہیں ہوں۔',
-                  fr: 'Je confirme ne pas résider en Californie, en Floride, à Hawaï, dans l\'Iowa, dans le Maryland ou dans l\'État de Washington.',
-                  bn: 'আমি নিশ্চিত করছি যে আমি ক্যালিফোর্নিয়া, ফ্লোরিডা, হাওয়াই, আইওয়া, মেরিল্যান্ড বা ওয়াশিংটনের বাসিন্দা নই।'),
+                  ar: 'أؤكد أنني مقيم في الولايات المتحدة، ولست مقيمًا في كاليفورنيا أو فلوريدا أو هاواي أو آيوا أو ماريلاند أو واشنطن.',
+                  en: 'I confirm that I am a resident of the United States and not a resident of California, Florida, Hawaii, Iowa, Maryland, or Washington.',
+                  es: 'Confirmo que resido en Estados Unidos y que no resido en California, Florida, Hawái, Iowa, Maryland ni Washington.',
+                  tr: 'Amerika Birleşik Devletleri\'nde ikamet ettiğimi ve California, Florida, Hawaii, Iowa, Maryland veya Washington\'da ikamet etmediğimi onaylıyorum.',
+                  id: 'Saya menyatakan bahwa saya penduduk Amerika Serikat dan bukan penduduk California, Florida, Hawaii, Iowa, Maryland, atau Washington.',
+                  hi: 'मैं पुष्टि करता/करती हूं कि मैं संयुक्त राज्य अमेरिका का निवासी हूं, और कैलिफ़ोर्निया, फ़्लोरिडा, हवाई, आयोवा, मैरीलैंड या वॉशिंगटन का निवासी नहीं हूं।',
+                  ur: 'میں تصدیق کرتا/کرتی ہوں کہ میں ریاستہائے متحدہ امریکہ کا رہائشی ہوں، اور کیلیفورنیا، فلوریڈا، ہوائی، آئیووا، میری لینڈ یا واشنگٹن کا رہائشی نہیں ہوں۔',
+                  fr: 'Je confirme résider aux États-Unis et ne pas résider en Californie, en Floride, à Hawaï, dans l\'Iowa, dans le Maryland ou dans l\'État de Washington.',
+                  bn: 'আমি নিশ্চিত করছি যে আমি মার্কিন যুক্তরাষ্ট্রের বাসিন্দা, এবং ক্যালিফোর্নিয়া, ফ্লোরিডা, হাওয়াই, আইওয়া, মেরিল্যান্ড বা ওয়াশিংটনের বাসিন্দা নই।'),
             ),
           ],
         ),
@@ -980,6 +996,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        semanticLabel: l10n.bookingSuccessTitle,
         icon: const Icon(Icons.check_circle, color: AppColors.success, size: 48),
         title: Text(l10n.bookingSuccessTitle),
         content: Text(
@@ -1196,6 +1213,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
             const SizedBox(height: AppSizes.lg),
 
             ElevatedButton(
+              focusNode: _confirmButtonFocus,
               onPressed: _isSubmitting ? null : _confirmBooking,
               child: _isSubmitting
                   ? const SizedBox(

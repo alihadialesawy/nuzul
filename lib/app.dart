@@ -15,6 +15,7 @@ import 'core/config/features.dart';
 import 'core/services/visit_tracker.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/locale_provider.dart';
+import 'core/services/welcome_email_service.dart';
 import 'core/widgets/app_bottom_nav_bar.dart';
 import 'localization/app_localizations.dart';
 import 'presentation/auth/login_page.dart';
@@ -382,6 +383,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     if (data.event == sb.AuthChangeEvent.passwordRecovery) {
       router.go(AppRoutes.resetPassword);
     }
+    // إيميل ترحيب لمرة واحدة للحساب الجديد، بلغة الواجهة الحالية
+    // (الخادم يقرر: حساب جديد + بريد مؤكَّد + لم يُرسل من قبل).
+    if (data.event == sb.AuthChangeEvent.signedIn) {
+      final dynamic current = ref.read(localeProvider);
+      final code = current is Locale
+          ? current.languageCode
+          : WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+      WelcomeEmailService.maybeSend(languageCode: code);
+    }
   });
   ref.onDispose(() {
     recoverySub.cancel();
@@ -410,12 +420,21 @@ class NuzulApp extends ConsumerWidget {
       // شريط "مرحلة تجريبية" أعلى كل الصفحات (على الويب فقط؛ على
       // Android/iOS يُرجع BetaBanner مساحة فارغة). عند فتح الحجز الحقيقي
       // احذف BetaBanner من هنا وأبقِ child وحده.
+      //
+      // ترتيب Tab (إمكانية الوصول، WCAG 2.4.3): الافتراضي في Flutter يرتّب
+      // العناصر حسب مكانها على الشاشة لحظة الضغط، فعند تمرير الصفحة تتداخل
+      // الأقسام مع الرأس فيقفز Tab بين الأقسام ويتخطى حقول البحث.
+      // WidgetOrderTraversalPolicy يتبع ترتيب الصفحة المنطقي (ترتيب الكود)
+      // دائمًا، مهما كان موضع التمرير.
       builder: (context, child) {
-        return Column(
-          children: [
-            const BetaBanner(),
-            Expanded(child: child ?? const SizedBox.shrink()),
-          ],
+        return FocusTraversalGroup(
+          policy: WidgetOrderTraversalPolicy(),
+          child: Column(
+            children: [
+              const BetaBanner(),
+              Expanded(child: child ?? const SizedBox.shrink()),
+            ],
+          ),
         );
       },
 

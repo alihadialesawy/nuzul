@@ -40,8 +40,8 @@ class _PrivacyNoticePageState extends State<PrivacyNoticePage> {
   /// في اللغات المترجمة: عرض النص الإنجليزي المعتمد بدل الترجمة.
   bool _showEnglish = false;
 
-  static const String _lastUpdatedEn = 'October 29, 2026';
-  static const String _lastUpdatedAr = '29 أكتوبر 2026';
+  static const String _lastUpdatedEn = 'November 7, 2026';
+  static const String _lastUpdatedAr = '7 نوفمبر 2026';
 
   /// بريد الخصوصية وحذف الحساب. يجب أن يكون بريدًا يصل فعلًا.
   static const String _contactEmail = 'support@flynoom.com';
@@ -62,7 +62,7 @@ class _PrivacyNoticePageState extends State<PrivacyNoticePage> {
       'Account information: your email address, name, phone number, and login details, or basic profile information from a sign-in provider you choose to use.\n\n'
           'Booking information: the lead guest\'s first and last name, email, and phone number; travel dates, destination, and room choices; the number of guests and the ages of any children (hotels require them); and any special requests.\n\n'
           'Payment information: card payments are entered directly into our payment processor, Stripe. We never receive or store your full card number. We keep limited records such as the amount, currency, payment status, and transaction identifiers.\n\n'
-          'Usage and device information: search history, pages viewed, device and browser type, IP address, and technical logs. If you allow it, we use your approximate location to suggest nearby cities. We also use your IP address to estimate your approximate country, state, and city, and the country and state of your card\'s billing address, to understand where our visitors and customers are; we use this only in aggregated statistics, and we do not store your IP address for this purpose.\n\n'
+          'Usage and device information: search history, pages viewed, device and browser type, IP address, and technical logs. If you allow it, we use your approximate location to suggest nearby cities. We also use your IP address to estimate your approximate country, state, and city, and the country and state of your card\'s billing address, to understand where our visitors and customers are; we use this only in aggregated statistics, and we do not store your IP address for this purpose. When you book, we also use your card\'s billing address (country and ZIP code), the country that issued your card, and the approximate country of your IP address to confirm that you can book with us (for example, that you are a U.S. resident and do not live in a state where we do not currently sell), to comply with U.S. sanctions, and to help prevent fraud.\n\n'
           'Mobile app information: if you use our Android or iPhone app, we also receive the app version, your device\'s operating system, and crash and performance diagnostics that help us fix problems. The app asks for your permission before it uses device features such as location, and you can change these permissions at any time in your device settings. Apple and Google handle app downloads and updates under their own terms and privacy policies; we receive only general statistics from them, such as the number of downloads.\n\n'
           'Community content: posts, trip journals, comments, reviews, and photos you share in the Community, along with your public profile name and picture. Photos you upload may contain location data (for example, GPS information); please remove it before posting if you do not want to share it.\n\n'
           'Communications: messages you send us by email or WhatsApp, and records of emails we send to you.\n\n'
@@ -71,7 +71,7 @@ class _PrivacyNoticePageState extends State<PrivacyNoticePage> {
       'معلومات الحساب: بريدك الإلكتروني واسمك ورقم هاتفك وبيانات الدخول، أو معلومات الملف الأساسية من مزود تسجيل الدخول الذي تختار استخدامه.\n\n'
           'معلومات الحجز: الاسم الأول والأخير للنزيل الرئيسي وبريده الإلكتروني ورقم هاتفه؛ وتواريخ السفر والوجهة والغرف المختارة؛ وعدد النزلاء وأعمار الأطفال إن وُجدوا (تطلبها الفنادق)؛ وأي طلبات خاصة.\n\n'
           'معلومات الدفع: تُدخَل بيانات البطاقة مباشرة لدى معالج الدفع لدينا Stripe، ولا نستلم رقم بطاقتك الكامل ولا نخزنه أبدًا. نحتفظ بسجلات محدودة مثل المبلغ والعملة وحالة الدفع ومعرّفات المعاملة.\n\n'
-          'معلومات الاستخدام والجهاز: سجل البحث، والصفحات التي تزورها، ونوع الجهاز والمتصفح، وعنوان IP، والسجلات التقنية. وإذا سمحت بذلك، نستخدم موقعك التقريبي لاقتراح المدن القريبة. كما نستخدم عنوان IP لتقدير دولتك وولايتك ومدينتك التقريبية، ونستخدم دولة عنوان فاتورة بطاقتك وولايتها، لنعرف أماكن زوارنا وعملائنا؛ ولا نستخدم ذلك إلا في إحصاءات مجمّعة، ولا نخزّن عنوان IP لهذا الغرض.\n\n'
+          'معلومات الاستخدام والجهاز: سجل البحث، والصفحات التي تزورها، ونوع الجهاز والمتصفح، وعنوان IP، والسجلات التقنية. وإذا سمحت بذلك، نستخدم موقعك التقريبي لاقتراح المدن القريبة. كما نستخدم عنوان IP لتقدير دولتك وولايتك ومدينتك التقريبية، ونستخدم دولة عنوان فاتورة بطاقتك وولايتها، لنعرف أماكن زوارنا وعملائنا؛ ولا نستخدم ذلك إلا في إحصاءات مجمّعة، ولا نخزّن عنوان IP لهذا الغرض. وعند الحجز نستخدم أيضًا عنوان فاتورة بطاقتك (الدولة والرمز البريدي)، والدولة التي أصدرت البطاقة، والدولة التقريبية لعنوان IP، للتأكد من أنك تستطيع الحجز معنا (مثلًا أنك مقيم في الولايات المتحدة ولست مقيمًا في ولاية لا نبيع فيها حاليًا)، وللالتزام بالعقوبات الأمريكية، وللمساعدة في منع الاحتيال.\n\n'
           'معلومات تطبيق الهاتف: إذا استخدمت تطبيقنا على Android أو iPhone، نتلقى أيضًا إصدار التطبيق ونظام تشغيل جهازك وتقارير الأعطال والأداء التي تساعدنا على إصلاح المشاكل. يطلب التطبيق إذنك قبل استخدام ميزات الجهاز مثل الموقع، ويمكنك تغيير هذه الأذونات في أي وقت من إعدادات جهازك. تتولى Apple وGoogle تنزيل التطبيق وتحديثاته وفق شروطهما وسياسات الخصوصية الخاصة بهما، ولا نتلقى منهما إلا إحصاءات عامة مثل عدد مرات التنزيل.\n\n'
           'محتوى المجتمع: المنشورات ويوميات الرحلات والتعليقات والتقييمات والصور التي تشاركها في قسم المجتمع، إلى جانب اسمك وصورتك في ملفك العام. قد تحتوي الصور التي ترفعها على بيانات الموقع (مثل معلومات GPS)، فاحذفها قبل النشر إن كنت لا تريد مشاركتها.\n\n'
           'المراسلات: الرسائل التي ترسلها إلينا عبر البريد الإلكتروني أو واتساب، وسجلات الرسائل التي نرسلها إليك.\n\n'
@@ -235,7 +235,7 @@ class _PrivacyNoticePageState extends State<PrivacyNoticePage> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  SelectableText(
+                  Text(
                     s.$2,
                     style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary),
                   ),

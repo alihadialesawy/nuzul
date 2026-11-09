@@ -346,6 +346,8 @@ String _reasonText(BuildContext c, String raw) {
   switch (key) {
     case 'sanctioned_card_country':
       return _t3(c, ar: 'بطاقة من دولة خاضعة للعقوبات ($val)', en: 'Card from a sanctioned country ($val)', es: 'Tarjeta de país sancionado ($val)');
+    case 'sanctioned_ip_country':
+      return _t3(c, ar: 'زائر من دولة خاضعة للعقوبات ($val)', en: 'Visitor in a sanctioned country ($val)', es: 'Visitante en país sancionado ($val)');
     case 'cvc_fail':
       return _t3(c, ar: 'رقم CVC خاطئ', en: 'Wrong CVC', es: 'CVC incorrecto');
     case 'radar_highest':
