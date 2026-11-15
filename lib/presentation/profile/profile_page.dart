@@ -2475,14 +2475,24 @@ class _SecurityTile extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           // الزر بعرضه الطبيعي (لا يُضغط)، والنص بجانبه هو الذي يتقلّص.
+          // minimumSize صريح: ثيم التطبيق يجعل الأزرار بعرض كامل (double.infinity)،
+          // وهذا داخل Row بلا Flexible يفشل ويُفرغ الصفحة كلها.
           filled
               ? ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: color),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              minimumSize: const Size(64, 40),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
             onPressed: onAction,
             child: Text(actionLabel, maxLines: 1, softWrap: false),
           )
               : TextButton(
-            style: TextButton.styleFrom(foregroundColor: color),
+            style: TextButton.styleFrom(
+              foregroundColor: color,
+              minimumSize: const Size(48, 40),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
             onPressed: onAction,
             child: Text(actionLabel, maxLines: 1, softWrap: false),
           ),
