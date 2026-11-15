@@ -1229,7 +1229,9 @@ class _ProfileMainContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 420;
+        // عمودان فقط على الشاشات العريضة فعلًا. نحسب تكبير الخط في إعدادات الجهاز:
+        // على iPhone Pro Max (428) مع خط كبير كانت الأزرار تنضغط حتى تتكسّر حرفًا حرفًا.
+        final isNarrow = constraints.maxWidth / MediaQuery.textScalerOf(context).scale(1) < 640;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(AppSizes.lg),
@@ -2472,18 +2474,17 @@ class _SecurityTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Flexible(
-            child: filled
-                ? ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: color),
-              onPressed: onAction,
-              child: Text(actionLabel),
-            )
-                : TextButton(
-              style: TextButton.styleFrom(foregroundColor: color),
-              onPressed: onAction,
-              child: Text(actionLabel),
-            ),
+          // الزر بعرضه الطبيعي (لا يُضغط)، والنص بجانبه هو الذي يتقلّص.
+          filled
+              ? ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: color),
+            onPressed: onAction,
+            child: Text(actionLabel, maxLines: 1, softWrap: false),
+          )
+              : TextButton(
+            style: TextButton.styleFrom(foregroundColor: color),
+            onPressed: onAction,
+            child: Text(actionLabel, maxLines: 1, softWrap: false),
           ),
         ],
       ),
