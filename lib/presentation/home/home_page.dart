@@ -807,7 +807,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           onTabSelected: (id) => setState(() => _activeTab = id),
         ),
       ),
-      body: Container(
+      body: LayoutBuilder(builder: (context, bodyBox) => Container(
         decoration: const BoxDecoration(
           border: Border(
             left: BorderSide(color: AppColors.primaryDark, width: 4),
@@ -818,43 +818,55 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: SafeArea(
           child: Column(
             children: [
-              (_activeTab == 'flights' && _flightSearchParams != null && !_flightFormExpanded)
-                  ? _buildCollapsedFlightBar()
-                  : (_activeTab == 'stays' && _searchParams != null && !_staysFormExpanded)
-                  ? _buildCollapsedStaysBar()
-                  : (_activeTab == 'umrah' && _umrahParams != null && !_umrahFormExpanded)
-                  ? _buildCollapsedUmrahBar()
-                  : Padding(
-                padding: const EdgeInsets.all(AppSizes.md),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Stack(
-                    children: [
-                      Offstage(
-                        offstage: _activeTab != 'stays',
-                        child: _buildStaysSearchBox(),
+              // مربع البحث (مع قائمة اقتراحات المدن) لا يتجاوز ارتفاع الصفحة:
+              // عند ظهور لوحة المفاتيح على الهاتف كان يتجاوزها ("BOTTOM OVERFLOWED").
+              // الآن يُمرَّر داخل المساحة المتاحة.
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: bodyBox.maxHeight.isFinite
+                      ? (bodyBox.maxHeight - 16).clamp(0.0, double.infinity)
+                      : double.infinity,
+                ),
+                child: SingleChildScrollView(
+                  child: (_activeTab == 'flights' && _flightSearchParams != null && !_flightFormExpanded)
+                      ? _buildCollapsedFlightBar()
+                      : (_activeTab == 'stays' && _searchParams != null && !_staysFormExpanded)
+                      ? _buildCollapsedStaysBar()
+                      : (_activeTab == 'umrah' && _umrahParams != null && !_umrahFormExpanded)
+                      ? _buildCollapsedUmrahBar()
+                      : Padding(
+                    padding: const EdgeInsets.all(AppSizes.md),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Stack(
+                        children: [
+                          Offstage(
+                            offstage: _activeTab != 'stays',
+                            child: _buildStaysSearchBox(),
+                          ),
+                          Offstage(
+                            offstage: _activeTab != 'umrah',
+                            child: _buildUmrahSearchBox(),
+                          ),
+                          Offstage(
+                            offstage: _activeTab != 'groups',
+                            child: _buildGroupsHeader(),
+                          ),
+                          Offstage(
+                            offstage: _activeTab != 'flights',
+                            child: _buildFlightsSearchBox(),
+                          ),
+                          Offstage(
+                            offstage: _activeTab != 'flightHotel',
+                            child: _buildFlightHotelSearchBox(),
+                          ),
+                          Offstage(
+                            offstage: _activeTab != 'carRental',
+                            child: _buildCarRentalSearchBox(),
+                          ),
+                        ],
                       ),
-                      Offstage(
-                        offstage: _activeTab != 'umrah',
-                        child: _buildUmrahSearchBox(),
-                      ),
-                      Offstage(
-                        offstage: _activeTab != 'groups',
-                        child: _buildGroupsHeader(),
-                      ),
-                      Offstage(
-                        offstage: _activeTab != 'flights',
-                        child: _buildFlightsSearchBox(),
-                      ),
-                      Offstage(
-                        offstage: _activeTab != 'flightHotel',
-                        child: _buildFlightHotelSearchBox(),
-                      ),
-                      Offstage(
-                        offstage: _activeTab != 'carRental',
-                        child: _buildCarRentalSearchBox(),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -1025,7 +1037,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 
