@@ -2851,98 +2851,109 @@ class _HotelCard extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            // قاعدة FTC للرسوم: السعر الشامل للإقامة (بما فيه رسوم الفندق
-                            // الإلزامية) هو الرقم الأبرز، وسعر الليلة ثانوي — مثل صفحة الفندق.
-                            child: Builder(builder: (context) {
-                              final ci = searchParams['checkIn'];
-                              final co = searchParams['checkOut'];
-                              final nights = (ci is DateTime && co is DateTime)
-                                  ? co.difference(ci).inDays.clamp(1, 365)
-                                  : 1;
-                              final nightsLabel = nights == 1
-                                  ? _t3(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche', tr: '1 gece', id: '1 malam',
-                                  hi: '1 रात', ur: '1 رات', fr: '1 nuit', bn: '1 রাত')
-                                  : _t3(context, ar: '$nights ليالٍ', en: '$nights nights', es: '$nights noches', tr: '$nights gece',
-                                  id: '$nights malam', hi: '$nights रातें', ur: '$nights راتیں', fr: '$nights nuits', bn: '$nights রাত');
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
+                      // على الشاشات الضيقة (الهواتف، أو خط كبير في إعدادات الجهاز) يُعرض الزر
+                      // تحت السعر بعرض كامل، بدل أن يضغط السعر حتى يتكسّر حرفًا حرفًا.
+                      // (لا LayoutBuilder هنا: الكارت داخل IntrinsicHeight.)
+                      Builder(builder: (context) {
+                        final mq = MediaQuery.of(context);
+                        // عرض عمود النص تقريبًا = الشاشة − الصورة (140) − الهوامش، مقسومًا على تكبير الخط.
+                        final textWidth = (mq.size.width - 140 - 80) / mq.textScaler.scale(1);
+                        final narrow = textWidth < 330;
+                        final price = Builder(builder: (context) {
+                          final ci = searchParams['checkIn'];
+                          final co = searchParams['checkOut'];
+                          final nights = (ci is DateTime && co is DateTime)
+                              ? co.difference(ci).inDays.clamp(1, 365)
+                              : 1;
+                          final nightsLabel = nights == 1
+                              ? _t3(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche', tr: '1 gece', id: '1 malam',
+                              hi: '1 रात', ur: '1 رات', fr: '1 nuit', bn: '1 রাত')
+                              : _t3(context, ar: '$nights ليالٍ', en: '$nights nights', es: '$nights noches', tr: '$nights gece',
+                              id: '$nights malam', hi: '$nights रातें', ur: '$nights راتیں', fr: '$nights nuits', bn: '$nights রাত');
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.end,
                                 children: [
-                                  Wrap(
-                                    crossAxisAlignment: WrapCrossAlignment.end,
-                                    children: [
-                                      PriceText(
-                                        sarAmount: hotel.pricePerNight * nights,
-                                        style: const TextStyle(
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                        ),
-                                      ),
-                                      Text(
-                                        '  ${_t3(context, ar: 'الإجمالي', en: 'Total', es: 'Total', tr: 'Toplam', id: 'Total', hi: 'कुल', ur: 'کل', fr: 'Total', bn: 'মোট')} · $nightsLabel',
-                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                                      ),
-                                    ],
+                                  PriceText(
+                                    sarAmount: hotel.pricePerNight * nights,
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
                                   ),
-                                  Wrap(
-                                    crossAxisAlignment: WrapCrossAlignment.end,
-                                    children: [
-                                      PriceText(
-                                        sarAmount: hotel.pricePerNight,
-                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                                      ),
-                                      Text(
-                                        ' ${l10n.perNight}',
-                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                                      ),
-                                    ],
+                                  Text(
+                                    '  ${_t3(context, ar: 'الإجمالي', en: 'Total', es: 'Total', tr: 'Toplam', id: 'Total', hi: 'कुल', ur: 'کل', fr: 'Total', bn: 'মোট')} · $nightsLabel',
+                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                                   ),
                                 ],
-                              );
-                            }),
-                          ),
-                          SizedBox(
-                            width: 150,
-                            height: 40,
-                            child: onSelect != null
-                                ? ElevatedButton.icon(
-                              onPressed: onSelect,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: (selected ?? false) ? AppColors.success : null,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                               ),
-                              icon: Icon((selected ?? false) ? Icons.check_circle : Icons.add_circle_outline, size: 16),
-                              label: Text(
-                                (selected ?? false)
-                                    ? _t3(context, ar: 'مختار', en: 'Selected', es: 'Seleccionado', tr: 'Seçildi', id: 'Dipilih',
-                                    hi: 'चयनित',
-                                    ur: 'منتخب شدہ',
-                                    fr: 'Sélectionné',
-                                    bn: 'নির্বাচিত')
-                                    : _t3(context, ar: 'اختر', en: 'Select', es: 'Elegir', tr: 'Seç', id: 'Pilih',
-                                    hi: 'चुनें',
-                                    ur: 'منتخب کریں',
-                                    fr: 'Sélectionner',
-                                    bn: 'নির্বাচন করুন'),
-                                overflow: TextOverflow.ellipsis,
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.end,
+                                children: [
+                                  PriceText(
+                                    sarAmount: hotel.pricePerNight,
+                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                  ),
+                                  Text(
+                                    ' ${l10n.perNight}',
+                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                  ),
+                                ],
                               ),
-                            )
-                                : ElevatedButton.icon(
-                              onPressed: () => _openHotelDetails(context, searchParams),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              ),
-                              icon: Text(l10n.bookNow, overflow: TextOverflow.ellipsis),
-                              label: const Icon(Icons.arrow_forward, size: 16),
+                            ],
+                          );
+                        });
+                        final button = SizedBox(
+                          width: narrow ? double.infinity : 150,
+                          height: 40,
+                          child: onSelect != null
+                              ? ElevatedButton.icon(
+                            onPressed: onSelect,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: (selected ?? false) ? AppColors.success : null,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             ),
+                            icon: Icon((selected ?? false) ? Icons.check_circle : Icons.add_circle_outline, size: 16),
+                            label: Text(
+                              (selected ?? false)
+                                  ? _t3(context, ar: 'مختار', en: 'Selected', es: 'Seleccionado', tr: 'Seçildi', id: 'Dipilih',
+                                  hi: 'चयनित',
+                                  ur: 'منتخب شدہ',
+                                  fr: 'Sélectionné',
+                                  bn: 'নির্বাচিত')
+                                  : _t3(context, ar: 'اختر', en: 'Select', es: 'Elegir', tr: 'Seç', id: 'Pilih',
+                                  hi: 'चुनें',
+                                  ur: 'منتخب کریں',
+                                  fr: 'Sélectionner',
+                                  bn: 'নির্বাচন করুন'),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )
+                              : ElevatedButton.icon(
+                            onPressed: () => _openHotelDetails(context, searchParams),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            ),
+                            icon: Text(l10n.bookNow, overflow: TextOverflow.ellipsis),
+                            label: const Icon(Icons.arrow_forward, size: 16),
                           ),
-                        ],
-                      ),
+                        );
+                        if (narrow) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [price, const SizedBox(height: 10), button],
+                          );
+                        }
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [Expanded(child: price), button],
+                        );
+                      }),
                     ],
                   ),
                 ),
@@ -4030,68 +4041,74 @@ class _TravelTabsBar extends StatelessWidget {
       ),
     ];
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
-        child: Row(
-          children: tabs.map((tab) {
-            final isActive = tab.id == selectedTab;
-            return Padding(
-              padding: const EdgeInsetsDirectional.only(end: AppSizes.sm),
-              child: A11yTap(
-                selected: isActive,
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  if (tab.id == 'stays' || tab.id == 'umrah' || tab.id == 'groups' || tab.id == 'flights' || tab.id == 'flightHotel' || tab.id == 'carRental') {
-                    onTabSelected(tab.id);
-                    return;
-                  }
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(_comingSoonText(context)),
-                      duration: const Duration(seconds: 1),
+    // التبويبات داخل البانر بارتفاع ثابت: مع تكبير الخط في إعدادات الهاتف كانت
+    // تتجاوز الارتفاع ("BOTTOM OVERFLOWED"). نحدّ التكبير هنا فقط (حتى 1.15×)
+    // ونقلّل الهامش العمودي؛ بقية الصفحة تتبع حجم الخط الذي اختاره المستخدم.
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.15,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
+          child: Row(
+            children: tabs.map((tab) {
+              final isActive = tab.id == selectedTab;
+              return Padding(
+                padding: const EdgeInsetsDirectional.only(end: AppSizes.sm),
+                child: A11yTap(
+                  selected: isActive,
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (tab.id == 'stays' || tab.id == 'umrah' || tab.id == 'groups' || tab.id == 'flights' || tab.id == 'flightHotel' || tab.id == 'carRental') {
+                      onTabSelected(tab.id);
+                      return;
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(_comingSoonText(context)),
+                        duration: const Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      // التبويب غير المختار بخلفية داكنة شفافة حتى يبقى مقروءًا
+                      // فوق صورة البانر الفاتحة (كان شفافًا تمامًا فيختفي).
+                      color: isActive
+                          ? AppColors.primaryDark
+                          : Colors.black.withOpacity(0.45),
+                      borderRadius: BorderRadius.circular(20),
+                      border: isActive
+                          ? null
+                          : Border.all(color: Colors.white.withOpacity(0.7)),
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    // التبويب غير المختار بخلفية داكنة شفافة حتى يبقى مقروءًا
-                    // فوق صورة البانر الفاتحة (كان شفافًا تمامًا فيختفي).
-                    color: isActive
-                        ? AppColors.primaryDark
-                        : Colors.black.withOpacity(0.45),
-                    borderRadius: BorderRadius.circular(20),
-                    border: isActive
-                        ? null
-                        : Border.all(color: Colors.white.withOpacity(0.7)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        tab.icon,
-                        size: 16,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        tab.label,
-                        style: TextStyle(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          tab.icon,
+                          size: 16,
                           color: Colors.white,
-                          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 13,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Text(
+                          tab.label,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
