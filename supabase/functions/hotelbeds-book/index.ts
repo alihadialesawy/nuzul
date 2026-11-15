@@ -31,6 +31,7 @@ import {
   ok,
 } from '../_shared/hotelbeds.ts';
 import { bookingConfirmationEmail, sendEmail } from '../_shared/email.ts';
+import { notEligibleMessage } from '../_shared/eligibility.ts';
 import { evaluateRisk, lookupIpCountry, PAYMENT_DECLINED_MESSAGE } from '../_shared/fraud.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
@@ -147,7 +148,7 @@ function nonUsBillingReason(intent: any): string | null {
 /// رسائل HotelBeds التي تعني أن الحجز لم يتم يقينًا، حتى لو جاءت برمز 5xx.
 const PRICE_CHANGED_PATTERN = /price has changed|price difference exceeds/i;
 const DEFINITE_REJECT_PATTERN =
-  /price has changed|price difference exceeds|no availability|not available|insufficient allotment|allotment exceeded/i;
+  /price has changed|price difference exceeds|no availability|not available|insufficient allotment|allotment exceeded|stop sales?|closed for sale|release period/i;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -190,6 +191,22 @@ Deno.serve(async (req) => {
       return fail('invalid_state', 'This booking can no longer be completed.', { status: booking.status });
     }
 
+    // حجز من مورّد آخر (LiteAPI) وصل هنا بالخطأ: لا نرسله إلى HotelBeds أبدًا.
+    // نلغي حجز المبلغ على البطاقة ونغلق الحجز. (liteapi-book هي المسؤولة عنه.)
+    if (booking.supplier && booking.supplier !== 'hotelbeds') {
+      console.log(`WRONG SUPPLIER ${booking.client_reference}: ${booking.supplier} booking sent to hotelbeds-book`);
+      try {
+        await stripe.paymentIntents.cancel(booking.payment_intent_id);
+      } catch (e) {
+        console.log('cancel intent failed', String(e));
+      }
+      await setStatus({ status: 'failed', failure_reason: `wrong_supplier:${booking.supplier}` });
+      return fail(
+        'booking_unavailable',
+        'Online booking for this hotel is not available yet. Nothing was charged.',
+      );
+    }
+
     // ───── التحقق من الدفع ─────
     const intent = await stripe.paymentIntents.retrieve(booking.payment_intent_id, {
       expand: ['payment_method', 'latest_charge'],
@@ -221,11 +238,7 @@ Deno.serve(async (req) => {
         console.log('Cancel intent failed', String(e));
       }
       await setStatus({ status: 'failed', failure_reason: `restricted_state:${restricted}` });
-      return fail(
-        'state_not_supported',
-        `We can't accept bookings from residents of ${RESTRICTED_STATE_NAMES[restricted]} yet. ` +
-          'Your card has not been charged.',
-      );
+      return fail('state_not_supported', notEligibleMessage(booking.locale));
     }
 
     // ───── المقيمون في أمريكا فقط (عنوان فاتورة أمريكي) ─────
@@ -239,11 +252,7 @@ Deno.serve(async (req) => {
           console.log('Cancel intent failed', String(e));
         }
         await setStatus({ status: 'failed', failure_reason: `non_us_billing:${nonUs}` });
-        return fail(
-          'us_residents_only',
-          'Flynoom is currently available only to U.S. residents with a U.S. card billing address ' +
-            '(5-digit ZIP code). Your card has not been charged.',
-        );
+        return fail('us_residents_only', notEligibleMessage(booking.locale));
       }
     }
 

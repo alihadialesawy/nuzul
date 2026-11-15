@@ -7,7 +7,7 @@ import '../../core/constants/app_sizes.dart';
 import '../../core/pdf/flynoom_pdf.dart';
 import '../../data/models/booking_model.dart';
 
-/// مكتب الحجوزات — حجوزات HotelBeds الحقيقية (جدول bookings حيث supplier = 'hotelbeds').
+/// مكتب الحجوزات — حجوزات المورّدين الحقيقية (جدول bookings حيث supplier = 'hotelbeds' أو 'liteapi').
 ///
 /// • القراءة: نفس صلاحية المدير المستخدمة في صفحة الحجوزات القديمة.
 /// • الإلغاء نيابة عن العميل: عبر دالة hotelbeds-cancel فقط
@@ -183,7 +183,7 @@ class _AdminBookingDeskPageState extends State<AdminBookingDeskPage> {
       _error = null;
     });
     try {
-      var q = _client.from('bookings').select().eq('supplier', 'hotelbeds');
+      var q = _client.from('bookings').select().inFilter('supplier', ['hotelbeds', 'liteapi']);
       switch (_filter) {
         case 'active':
           q = q.eq('status', 'confirmed');
@@ -232,7 +232,7 @@ class _AdminBookingDeskPageState extends State<AdminBookingDeskPage> {
     if (q.isEmpty) return _rows;
     bool has(dynamic v) => '${v ?? ''}'.toLowerCase().contains(q);
     return _rows.where((r) =>
-    has(r['client_reference']) ||
+        has(r['client_reference']) ||
         has(r['supplier_reference']) ||
         has(r['hotel_name']) ||
         has(r['holder_email']) ||
@@ -384,7 +384,7 @@ class _BookingRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${_date(row['check_in'])} → ${_date(row['check_out'])}'
-                        '   ·   HB: ${row['supplier_reference'] ?? '—'}',
+                    '   ·   HB: ${row['supplier_reference'] ?? '—'}',
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ],
@@ -423,6 +423,10 @@ class _BookingDetailsDialog extends StatefulWidget {
 }
 
 class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
+  /// مورّد الحجز: دوال الإلغاء والفحص ونصوص الواجهة حسبه.
+  bool get _isLite => widget.row['supplier'] == 'liteapi';
+  String get _sup => _isLite ? 'LiteAPI' : 'HotelBeds';
+
   bool _busy = false;
 
   /// التحقق من هوية المتصل قبل الإلغاء (يظهر داخل النافذة للحجز المؤكد).
@@ -433,7 +437,7 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
 
   /// يستدعي hotelbeds-cancel ويرجع البيانات، أو يرمي رسالة خطأ مقروءة.
   Future<Map<String, dynamic>> _callCancel(String mode) =>
-      _callFunction('hotelbeds-cancel', {'bookingId': widget.row['id'], 'mode': mode});
+      _callFunction(_isLite ? 'liteapi-cancel' : 'hotelbeds-cancel', {'bookingId': widget.row['id'], 'mode': mode});
 
   /// يستدعي دالة Edge ويرجع البيانات، أو يرمي رسالة خطأ مقروءة.
   Future<Map<String, dynamic>> _callFunction(String name, Map<String, dynamic> body) async {
@@ -485,11 +489,11 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
             Text(
               (num.tryParse('${payload['refund']}') ?? 0) > 0
                   ? _t(ctx,
-                  ar: 'سيُلغى الحجز عند الفندق فعليًا، ويُسترد المبلغ للعميل، ويصله بريد الإلغاء. لا يمكن التراجع.',
-                  en: 'The booking will be cancelled at the hotel, the refund issued, and the guest emailed. This cannot be undone.')
+                      ar: 'سيُلغى الحجز عند الفندق فعليًا، ويُسترد المبلغ للعميل، ويصله بريد الإلغاء. لا يمكن التراجع.',
+                      en: 'The booking will be cancelled at the hotel, the refund issued, and the guest emailed. This cannot be undone.')
                   : _t(ctx,
-                  ar: 'انتهت فترة الإلغاء المجاني: سيُلغى الحجز عند الفندق دون أي استرداد للعميل، ويصله بريد الإلغاء. لا يمكن التراجع.',
-                  en: 'Free cancellation has ended: the booking will be cancelled at the hotel with NO refund, and the guest emailed. This cannot be undone.'),
+                      ar: 'انتهت فترة الإلغاء المجاني: سيُلغى الحجز عند الفندق دون أي استرداد للعميل، ويصله بريد الإلغاء. لا يمكن التراجع.',
+                      en: 'Free cancellation has ended: the booking will be cancelled at the hotel with NO refund, and the guest emailed. This cannot be undone.'),
               style: const TextStyle(color: Colors.red),
             ),
           ],
@@ -513,8 +517,8 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
       if (!mounted) return;
       _snack(p['status'] == 'refund_pending'
           ? _t(context,
-          ar: 'أُلغي عند الفندق لكن الاسترداد فشل — راجع Stripe. الحالة: يحتاج متابعة.',
-          en: 'Cancelled at hotel but refund failed — check Stripe. Status: needs attention.')
+              ar: 'أُلغي عند الفندق لكن الاسترداد فشل — راجع Stripe. الحالة: يحتاج متابعة.',
+              en: 'Cancelled at hotel but refund failed — check Stripe. Status: needs attention.')
           : _t(context, ar: 'تم الإلغاء والاسترداد.', en: 'Cancelled and refunded.'));
       Navigator.pop(context, true);
     } catch (e) {
@@ -606,8 +610,8 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
       if (save) widget.row['holder_email'] = r['to'] ?? to;
       _snack(save
           ? _t(context,
-          ar: 'حُفظ البريد الجديد وأُرسل التأكيد إلى ${r['to'] ?? to}',
-          en: 'Email updated and confirmation sent to ${r['to'] ?? to}')
+              ar: 'حُفظ البريد الجديد وأُرسل التأكيد إلى ${r['to'] ?? to}',
+              en: 'Email updated and confirmation sent to ${r['to'] ?? to}')
           : _t(context, ar: 'أُرسل بريد التأكيد إلى ${r['to'] ?? to}', en: 'Confirmation sent to ${r['to'] ?? to}'));
     } catch (e) {
       if (mounted) _snack('$e');
@@ -622,7 +626,7 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
     setState(() => _busy = true);
     Map<String, dynamic> check;
     try {
-      check = await _callFunction('hotelbeds-check-booking', {
+      check = await _callFunction(_isLite ? 'liteapi-check-booking' : 'hotelbeds-check-booking', {
         'bookingId': widget.row['id'],
         'mode': 'check',
       });
@@ -644,11 +648,11 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
     String findingLabel(BuildContext ctx) {
       switch ('${check['finding']}') {
         case 'confirmed':
-          return _t(ctx, ar: 'مؤكد عند HotelBeds', en: 'Confirmed at HotelBeds');
+          return _t(ctx, ar: 'مؤكد عند $_sup', en: 'Confirmed at $_sup');
         case 'cancelled_at_supplier':
-          return _t(ctx, ar: 'ملغى عند HotelBeds', en: 'Cancelled at HotelBeds');
+          return _t(ctx, ar: 'ملغى عند $_sup', en: 'Cancelled at $_sup');
         case 'not_found':
-          return _t(ctx, ar: 'غير موجود عند HotelBeds', en: 'Not found at HotelBeds');
+          return _t(ctx, ar: 'غير موجود عند $_sup', en: 'Not found at $_sup');
         default:
           return _t(ctx, ar: 'غير معروف', en: 'Unknown');
       }
@@ -684,14 +688,14 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setD) => AlertDialog(
-          title: Text(_t(ctx, ar: 'نتيجة الفحص عند HotelBeds', en: 'HotelBeds check result')),
+          title: Text(_t(ctx, ar: 'نتيجة الفحص عند $_sup', en: '$_sup check result')),
           content: SizedBox(
             width: 460,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${_t(ctx, ar: 'HotelBeds', en: 'HotelBeds')}: ${findingLabel(ctx)}'
+                Text('$_sup: ${findingLabel(ctx)}'
                     '${check['hbReference'] != null ? ' (${check['hbReference']})' : ''}',
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
@@ -714,8 +718,8 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
                     title: Text(positive
                         ? _t(ctx, ar: 'أرسل للعميل بريد التأكيد', en: 'Email the guest their confirmation')
                         : _t(ctx,
-                        ar: 'أرسل للعميل بريد "لم يكتمل الحجز ولم يُسحب المبلغ"',
-                        en: 'Email the guest that the booking was not completed and they were not charged')),
+                            ar: 'أرسل للعميل بريد "لم يكتمل الحجز ولم يُسحب المبلغ"',
+                            en: 'Email the guest that the booking was not completed and they were not charged')),
                   ),
               ],
             ),
@@ -736,7 +740,7 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
 
     setState(() => _busy = true);
     try {
-      final r = await _callFunction('hotelbeds-check-booking', {
+      final r = await _callFunction(_isLite ? 'liteapi-check-booking' : 'hotelbeds-check-booking', {
         'bookingId': widget.row['id'],
         'mode': 'apply',
         'expectAction': action,
@@ -746,11 +750,11 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
       final emailed = r['emailed'] == true;
       _snack(r['result'] == 'confirmed'
           ? _t(context,
-          ar: 'تم تأكيد الحجز${emailed ? ' وأُرسل بريد التأكيد' : ''}.',
-          en: 'Booking confirmed${emailed ? ' and confirmation emailed' : ''}.')
+              ar: 'تم تأكيد الحجز${emailed ? ' وأُرسل بريد التأكيد' : ''}.',
+              en: 'Booking confirmed${emailed ? ' and confirmation emailed' : ''}.')
           : _t(context,
-          ar: 'أُغلق الحجز ولم يُسحب أي مبلغ${emailed ? '، وأُبلغ العميل بالبريد' : ''}.',
-          en: 'Booking closed, guest not charged${emailed ? ' and emailed' : ''}.'));
+              ar: 'أُغلق الحجز ولم يُسحب أي مبلغ${emailed ? '، وأُبلغ العميل بالبريد' : ''}.',
+              en: 'Booking closed, guest not charged${emailed ? ' and emailed' : ''}.'));
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -828,7 +832,7 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _r(_t(context, ar: 'الحالة', en: 'Status'), _statusLabel(context, status)),
-              _r(_t(context, ar: 'رقم HotelBeds', en: 'HotelBeds ref'), r['supplier_reference'], copy: true),
+              _r(_t(context, ar: 'رقم $_sup', en: '$_sup ref'), r['supplier_reference'], copy: true),
               _r(_t(context, ar: 'رقم Flynoom', en: 'Flynoom ref'), r['client_reference'], copy: true),
               _r(_t(context, ar: 'المدينة', en: 'City'), r['hotel_city']),
               _r(_t(context, ar: 'الدخول', en: 'Check-in'), _date(r['check_in'])),
@@ -888,8 +892,8 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
                 const SizedBox(height: AppSizes.md),
                 Text(
                   _t(context,
-                      ar: 'هذا الحجز يحتاج مراجعة: اضغط "تحقق من HotelBeds" لمعرفة حالته الحقيقية قبل أي إجراء.',
-                      en: 'Needs review: tap "Check with HotelBeds" to see its real status before acting.'),
+                      ar: 'هذا الحجز يحتاج مراجعة: اضغط "تحقق من $_sup" لمعرفة حالته الحقيقية قبل أي إجراء.',
+                      en: 'Needs review: tap "Check with $_sup" to see its real status before acting.'),
                   style: const TextStyle(fontSize: 12, color: Colors.red),
                 ),
               ],
@@ -950,7 +954,7 @@ class _BookingDetailsDialogState extends State<_BookingDetailsDialog> {
             icon: _busy
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.fact_check_outlined),
-            label: Text(_t(context, ar: 'تحقق من HotelBeds', en: 'Check with HotelBeds')),
+            label: Text(_t(context, ar: 'تحقق من $_sup', en: 'Check with $_sup')),
           ),
         if (status == 'confirmed')
           OutlinedButton.icon(
@@ -1113,8 +1117,8 @@ class _VerifyCallerPanelState extends State<_VerifyCallerPanel> {
           all
               ? _t(context, ar: 'تم التحقق ✓ — زر الإلغاء مفعّل الآن.', en: 'Verified ✓ — cancel is now enabled.')
               : _t(context,
-              ar: 'زر الإلغاء معطّل حتى تأكيد المعلومات الثلاث. إن لم تتطابق، اطلب من العميل مراسلة support@flynoom.com من بريد الحجز.',
-              en: 'Cancel stays disabled until all three are verified. If they do not match, ask the guest to email support@flynoom.com from the booking email.'),
+                  ar: 'زر الإلغاء معطّل حتى تأكيد المعلومات الثلاث. إن لم تتطابق، اطلب من العميل مراسلة support@flynoom.com من بريد الحجز.',
+                  en: 'Cancel stays disabled until all three are verified. If they do not match, ask the guest to email support@flynoom.com from the booking email.'),
           style: TextStyle(fontSize: 11, color: all ? const Color(0xFF00B894) : AppColors.error),
         ),
       ]),

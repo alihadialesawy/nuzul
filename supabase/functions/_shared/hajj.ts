@@ -62,6 +62,34 @@ export function hajjSeasonConflict(
   return null;
 }
 
+/// المسجد الحرام (الكعبة). يُستخدم لمورّدين بلا كود وجهة (LiteAPI): أي فندق
+/// في السعودية على بُعد ≤ 25 كم يُعدّ في مكة (حدود المدينة + هامش، دون جدة ~70 كم).
+const KAABA = { lat: 21.4225, lon: 39.8262 };
+const MAKKAH_RADIUS_KM = 25;
+
+export function isMakkahLocation(lat: number | null, lon: number | null, countryCode?: string | null): boolean {
+  if (lat == null || lon == null || !Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+  if (countryCode && countryCode.toUpperCase() !== 'SA') return false;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat - KAABA.lat);
+  const dLon = toRad(lon - KAABA.lon);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(KAABA.lat)) * Math.cos(toRad(lat)) * Math.sin(dLon / 2) ** 2;
+  const km = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return km <= MAKKAH_RADIUS_KM;
+}
+
+/// نفس hajjSeasonConflict لكن بموقع الفندق (أو اسم مدينته) بدل كود الوجهة.
+export function hajjSeasonConflictAt(
+  hotel: { lat: number | null; lon: number | null; countryCode?: string | null; city?: string | null },
+  checkIn: string,
+  checkOut: string,
+): Window | null {
+  const cityIsMakkah = /^(makkah|mecca|makka|مكة)/i.test(String(hotel.city ?? '').trim()) &&
+    (!hotel.countryCode || hotel.countryCode.toUpperCase() === 'SA');
+  if (!cityIsMakkah && !isMakkahLocation(hotel.lat, hotel.lon, hotel.countryCode)) return null;
+  return hajjSeasonConflict(MAKKAH_DESTINATION_CODE, checkIn, checkOut);
+}
+
 export const HAJJ_SEASON_MESSAGE =
   'Hotels in Makkah cannot be booked on Flynoom for these dates. During the Hajj season, ' +
   'Saudi authorities restrict entry to Makkah to holders of a Hajj permit, and Hajj ' +

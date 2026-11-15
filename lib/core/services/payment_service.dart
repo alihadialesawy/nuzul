@@ -20,6 +20,7 @@ String _pt(BuildContext context, String key) {
     'declined': ["لم يقبل البنك هذه البطاقة، ولم يُسحب أي مبلغ. جرّب بطاقة أخرى.", "Your bank didn't accept this card. No money was taken. Please try a different card.", "Tu banco no aceptó esta tarjeta. No se ha cobrado nada. Prueba con otra tarjeta.", "Bankanız bu kartı kabul etmedi. Hiçbir ücret alınmadı. Lütfen başka bir kart deneyin.", "Bank Anda tidak menerima kartu ini. Tidak ada dana yang ditarik. Silakan coba kartu lain.", "आपके बैंक ने यह कार्ड स्वीकार नहीं किया। कोई राशि नहीं ली गई। कृपया दूसरा कार्ड आज़माएँ।", "آپ کے بینک نے یہ کارڈ قبول نہیں کیا۔ کوئی رقم نہیں لی گئی۔ براہ کرم دوسرا کارڈ آزمائیں۔", "Votre banque n'a pas accepté cette carte. Aucun montant n'a été débité. Veuillez essayer une autre carte.", "আপনার ব্যাংক এই কার্ডটি গ্রহণ করেনি। কোনো টাকা কাটা হয়নি। অনুগ্রহ করে অন্য কার্ড চেষ্টা করুন।"],
     // أغلق الزبون نافذة التحقق (3D Secure) أو فشل فيها.
     'authCancelled': ["لم تكتمل خطوة التحقق من البنك. حاول مرة أخرى.", "Bank verification was not completed. Please try again.", "No se completó la verificación del banco. Inténtalo de nuevo.", "Banka doğrulaması tamamlanmadı. Lütfen tekrar deneyin.", "Verifikasi bank tidak selesai. Silakan coba lagi.", "बैंक सत्यापन पूरा नहीं हुआ। कृपया फिर से प्रयास करें।", "بینک کی تصدیق مکمل نہیں ہوئی۔ براہ کرم دوبارہ کوشش کریں۔", "La vérification bancaire n'a pas été effectuée. Veuillez réessayer.", "ব্যাংক যাচাই সম্পন্ন হয়নি। আবার চেষ্টা করুন।"],
+    'cardFieldNoZip': ['بيانات البطاقة: الرقم، وتاريخ الانتهاء، ورمز CVC', 'Card details: number, expiry date and CVC', 'Datos de la tarjeta: número, fecha de vencimiento y CVC', 'Kart bilgileri: numara, son kullanma tarihi ve CVC', 'Detail kartu: nomor, tanggal kedaluwarsa, dan CVC', 'कार्ड विवरण: नंबर, समाप्ति तिथि और CVC', 'کارڈ کی تفصیلات: نمبر، میعاد ختم ہونے کی تاریخ اور CVC', 'Informations de la carte : numéro, date d\'expiration et CVC', 'কার্ডের তথ্য: নম্বর, মেয়াদ শেষের তারিখ ও CVC'],
     // اسم مقروء لخانة البطاقة (قارئ الشاشة يسمعه عند الوصول إليها بـ Tab).
     'cardField': ['بيانات البطاقة: الرقم، وتاريخ الانتهاء، ورمز CVC، والرمز البريدي', 'Card details: number, expiry date, CVC and ZIP code', 'Datos de la tarjeta: número, fecha de vencimiento, CVC y código postal', 'Kart bilgileri: numara, son kullanma tarihi, CVC ve posta kodu', 'Detail kartu: nomor, tanggal kedaluwarsa, CVC, dan kode pos', 'कार्ड विवरण: नंबर, समाप्ति तिथि, CVC और ZIP कोड', 'کارڈ کی تفصیلات: نمبر، میعاد ختم ہونے کی تاریخ، CVC اور زپ کوڈ', 'Informations de la carte : numéro, date d\'expiration, CVC et code postal', 'কার্ডের তথ্য: নম্বর, মেয়াদ শেষের তারিখ, CVC ও জিপ কোড'],
   };
@@ -70,9 +71,12 @@ class PaymentService {
   /// تُستخدم لحجوزات HotelBeds: hotelbeds-prepare ينشئ الـ PaymentIntent
   /// بالمبلغ المحسوب على السيرفر وبـ capture_method=manual، فيُحجز المبلغ
   /// على البطاقة فقط، ولا يُسحب إلا بعد تأكيد الفندق (hotelbeds-book).
+  /// [collectPostalCode]: false لمن يحجز من العراق (لا رموز بريدية عمليًا).
+  /// السيرفر يتحقق من بلد إصدار البطاقة الفعلي، فلا يعتمد على هذا الخيار.
   Future<Result<bool>> confirmWithClientSecret({
     required String clientSecret,
     BuildContext? context,
+    bool collectPostalCode = true,
   }) async {
     try {
       // على الويب: PaymentSheet غير مدعومة، نستخدم نافذة CardField مخصصة
@@ -80,7 +84,7 @@ class PaymentService {
         if (context == null) {
           return const Failure('تعذر فتح نافذة الدفع');
         }
-        return _payOnWeb(context, clientSecret);
+        return _payOnWeb(context, clientSecret, collectPostalCode);
       }
 
       // على الموبايل: PaymentSheet
@@ -104,11 +108,14 @@ class PaymentService {
     }
   }
 
-  Future<Result<bool>> _payOnWeb(BuildContext context, String clientSecret) async {
+  Future<Result<bool>> _payOnWeb(BuildContext context, String clientSecret, bool collectPostalCode) async {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _WebCardPaymentDialog(clientSecret: clientSecret),
+      builder: (context) => _WebCardPaymentDialog(
+        clientSecret: clientSecret,
+        collectPostalCode: collectPostalCode,
+      ),
     );
 
     if (result == true) {
@@ -120,7 +127,8 @@ class PaymentService {
 
 class _WebCardPaymentDialog extends StatefulWidget {
   final String clientSecret;
-  const _WebCardPaymentDialog({required this.clientSecret});
+  final bool collectPostalCode;
+  const _WebCardPaymentDialog({required this.clientSecret, this.collectPostalCode = true});
 
   @override
   State<_WebCardPaymentDialog> createState() => _WebCardPaymentDialogState();
@@ -136,6 +144,9 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
   // داخل خانة Stripe، فيكتب الزبون مباشرة ويقرأ قارئ الشاشة حقول Stripe.
   final _cardController = CardEditController();
   final _cardBridgeFocus = FocusNode(debugLabel: 'cardBridge');
+
+  /// بلا رمز بريدي (الزائر من العراق).
+  bool get _noZip => !widget.collectPostalCode;
 
   void _focusStripeCard() {
     // ننتظر قليلًا حتى ينهي محرك Flutter نقل تركيز DOM إلى الجسر، ثم ننقله
@@ -177,8 +188,21 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
     try {
       await Stripe.instance.confirmPayment(
         paymentIntentClientSecret: widget.clientSecret,
-        data: const PaymentMethodParams.card(
-          paymentMethodData: PaymentMethodData(),
+        data: PaymentMethodParams.card(
+          paymentMethodData: PaymentMethodData(
+            billingDetails: _noZip
+                ? const BillingDetails(
+                    address: Address(
+                      city: null,
+                      country: 'IQ',
+                      line1: null,
+                      line2: null,
+                      postalCode: null,
+                      state: null,
+                    ),
+                  )
+                : null,
+          ),
         ),
       );
       if (mounted) Navigator.of(context).pop(true);
@@ -205,7 +229,7 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      semanticLabel: _pt(context, 'title'),
+        semanticLabel: _pt(context, 'title'),
       title: Text(_pt(context, 'title')),
       content: SizedBox(
         width: 400,
@@ -225,7 +249,7 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
               },
               child: Semantics(
                 textField: true,
-                label: _pt(context, 'cardField'),
+                label: _pt(context, _noZip ? 'cardFieldNoZip' : 'cardField'),
                 child: const SizedBox(height: 1, width: double.infinity),
               ),
             ),
@@ -233,9 +257,9 @@ class _WebCardPaymentDialogState extends State<_WebCardPaymentDialog> {
               child: ExcludeFocus(
                 child: CardField(
                   controller: _cardController,
-                  // الرمز البريدي إلزامي: نعرف منه ولاية البطاقة (منع الولايات غير
-                  // المسجّل فيها في hotelbeds-book) ويتحقق منه بنك العميل.
-                  enablePostalCode: true,
+                  // بطاقات أمريكا: الرمز البريدي إلزامي (نعرف منه الولاية، ويتحقق منه البنك).
+                  // بطاقات العراق: بلا رمز بريدي.
+                  enablePostalCode: !_noZip,
                   onCardChanged: (card) {
                     setState(() => _card = card);
                   },

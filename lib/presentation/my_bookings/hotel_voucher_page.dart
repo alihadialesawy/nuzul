@@ -212,13 +212,14 @@ class HotelVoucherPage extends StatelessWidget {
                             ],
 
                             const Divider(height: AppSizes.lg * 2),
-                            // ── العبارة الإلزامية من HotelBeds (بالإنجليزية كما هي) ──
-                            Text(
-                              'Payable through ${b.supplierName ?? 'HOTELBEDS'}, acting as agent for the '
-                                  'service operating company, details of which can be provided upon request. '
-                                  'VAT: ${b.supplierVat ?? '—'} Reference: ${b.supplierReference ?? '—'}',
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                            ),
+                            // ── العبارة الإلزامية من HotelBeds (بالإنجليزية كما هي؛ لحجوزات HotelBeds فقط) ──
+                            if (b.supplier == null || b.supplier == 'hotelbeds')
+                              Text(
+                                'Payable through ${b.supplierName ?? 'HOTELBEDS'}, acting as agent for the '
+                                    'service operating company, details of which can be provided upon request. '
+                                    'VAT: ${b.supplierVat ?? '—'} Reference: ${b.supplierReference ?? '—'}',
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              ),
                             const SizedBox(height: AppSizes.sm),
                             const Text(
                               'Booked by FLYNOOM LLC · flynoom.com',

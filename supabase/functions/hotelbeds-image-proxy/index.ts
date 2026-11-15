@@ -1,6 +1,7 @@
 // supabase/functions/hotelbeds-image-proxy/index.ts
 //
-// بروكسي بسيط لصور HotelBeds: بيجيب الصورة من photos.hotelbeds.com
+// بروكسي بسيط لصور الفنادق: بيجيب الصورة من photos.hotelbeds.com (HotelBeds)
+// أو static.cupid.travel (LiteAPI)
 // ويمررها للمتصفح مع ترويسات CORS صحيحة، لأن سيرفر HotelBeds نفسه
 // مش بيسمح بتحميل صوره من نطاق مختلف (Cross-Origin) مباشرة.
 //
@@ -21,6 +22,12 @@ const BROWSER_HEADERS: HeadersInit = {
   'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.9',
 };
+
+const ALLOWED_PREFIXES = [
+  'https://photos.hotelbeds.com/', // HotelBeds
+  'https://static.cupid.travel/', // LiteAPI (Nuitee / Cupid)
+  'https://snaphotelapi.com/', // LiteAPI (بعض صور المعرض)
+];
 
 const SIZE_RE = /\/giata\/(?:small|medium|standard|bigger|xl|xxl|original)\//;
 
@@ -45,17 +52,18 @@ serve(async (req) => {
 
   const url = new URL(req.url).searchParams.get('url');
 
-  // أمان: نسمح بس بتمرير روابط من نطاق HotelBeds الرسمي للصور،
+  // أمان: نسمح بس بتمرير روابط من نطاقات صور المورّدين الرسمية،
   // عشان محدش يستغل الدالة دي كـ "بروكسي مفتوح" لأي موقع تاني.
-  if (!url || !url.startsWith('https://photos.hotelbeds.com/')) {
+  if (!url || !ALLOWED_PREFIXES.some((p) => url.startsWith(p))) {
     return jsonError('Invalid or missing url', 400);
   }
+  const isHotelBeds = url.startsWith('https://photos.hotelbeds.com/');
 
   try {
     let imageResponse = await fetch(url, { headers: BROWSER_HEADERS });
 
     if (!imageResponse.ok) {
-      const fallback = biggerFallback(url);
+      const fallback = isHotelBeds ? biggerFallback(url) : null;
       console.log('IMAGE FETCH FAILED', imageResponse.status, url, fallback ? '→ trying bigger' : '');
       if (fallback) {
         imageResponse = await fetch(fallback, { headers: BROWSER_HEADERS });

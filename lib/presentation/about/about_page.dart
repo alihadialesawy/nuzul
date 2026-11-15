@@ -233,23 +233,23 @@ class AboutPage extends StatelessWidget {
             const SizedBox(height: AppSizes.sm),
             body(_t3(
               context,
-              ar: 'تدير Flynoom شركةُ FLYNOOM LLC، وهي شركة مستقلة مسجلة في ولاية ميشيغان. نحصل على الغرف الفندقية عبر شريكنا HOTELBEDS، '
+              ar: 'تدير Flynoom شركةُ FLYNOOM LLC، وهي شركة مستقلة مسجلة في ولاية ميشيغان. نحصل على الغرف الفندقية عبر شريكنا LiteAPI (من شركة Nuitee)، '
                   'وتُعالَج المدفوعات بأمان عبر Stripe، فلا نخزّن رقم بطاقتك أبدًا.',
-              en: 'Flynoom is operated by FLYNOOM LLC, an independent company registered in Michigan. Hotel rooms are supplied through our partner HOTELBEDS, '
+              en: 'Flynoom is operated by FLYNOOM LLC, an independent company registered in Michigan. Hotel rooms are supplied through our partner LiteAPI (by Nuitee), '
                   'and payments are processed securely by Stripe, so we never store your card number.',
-              es: 'Flynoom es operado por FLYNOOM LLC, una empresa independiente registrada en Michigan. Las habitaciones de hotel se obtienen a través de nuestro socio HOTELBEDS, '
+              es: 'Flynoom es operado por FLYNOOM LLC, una empresa independiente registrada en Michigan. Las habitaciones de hotel se obtienen a través de nuestro socio LiteAPI (de Nuitee), '
                   'y los pagos se procesan de forma segura con Stripe, por lo que nunca guardamos el número de tu tarjeta.',
-              tr: 'Flynoom, Michigan\'da kayıtlı bağımsız bir şirket olan FLYNOOM LLC tarafından işletilmektedir. Otel odaları iş ortağımız HOTELBEDS aracılığıyla sağlanır '
+              tr: 'Flynoom, Michigan\'da kayıtlı bağımsız bir şirket olan FLYNOOM LLC tarafından işletilmektedir. Otel odaları iş ortağımız LiteAPI (Nuitee) aracılığıyla sağlanır '
                   've ödemeler Stripe tarafından güvenle işlenir; bu nedenle kart numaranızı asla saklamayız.',
-              id: 'Flynoom dioperasikan oleh FLYNOOM LLC, perusahaan independen yang terdaftar di Michigan. Kamar hotel disediakan melalui mitra kami HOTELBEDS, '
+              id: 'Flynoom dioperasikan oleh FLYNOOM LLC, perusahaan independen yang terdaftar di Michigan. Kamar hotel disediakan melalui mitra kami LiteAPI (dari Nuitee), '
                   'dan pembayaran diproses dengan aman oleh Stripe, sehingga kami tidak pernah menyimpan nomor kartu Anda.',
-              hi: 'Flynoom का संचालन FLYNOOM LLC करती है, जो मिशिगन में पंजीकृत एक स्वतंत्र कंपनी है। होटल के कमरे हमारे साझेदार HOTELBEDS के माध्यम से मिलते हैं, '
+              hi: 'Flynoom का संचालन FLYNOOM LLC करती है, जो मिशिगन में पंजीकृत एक स्वतंत्र कंपनी है। होटल के कमरे हमारे साझेदार LiteAPI (Nuitee) के माध्यम से मिलते हैं, '
                   'और भुगतान Stripe द्वारा सुरक्षित रूप से संसाधित होते हैं, इसलिए हम आपका कार्ड नंबर कभी संग्रहीत नहीं करते।',
-              ur: 'Flynoom کو FLYNOOM LLC چلاتی ہے، جو مشی گن میں رجسٹرڈ ایک آزاد کمپنی ہے۔ ہوٹل کے کمرے ہمارے پارٹنر HOTELBEDS کے ذریعے فراہم کیے جاتے ہیں، '
+              ur: 'Flynoom کو FLYNOOM LLC چلاتی ہے، جو مشی گن میں رجسٹرڈ ایک آزاد کمپنی ہے۔ ہوٹل کے کمرے ہمارے پارٹنر LiteAPI (Nuitee) کے ذریعے فراہم کیے جاتے ہیں، '
                   'اور ادائیگیاں Stripe کے ذریعے محفوظ طریقے سے پروسیس ہوتی ہیں، اس لیے ہم آپ کا کارڈ نمبر کبھی محفوظ نہیں کرتے۔',
-              fr: 'Flynoom est exploité par FLYNOOM LLC, une société indépendante enregistrée au Michigan. Les chambres d\'hôtel sont fournies par notre partenaire HOTELBEDS, '
+              fr: 'Flynoom est exploité par FLYNOOM LLC, une société indépendante enregistrée au Michigan. Les chambres d\'hôtel sont fournies par notre partenaire LiteAPI (de Nuitee), '
                   'et les paiements sont traités en toute sécurité par Stripe : nous ne conservons jamais votre numéro de carte.',
-              bn: 'Flynoom পরিচালনা করে FLYNOOM LLC, মিশিগানে নিবন্ধিত একটি স্বাধীন কোম্পানি। হোটেলের রুম আমাদের অংশীদার HOTELBEDS-এর মাধ্যমে সরবরাহ করা হয়, '
+              bn: 'Flynoom পরিচালনা করে FLYNOOM LLC, মিশিগানে নিবন্ধিত একটি স্বাধীন কোম্পানি। হোটেলের রুম আমাদের অংশীদার LiteAPI (Nuitee)-এর মাধ্যমে সরবরাহ করা হয়, '
                   'এবং পেমেন্ট Stripe নিরাপদে প্রক্রিয়া করে, তাই আমরা কখনো আপনার কার্ড নম্বর সংরক্ষণ করি না।',
             )),
             const SizedBox(height: AppSizes.xl),

@@ -1,4 +1,4 @@
-﻿import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/error_translator.dart';
 import '../models/booking_model.dart';
@@ -89,7 +89,7 @@ class BookingRepository {
           .select('supplier')
           .eq('id', bookingId)
           .maybeSingle();
-      if (row != null && row['supplier'] == 'hotelbeds') {
+      if (row != null && (row['supplier'] == 'hotelbeds' || row['supplier'] == 'liteapi')) {
         return const Failure('لإلغاء هذا الحجز تواصل مع الدعم: ali@flynoom.com');
       }
 
@@ -138,11 +138,11 @@ class BookingRepository {
           .select('supplier')
           .eq('id', bookingId)
           .maybeSingle();
-      if (row != null && row['supplier'] == 'hotelbeds') {
+      if (row != null && (row['supplier'] == 'hotelbeds' || row['supplier'] == 'liteapi')) {
         return const Failure(
           'لا يمكن تغيير حالة حجز HotelBeds يدويًا. الإلغاء يتم عبر hotelbeds-cancel '
-              'حتى يُلغى عند الفندق ويُسترد المبلغ. / '
-              'HotelBeds bookings cannot be changed manually here.',
+          'حتى يُلغى عند الفندق ويُسترد المبلغ. / '
+          'HotelBeds bookings cannot be changed manually here.',
         );
       }
 

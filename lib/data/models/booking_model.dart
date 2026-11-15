@@ -1,4 +1,4 @@
-﻿class BookingModel {
+class BookingModel {
   final String id;
   final String userId;
   final String hotelId;
@@ -93,7 +93,12 @@
     this.cardLast4,
   });
 
-  bool get isHotelBeds => supplier == 'hotelbeds';
+  /// حجز حقيقي عند مورّد (HotelBeds أو LiteAPI): قسيمة، إيصال، إلغاء واسترداد عبر السيرفر.
+  /// (الاسم تاريخي: كل منطق الواجهة لحجوزات المورّدين يعتمد عليه.)
+  bool get isHotelBeds => supplier == 'hotelbeds' || supplier == 'liteapi';
+
+  /// حجز LiteAPI تحديدًا (الإلغاء عبر liteapi-cancel).
+  bool get isLiteApi => supplier == 'liteapi';
 
   String get holderFullName =>
       [holderFirstName, holderLastName].where((s) => s != null && s.isNotEmpty).join(' ');

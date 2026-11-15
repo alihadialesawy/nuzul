@@ -3,9 +3,10 @@
 // يعيد إرسال بريد تأكيد الحجز (نفس الرسالة الأصلية: القسيمة كاملة) — للمدير فقط.
 // الاستخدام: العميل يقول "لم يصلني إيميل التأكيد" → زر في مكتب الحجوزات.
 //
-// المدخلات: { bookingId, toEmail? }
+// المدخلات: { bookingId, toEmail?, saveEmail? }
 //   toEmail اختياري: إن لم يُرسل، يذهب البريد إلى holder_email المحفوظ في الحجز.
-//   (مفيد إذا كتب العميل بريده خطأ وقت الحجز.)
+//   saveEmail=true: يحفظ toEmail بريدًا للحجز (لرسائل الإلغاء لاحقًا) ويسجّل
+//   التغيير في booking_email_changes (القديم، الجديد، المدير، الوقت).
 //
 // النشر (تحتاج تسجيل الدخول، فلا تستخدم --no-verify-jwt):
 //   supabase functions deploy hotelbeds-resend-confirmation --project-ref nomgbttkfzhgbmbyidpy
@@ -58,13 +59,34 @@ Deno.serve(async (req) => {
       .eq('id', bookingId)
       .maybeSingle();
 
-    if (!booking || booking.supplier !== 'hotelbeds') return fail('not_found', 'Booking not found.');
+    if (!booking || !['hotelbeds', 'liteapi'].includes(booking.supplier)) return fail('not_found', 'Booking not found.');
     if (booking.status !== 'confirmed') {
       return fail('invalid_state', 'Only confirmed bookings can have their confirmation resent.');
     }
 
     const to = override || booking.holder_email;
     if (!to) return fail('no_email', 'This booking has no email address. Enter one to send to.');
+
+    // حفظ البريد المصحّح في الحجز + سجل تدقيق.
+    const oldEmail = String(booking.holder_email ?? '');
+    if (body.saveEmail === true && override && override.toLowerCase() !== oldEmail.toLowerCase()) {
+      const { error: upErr } = await admin
+        .from('bookings')
+        .update({ holder_email: override, updated_at: new Date().toISOString() })
+        .eq('id', bookingId);
+      if (upErr) {
+        console.log('EMAIL UPDATE FAILED', bookingId, upErr.message);
+        return fail('update_failed', 'Could not save the new email address.');
+      }
+      const { error: logErr } = await admin.from('booking_email_changes').insert({
+        booking_id: bookingId,
+        old_email: oldEmail || null,
+        new_email: override,
+        changed_by: user.id,
+      });
+      if (logErr) console.log('EMAIL CHANGE LOG FAILED', bookingId, logErr.message);
+      console.log(`EMAIL CHANGED ${booking.client_reference}: ${oldEmail} -> ${override} by_admin=${user.id}`);
+    }
 
     const sent = await sendEmail(to, bookingConfirmationEmail(booking));
     console.log(

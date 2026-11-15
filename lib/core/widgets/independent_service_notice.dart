@@ -20,31 +20,32 @@ String _pick(BuildContext c, Map<String, String> m) =>
 
 /// "Flynoom خدمة حجز مستقلة وغير تابعة للفنادق المعروضة..."
 String independentServiceText(BuildContext c) => _pick(c, const {
-  'ar': 'Flynoom خدمة حجز مستقلة وغير تابعة للفنادق المعروضة. أنت تحجز عبر Flynoom، لا مع الفندق مباشرة.',
-  'en': 'Flynoom is an independent booking service and is not affiliated with the hotels shown. You are booking through Flynoom, not directly with the hotel.',
-  'es': 'Flynoom es un servicio de reservas independiente y no está afiliado a los hoteles mostrados. Reservas a través de Flynoom, no directamente con el hotel.',
-  'tr': 'Flynoom bağımsız bir rezervasyon hizmetidir ve gösterilen otellerle bağlantılı değildir. Rezervasyonu doğrudan otelle değil, Flynoom üzerinden yapıyorsunuz.',
-  'id': 'Flynoom adalah layanan pemesanan independen dan tidak berafiliasi dengan hotel yang ditampilkan. Anda memesan melalui Flynoom, bukan langsung dengan hotel.',
-  'hi': 'Flynoom एक स्वतंत्र बुकिंग सेवा है और दिखाए गए होटलों से संबद्ध नहीं है। आप सीधे होटल से नहीं, बल्कि Flynoom के माध्यम से बुकिंग कर रहे हैं।',
-  'ur': 'Flynoom ایک آزاد بکنگ سروس ہے اور دکھائے گئے ہوٹلوں سے وابستہ نہیں ہے۔ آپ براہ راست ہوٹل سے نہیں بلکہ Flynoom کے ذریعے بکنگ کر رہے ہیں۔',
-  'fr': 'Flynoom est un service de réservation indépendant, non affilié aux hôtels affichés. Vous réservez via Flynoom, et non directement auprès de l\'hôtel.',
-  'bn': 'Flynoom একটি স্বাধীন বুকিং সেবা এবং দেখানো হোটেলগুলোর সাথে সম্পর্কিত নয়। আপনি সরাসরি হোটেলের সাথে নয়, Flynoom-এর মাধ্যমে বুকিং করছেন।',
-});
+      'ar': 'Flynoom خدمة حجز مستقلة وغير تابعة للفنادق المعروضة. أنت تحجز عبر Flynoom، لا مع الفندق مباشرة.',
+      'en': 'Flynoom is an independent booking service and is not affiliated with the hotels shown. You are booking through Flynoom, not directly with the hotel.',
+      'es': 'Flynoom es un servicio de reservas independiente y no está afiliado a los hoteles mostrados. Reservas a través de Flynoom, no directamente con el hotel.',
+      'tr': 'Flynoom bağımsız bir rezervasyon hizmetidir ve gösterilen otellerle bağlantılı değildir. Rezervasyonu doğrudan otelle değil, Flynoom üzerinden yapıyorsunuz.',
+      'id': 'Flynoom adalah layanan pemesanan independen dan tidak berafiliasi dengan hotel yang ditampilkan. Anda memesan melalui Flynoom, bukan langsung dengan hotel.',
+      'hi': 'Flynoom एक स्वतंत्र बुकिंग सेवा है और दिखाए गए होटलों से संबद्ध नहीं है। आप सीधे होटल से नहीं, बल्कि Flynoom के माध्यम से बुकिंग कर रहे हैं।',
+      'ur': 'Flynoom ایک آزاد بکنگ سروس ہے اور دکھائے گئے ہوٹلوں سے وابستہ نہیں ہے۔ آپ براہ راست ہوٹل سے نہیں بلکہ Flynoom کے ذریعے بکنگ کر رہے ہیں۔',
+      'fr': 'Flynoom est un service de réservation indépendant, non affilié aux hôtels affichés. Vous réservez via Flynoom, et non directement auprès de l\'hôtel.',
+      'bn': 'Flynoom একটি স্বাধীন বুকিং সেবা এবং দেখানো হোটেলগুলোর সাথে সম্পর্কিত নয়। আপনি সরাসরি হোটেলের সাথে নয়, Flynoom-এর মাধ্যমে বুকিং করছেন।',
+    });
 
 /// "Flynoom متاح للمقيمين في الولايات المتحدة فقط" — يظهر مع الإفصاح في النتائج
 /// وصفحة الفندق وصفحة الحجز، حتى يعرف الزائر من خارج أمريكا قبل أن يختار فندقًا
 /// (لا عند الدفع فقط). الخادم يفرضه أيضًا (رمز بريدي أمريكي، hotelbeds-book).
+/// (الاسم تاريخي) شرط الإقامة: الولايات المتحدة والعراق.
 String usResidentsOnlyText(BuildContext c) => _pick(c, const {
-  'ar': 'الحجز عبر Flynoom متاح للمقيمين في الولايات المتحدة فقط، ببطاقة عنوان فاتورتها أمريكي. ويمكنك الحجز لنزلاء من أي بلد.',
-  'en': 'Booking on Flynoom is available only to U.S. residents, with a card that has a U.S. billing address. You can book for guests from any country.',
-  'es': 'Las reservas en Flynoom solo están disponibles para residentes de EE. UU., con una tarjeta con dirección de facturación en EE. UU. Puedes reservar para huéspedes de cualquier país.',
-  'tr': 'Flynoom üzerinden rezervasyon yalnızca ABD\'de ikamet edenler içindir ve ABD fatura adresli bir kart gerekir. Her ülkeden misafir için rezervasyon yapabilirsiniz.',
-  'id': 'Pemesanan di Flynoom hanya tersedia bagi penduduk AS, dengan kartu yang memiliki alamat penagihan di AS. Anda dapat memesan untuk tamu dari negara mana pun.',
-  'hi': 'Flynoom पर बुकिंग केवल अमेरिका के निवासियों के लिए है, ऐसे कार्ड से जिसका बिलिंग पता अमेरिका का हो। आप किसी भी देश के मेहमानों के लिए बुकिंग कर सकते हैं।',
-  'ur': 'Flynoom پر بکنگ صرف امریکہ کے رہائشیوں کے لیے ہے، ایسے کارڈ سے جس کا بلنگ ایڈریس امریکہ کا ہو۔ آپ کسی بھی ملک کے مہمانوں کے لیے بکنگ کر سکتے ہیں۔',
-  'fr': 'La réservation sur Flynoom est réservée aux résidents des États-Unis, avec une carte dont l\'adresse de facturation est aux États-Unis. Vous pouvez réserver pour des voyageurs de n\'importe quel pays.',
-  'bn': 'Flynoom-এ বুকিং শুধু মার্কিন যুক্তরাষ্ট্রের বাসিন্দাদের জন্য, এমন কার্ডে যার বিলিং ঠিকানা যুক্তরাষ্ট্রে। আপনি যেকোনো দেশের অতিথির জন্য বুকিং করতে পারেন।',
-});
+      'ar': 'الحجز عبر Flynoom متاح للمقيمين في الولايات المتحدة والعراق، ببطاقة عنوان فاتورتها أمريكي أو بطاقة صادرة في العراق. ويمكنك الحجز لنزلاء من أي بلد.',
+      'en': 'Booking on Flynoom is available to residents of the United States and Iraq, with a card that has a U.S. billing address or a card issued in Iraq. You can book for guests from any country.',
+      'es': 'Las reservas en Flynoom están disponibles para residentes de EE. UU. e Irak, con una tarjeta con dirección de facturación en EE. UU. o una tarjeta emitida en Irak. Puedes reservar para huéspedes de cualquier país.',
+      'tr': 'Flynoom üzerinden rezervasyon ABD\'de ve Irak\'ta ikamet edenlere açıktır; ABD fatura adresli bir kart veya Irak\'ta düzenlenmiş bir kart gerekir. Her ülkeden misafir için rezervasyon yapabilirsiniz.',
+      'id': 'Pemesanan di Flynoom tersedia bagi penduduk AS dan Irak, dengan kartu beralamat penagihan di AS atau kartu yang diterbitkan di Irak. Anda dapat memesan untuk tamu dari negara mana pun.',
+      'hi': 'Flynoom पर बुकिंग अमेरिका और इराक के निवासियों के लिए उपलब्ध है, ऐसे कार्ड से जिसका बिलिंग पता अमेरिका का हो या जो इराक में जारी हुआ हो। आप किसी भी देश के मेहमानों के लिए बुकिंग कर सकते हैं।',
+      'ur': 'Flynoom پر بکنگ امریکہ اور عراق کے رہائشیوں کے لیے دستیاب ہے، ایسے کارڈ سے جس کا بلنگ ایڈریس امریکہ کا ہو یا جو عراق میں جاری ہوا ہو۔ آپ کسی بھی ملک کے مہمانوں کے لیے بکنگ کر سکتے ہیں۔',
+      'fr': 'La réservation sur Flynoom est ouverte aux résidents des États-Unis et de l\'Irak, avec une carte dont l\'adresse de facturation est aux États-Unis ou une carte émise en Irak. Vous pouvez réserver pour des voyageurs de n\'importe quel pays.',
+      'bn': 'Flynoom-এ বুকিং মার্কিন যুক্তরাষ্ট্র ও ইরাকের বাসিন্দাদের জন্য, এমন কার্ডে যার বিলিং ঠিকানা মার্কিন যুক্তরাষ্ট্রে অথবা যা ইরাকে ইস্যু করা। আপনি যেকোনো দেশের অতিথির জন্য বুকিং করতে পারেন।',
+    });
 
 /// "البائع: FLYNOOM LLC · العنوان · الهاتف · البريد"
 String sellerDetailsText(BuildContext c) {
@@ -63,14 +64,21 @@ String sellerDetailsText(BuildContext c) {
 }
 
 /// سطر صغير واضح (ليس مخفيًا) يُستخدم في النتائج والصفحات.
+///
+/// شرط الأهلية (أمريكا والعراق والولايات الممنوعة) لا يظهر في الواجهة: هو في شروط
+/// الخدمة (البند 3)، والموافقة عليها في صفحة الحجز تشمله، والسيرفر يفرضه عند الدفع.
 class IndependentServiceNotice extends StatelessWidget {
   /// أظهر بيانات البائع أيضًا (صفحة الحجز ونافذة المراجعة).
   final bool showSeller;
+
+  /// أظهر سطر الأهلية (غير مستخدم حاليًا؛ متروك للحاجة).
+  final bool showEligibility;
   final EdgeInsetsGeometry padding;
 
   const IndependentServiceNotice({
     super.key,
     this.showSeller = false,
+    this.showEligibility = false,
     this.padding = const EdgeInsets.symmetric(vertical: 6),
   });
 
@@ -89,11 +97,13 @@ class IndependentServiceNotice extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(independentServiceText(context), style: TextStyle(fontSize: 12, color: color)),
-                const SizedBox(height: 2),
-                Text(
-                  usResidentsOnlyText(context),
-                  style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
-                ),
+                if (showEligibility) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    usResidentsOnlyText(context),
+                    style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
+                  ),
+                ],
                 if (showSeller) ...[
                   const SizedBox(height: 2),
                   // Text لا SelectableText: على الويب يتحول SelectableText إلى textarea

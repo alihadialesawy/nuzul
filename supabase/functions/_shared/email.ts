@@ -51,6 +51,7 @@ const T: Record<string, Row9> = {
     'হ্যালো {name}, Flynoom-এর মাধ্যমে বুকিং করার জন্য ধন্যবাদ। চেক-ইনের সময় এই ইমেইল (বা আপনার বুকিং নম্বর) দেখান।',
   ],
   booking: ['Booking', 'الحجز', 'Reserva', 'Rezervasyon', 'Pemesanan', 'बुकिंग', 'بکنگ', 'Réservation', 'বুকিং'],
+  hotelConfCode: ['Hotel confirmation number', 'رقم التأكيد لدى الفندق', 'Número de confirmación del hotel', 'Otel onay numarası', 'Nomor konfirmasi hotel', 'होटल पुष्टि नंबर', 'ہوٹل کی تصدیقی نمبر', 'Numéro de confirmation de l’hôtel', 'হোটেলের নিশ্চিতকরণ নম্বর'],
   bookingRef: ['Booking reference', 'رقم الحجز', 'Número de reserva', 'Rezervasyon numarası', 'Nomor pemesanan', 'बुकिंग नंबर', 'بکنگ نمبر', 'Numéro de réservation', 'বুকিং নম্বর'],
   flynoomRef: ['Flynoom reference', 'مرجع Flynoom', 'Referencia de Flynoom', 'Flynoom referansı', 'Referensi Flynoom', 'Flynoom संदर्भ', 'Flynoom حوالہ', 'Référence Flynoom', 'Flynoom রেফারেন্স'],
   amountPaid: ['Amount paid', 'المبلغ المدفوع', 'Importe pagado', 'Ödenen tutar', 'Jumlah dibayar', 'भुगतान की गई राशि', 'ادا شدہ رقم', 'Montant payé', 'পরিশোধিত অর্থ'],
@@ -298,15 +299,15 @@ const T: Record<string, Row9> = {
   ],
   wTeam: ['The Flynoom team', 'فريق Flynoom', 'El equipo de Flynoom', 'Flynoom ekibi', 'Tim Flynoom', 'Flynoom टीम', 'Flynoom ٹیم', 'L’équipe Flynoom', 'Flynoom টিম'],
   wUsOnly: [
-    'Bookings on Flynoom are available to U.S. residents. You can book for guests from any country.',
-    'الحجز عبر Flynoom متاح للمقيمين في الولايات المتحدة، ويمكنك الحجز لنزلاء من أي بلد.',
-    'Las reservas en Flynoom están disponibles para residentes de EE. UU. Puedes reservar para huéspedes de cualquier país.',
-    'Flynoom’da rezervasyon ABD’de ikamet edenlere açıktır. Her ülkeden misafir için rezervasyon yapabilirsiniz.',
-    'Pemesanan di Flynoom tersedia bagi penduduk AS. Anda dapat memesan untuk tamu dari negara mana pun.',
-    'Flynoom पर बुकिंग अमेरिका के निवासियों के लिए उपलब्ध है। आप किसी भी देश के मेहमानों के लिए बुकिंग कर सकते हैं।',
-    'Flynoom پر بکنگ امریکہ کے رہائشیوں کے لیے دستیاب ہے۔ آپ کسی بھی ملک کے مہمانوں کے لیے بکنگ کر سکتے ہیں۔',
-    'Les réservations sur Flynoom sont ouvertes aux résidents des États-Unis. Vous pouvez réserver pour des voyageurs de n’importe quel pays.',
-    'Flynoom-এ বুকিং মার্কিন যুক্তরাষ্ট্রের বাসিন্দাদের জন্য। আপনি যেকোনো দেশের অতিথির জন্য বুকিং করতে পারেন।',
+    'Bookings on Flynoom are available to residents of the United States and Iraq. You can book for guests from any country.',
+    'الحجز عبر Flynoom متاح للمقيمين في الولايات المتحدة والعراق، ويمكنك الحجز لنزلاء من أي بلد.',
+    'Las reservas en Flynoom están disponibles para residentes de EE. UU. e Irak. Puedes reservar para huéspedes de cualquier país.',
+    'Flynoom’da rezervasyon ABD’de ve Irak’ta ikamet edenlere açıktır. Her ülkeden misafir için rezervasyon yapabilirsiniz.',
+    'Pemesanan di Flynoom tersedia bagi penduduk AS dan Irak. Anda dapat memesan untuk tamu dari negara mana pun.',
+    'Flynoom पर बुकिंग अमेरिका और इराक के निवासियों के लिए उपलब्ध है। आप किसी भी देश के मेहमानों के लिए बुकिंग कर सकते हैं।',
+    'Flynoom پر بکنگ امریکہ اور عراق کے رہائشیوں کے لیے دستیاب ہے۔ آپ کسی بھی ملک کے مہمانوں کے لیے بکنگ کر سکتے ہیں۔',
+    'Les réservations sur Flynoom sont ouvertes aux résidents des États-Unis et de l’Irak. Vous pouvez réserver pour des voyageurs de n’importe quel pays.',
+    'Flynoom-এ বুকিং মার্কিন যুক্তরাষ্ট্র ও ইরাকের বাসিন্দাদের জন্য। আপনি যেকোনো দেশের অতিথির জন্য বুকিং করতে পারেন।',
   ],
   wOneTime: [
     'This is a one-time welcome message because you created a Flynoom account. We don’t send marketing emails unless you choose to receive them.',
@@ -489,6 +490,11 @@ function payAtHotelHtml(b: any, lang: EmailLang): string {
     `${lines}<div style="font-size:12px;color:#6b7280">${tr(lang, 'mandatoryNote')}</div>`);
 }
 
+/// حجز HotelBeds (أو حجز قديم بلا مورّد مسجّل).
+function isHotelBedsBooking(b: any): boolean {
+  return !b?.supplier || b.supplier === 'hotelbeds';
+}
+
 export function bookingConfirmationEmail(b: any): { subject: string; html: string } {
   const lang = langOf(b);
   const comments = String(b.rate_comments ?? '').trim();
@@ -496,6 +502,7 @@ export function bookingConfirmationEmail(b: any): { subject: string; html: strin
     section(tr(lang, 'booking'), `<table style="border-collapse:collapse">
 ${row(tr(lang, 'bookingRef'), `<span style="font-size:18px">${ltr(esc(b.supplier_reference))}</span>`)}
 ${row(tr(lang, 'flynoomRef'), ltr(esc(b.client_reference)))}
+${b.hotel_confirmation_code ? row(tr(lang, 'hotelConfCode'), ltr(esc(b.hotel_confirmation_code))) : ''}
 ${row(tr(lang, 'amountPaid'), ltr(`${usd(b.charge_amount)} USD`))}
 </table>`) +
     section(tr(lang, 'hotel'), `<div style="font-size:17px;font-weight:700">${esc(b.hotel_name)}</div>
@@ -514,9 +521,11 @@ ${row(tr(lang, 'leadGuest'), esc([b.holder_first_name, b.holder_last_name].filte
       ? section(tr(lang, 'importantInfo'),
         `<div dir="ltr" style="font-size:13px;color:#374151;white-space:pre-line;text-align:left">${esc(comments)}</div>`)
       : '') +
-    // نص يطلبه المورّد (HotelBeds): يبقى بالإنجليزية.
-    `<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-<p dir="ltr" style="font-size:12px;color:#6b7280;margin:0;text-align:left">Payable through ${esc(b.supplier_name ?? 'HOTELBEDS')}, acting as agent for the service operating company, details of which can be provided upon request. VAT: ${esc(b.supplier_vat ?? '—')} Reference: ${esc(b.supplier_reference)}</p>`;
+    // نص يطلبه HotelBeds على كل قسيمة (بالإنجليزية). لا يظهر لحجوزات LiteAPI.
+    (isHotelBedsBooking(b)
+      ? `<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
+<p dir="ltr" style="font-size:12px;color:#6b7280;margin:0;text-align:left">Payable through ${esc(b.supplier_name ?? 'HOTELBEDS')}, acting as agent for the service operating company, details of which can be provided upon request. VAT: ${esc(b.supplier_vat ?? '—')} Reference: ${esc(b.supplier_reference)}</p>`
+      : '');
 
   return {
     subject: tr(lang, 'subjConfirmed', {

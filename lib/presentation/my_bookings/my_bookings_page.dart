@@ -249,7 +249,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
     final repo = ref.read(hotelBedsBookingRepositoryProvider);
 
     setState(() => _isCancelling = true);
-    final quoteResult = await repo.cancellationQuote(booking.id);
+    final quoteResult = await repo.cancellationQuote(booking.id, supplier: booking.supplier);
     if (!mounted) return;
 
     CancellationQuote? quote;
@@ -324,7 +324,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
       return;
     }
 
-    final result = await repo.cancel(booking.id);
+    final result = await repo.cancel(booking.id, supplier: booking.supplier);
     if (!mounted) return;
 
     result.when(

@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/error_translator.dart';
+import '../../core/constants/hotel_supplier.dart';
 
 double? _toDouble(dynamic v) {
   if (v == null) return null;
@@ -496,7 +497,8 @@ class HotelBedsRepository {
       }
       if (paymentType != null) body['paymentType'] = paymentType;
 
-      final response = await _client.functions.invoke('hotelbeds-search', body: body);
+      // نفس الطلب ونفس شكل الرد لـ hotelbeds-search و liteapi-search.
+      final response = await _client.functions.invoke(kHotelSearchFunction, body: body);
 
       if (response.status != 200) {
         final error = (response.data is Map) ? response.data['error'] : null;

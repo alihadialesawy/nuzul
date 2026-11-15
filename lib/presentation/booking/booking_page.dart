@@ -135,7 +135,6 @@ class _BookingPageState extends ConsumerState<BookingPage> {
 
   // الموافقة على الشروط (التحكيم) + إقرار ولاية الإقامة (Seller of Travel).
   bool _acceptedTerms = false;
-  bool _confirmedResidency = false;
 
   /// هل مُلئت بيانات صاحب الحجز تلقائيًا من حجز سابق/الملف الشخصي؟
   bool _prefilled = false;
@@ -168,7 +167,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
           .from('bookings')
           .select()
           .eq('user_id', userId)
-          .eq('supplier', 'hotelbeds')
+          .inFilter('supplier', ['hotelbeds', 'liteapi'])
           .not('holder_first_name', 'is', null)
           .order('created_at', ascending: false)
           .limit(1);
@@ -251,17 +250,17 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   Future<void> _confirmHotelBedsBooking(SelectedRoom room) async {
     if (!(_holderFormKey.currentState?.validate() ?? false)) return;
 
-    if (!_acceptedTerms || !_confirmedResidency) {
+    if (!_acceptedTerms) {
       setState(() => _errorMessage = _tb(context,
-          ar: 'يُرجى الموافقة على الشروط وتأكيد ولاية الإقامة للمتابعة.',
-          en: 'Please accept the terms and confirm your state of residence to continue.',
-          es: 'Acepta los términos y confirma tu estado de residencia para continuar.',
-          tr: 'Devam etmek için şartları kabul edin ve ikamet ettiğiniz eyaleti onaylayın.',
-          id: 'Harap setujui ketentuan dan konfirmasi negara bagian tempat tinggal Anda untuk melanjutkan.',
-          hi: 'जारी रखने के लिए कृपया शर्तें स्वीकार करें और अपने निवास राज्य की पुष्टि करें।',
-          ur: 'جاری رکھنے کے لیے براہ کرم شرائط قبول کریں اور اپنی رہائشی ریاست کی تصدیق کریں۔',
-          fr: 'Veuillez accepter les conditions et confirmer votre État de résidence pour continuer.',
-          bn: 'চালিয়ে যেতে অনুগ্রহ করে শর্তাবলি মেনে নিন এবং আপনার বসবাসের রাজ্য নিশ্চিত করুন।'));
+          ar: 'يُرجى الموافقة على الشروط للمتابعة.',
+          en: 'Please accept the terms to continue.',
+          es: 'Acepta los términos para continuar.',
+          tr: 'Devam etmek için lütfen şartları kabul edin.',
+          id: 'Harap setujui ketentuan untuk melanjutkan.',
+          hi: 'जारी रखने के लिए कृपया शर्तें स्वीकार करें।',
+          ur: 'جاری رکھنے کے لیے براہ کرم شرائط قبول کریں۔',
+          fr: 'Veuillez accepter les conditions pour continuer.',
+          bn: 'চালিয়ে যেতে অনুগ্রহ করে শর্তাবলি মেনে নিন।'));
       return;
     }
 
@@ -307,7 +306,8 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       ),
       consent: BookingConsent(
         acceptedTerms: _acceptedTerms,
-        confirmedResidency: _confirmedResidency,
+        // الأهلية (البند 3) جزء من الشروط التي وافق عليها.
+        confirmedResidency: _acceptedTerms,
         termsVersion: kTermsVersion,
         privacyVersion: kPrivacyVersion,
         locale: Localizations.localeOf(context).languageCode,
@@ -344,7 +344,12 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     SemanticsPointerFix.enable();
     final payResult = await ref
         .read(paymentServiceProvider)
-        .confirmWithClientSecret(clientSecret: quote!.clientSecret, context: context)
+        .confirmWithClientSecret(
+          clientSecret: quote!.clientSecret,
+          context: context,
+          // من يحجز من العراق: بلا خانة رمز بريدي.
+          collectPostalCode: quote!.visitorCountry != 'IQ',
+        )
         .whenComplete(SemanticsPointerFix.disable);
     if (!mounted) return;
 
@@ -363,7 +368,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     if (!authorized) return;
 
     // 4) الحجز عند الفندق
-    final bookResult = await repo.book(quote!.bookingId, reviewAccepted: true);
+    final bookResult = await repo.book(quote!.bookingId, reviewAccepted: true, supplier: quote!.supplier);
     if (!mounted) return;
 
     bookResult.when(
@@ -846,7 +851,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
               value: _acceptedTerms,
               onChanged: (v) => setState(() {
                 _acceptedTerms = v;
-                if (v && _confirmedResidency) _errorMessage = null;
+                if (v) _errorMessage = null;
               }),
               text: _tb(context,
                   ar: 'قرأت شروط الخدمة وأوافق عليها، بما فيها اتفاقية التحكيم الملزم والتنازل عن الدعوى الجماعية، وأوافق على إشعار الخصوصية.',
@@ -887,23 +892,6 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                   ),
                 ],
               ),
-            ),
-            check(
-              value: _confirmedResidency,
-              onChanged: (v) => setState(() {
-                _confirmedResidency = v;
-                if (v && _acceptedTerms) _errorMessage = null;
-              }),
-              text: _tb(context,
-                  ar: 'أؤكد أنني مقيم في الولايات المتحدة، ولست مقيمًا في كاليفورنيا أو فلوريدا أو هاواي أو آيوا أو ماريلاند أو واشنطن.',
-                  en: 'I confirm that I am a resident of the United States and not a resident of California, Florida, Hawaii, Iowa, Maryland, or Washington.',
-                  es: 'Confirmo que resido en Estados Unidos y que no resido en California, Florida, Hawái, Iowa, Maryland ni Washington.',
-                  tr: 'Amerika Birleşik Devletleri\'nde ikamet ettiğimi ve California, Florida, Hawaii, Iowa, Maryland veya Washington\'da ikamet etmediğimi onaylıyorum.',
-                  id: 'Saya menyatakan bahwa saya penduduk Amerika Serikat dan bukan penduduk California, Florida, Hawaii, Iowa, Maryland, atau Washington.',
-                  hi: 'मैं पुष्टि करता/करती हूं कि मैं संयुक्त राज्य अमेरिका का निवासी हूं, और कैलिफ़ोर्निया, फ़्लोरिडा, हवाई, आयोवा, मैरीलैंड या वॉशिंगटन का निवासी नहीं हूं।',
-                  ur: 'میں تصدیق کرتا/کرتی ہوں کہ میں ریاستہائے متحدہ امریکہ کا رہائشی ہوں، اور کیلیفورنیا، فلوریڈا، ہوائی، آئیووا، میری لینڈ یا واشنگٹن کا رہائشی نہیں ہوں۔',
-                  fr: 'Je confirme résider aux États-Unis et ne pas résider en Californie, en Floride, à Hawaï, dans l\'Iowa, dans le Maryland ou dans l\'État de Washington.',
-                  bn: 'আমি নিশ্চিত করছি যে আমি মার্কিন যুক্তরাষ্ট্রের বাসিন্দা, এবং ক্যালিফোর্নিয়া, ফ্লোরিডা, হাওয়াই, আইওয়া, মেরিল্যান্ড বা ওয়াশিংটনের বাসিন্দা নই।'),
             ),
           ],
         ),
@@ -1153,15 +1141,15 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                                 final q = room.quantity;
                                 final roomsTxt = q == 1
                                     ? _tb(context, ar: 'غرفة واحدة', en: '1 room', es: '1 habitación', tr: '1 oda', id: '1 kamar',
-                                    hi: '1 कमरा', ur: '1 کمرہ', fr: '1 chambre', bn: '1টি রুম')
+                                        hi: '1 कमरा', ur: '1 کمرہ', fr: '1 chambre', bn: '1টি রুম')
                                     : _tb(context, ar: '$q غرف', en: '$q rooms', es: '$q habitaciones', tr: '$q oda', id: '$q kamar',
-                                    hi: '$q कमरे', ur: '$q کمرے', fr: '$q chambres', bn: '$qটি রুম');
+                                        hi: '$q कमरे', ur: '$q کمرے', fr: '$q chambres', bn: '$qটি রুম');
                                 final n = _nights;
                                 final nightsTxt = n == 1
                                     ? _tb(context, ar: 'ليلة واحدة', en: '1 night', es: '1 noche', tr: '1 gece', id: '1 malam',
-                                    hi: '1 रात', ur: '1 رات', fr: '1 nuit', bn: '1 রাত')
+                                        hi: '1 रात', ur: '1 رات', fr: '1 nuit', bn: '1 রাত')
                                     : _tb(context, ar: '$n ليالٍ', en: '$n nights', es: '$n noches', tr: '$n gece', id: '$n malam',
-                                    hi: '$n रातें', ur: '$n راتیں', fr: '$n nuits', bn: '$n রাত');
+                                        hi: '$n रातें', ur: '$n راتیں', fr: '$n nuits', bn: '$n রাত');
                                 final qty = '$roomsTxt × $nightsTxt';
                                 return room.label.isNotEmpty ? '${room.label} — $qty' : qty;
                               }()),

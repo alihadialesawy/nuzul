@@ -17,13 +17,13 @@ class QuoteCancellationPolicy {
   });
 
   factory QuoteCancellationPolicy.fromJson(Map<String, dynamic> j) => QuoteCancellationPolicy(
-    amount: (j['amount'] as num?)?.toDouble() ?? 0,
-    amountUsd: (j['amountUsd'] as num?)?.toDouble() ?? 0,
-    customerFee: (j['customerFee'] as num?)?.toDouble() ??
-        (j['amountUsd'] as num?)?.toDouble() ??
-        0,
-    from: j['from'] as String? ?? '',
-  );
+        amount: (j['amount'] as num?)?.toDouble() ?? 0,
+        amountUsd: (j['amountUsd'] as num?)?.toDouble() ?? 0,
+        customerFee: (j['customerFee'] as num?)?.toDouble() ??
+            (j['amountUsd'] as num?)?.toDouble() ??
+            0,
+        from: j['from'] as String? ?? '',
+      );
 
   DateTime? get fromDate => DateTime.tryParse(from);
 
@@ -35,6 +35,12 @@ class QuoteCancellationPolicy {
 /// نتيجة hotelbeds-prepare: السعر النهائي المؤكد + بيانات الدفع.
 class HotelBedsQuote {
   final String bookingId;
+
+  /// 'hotelbeds' أو 'liteapi' — يحدد دالة الحجز في الخطوة 2 ([HotelBedsBookingRepository.book]).
+  final String supplier;
+
+  /// بلد الزائر من عنوان IP (مثل US أو IQ)، أو null. من العراق تُخفى خانة الرمز البريدي.
+  final String? visitorCountry;
   final String clientReference;
   final String clientSecret;
   final double chargeAmount;
@@ -55,6 +61,8 @@ class HotelBedsQuote {
 
   const HotelBedsQuote({
     required this.bookingId,
+    this.supplier = 'hotelbeds',
+    this.visitorCountry,
     required this.clientReference,
     required this.clientSecret,
     required this.chargeAmount,
@@ -91,25 +99,27 @@ class HotelBedsQuote {
   }
 
   factory HotelBedsQuote.fromJson(Map<String, dynamic> j) => HotelBedsQuote(
-    bookingId: j['bookingId'] as String,
-    clientReference: j['clientReference'] as String? ?? '',
-    clientSecret: j['clientSecret'] as String,
-    chargeAmount: (j['chargeAmount'] as num).toDouble(),
-    chargeCurrency: j['chargeCurrency'] as String? ?? 'USD',
-    priceChanged: j['priceChanged'] == true,
-    roomName: j['roomName'] as String?,
-    boardName: j['boardName'] as String?,
-    rateClass: j['rateClass'] as String?,
-    rateComments: j['rateComments'] as String?,
-    cancellationPolicies: (j['cancellationPolicies'] as List? ?? [])
-        .map((p) => QuoteCancellationPolicy.fromJson(Map<String, dynamic>.from(p as Map)))
-        .toList()
-      ..sort((a, b) => a.from.compareTo(b.from)),
-    payAtHotelUsd: (j['payAtHotelUsd'] as num?)?.toDouble() ?? 0,
-    atHotelFees: (j['atHotelFees'] as List? ?? [])
-        .map((f) => Map<String, dynamic>.from(f as Map))
-        .toList(),
-  );
+        bookingId: j['bookingId'] as String,
+        supplier: j['supplier'] as String? ?? 'hotelbeds',
+        visitorCountry: j['visitorCountry'] as String?,
+        clientReference: j['clientReference'] as String? ?? '',
+        clientSecret: j['clientSecret'] as String,
+        chargeAmount: (j['chargeAmount'] as num).toDouble(),
+        chargeCurrency: j['chargeCurrency'] as String? ?? 'USD',
+        priceChanged: j['priceChanged'] == true,
+        roomName: j['roomName'] as String?,
+        boardName: j['boardName'] as String?,
+        rateClass: j['rateClass'] as String?,
+        rateComments: j['rateComments'] as String?,
+        cancellationPolicies: (j['cancellationPolicies'] as List? ?? [])
+            .map((p) => QuoteCancellationPolicy.fromJson(Map<String, dynamic>.from(p as Map)))
+            .toList()
+          ..sort((a, b) => a.from.compareTo(b.from)),
+        payAtHotelUsd: (j['payAtHotelUsd'] as num?)?.toDouble() ?? 0,
+        atHotelFees: (j['atHotelFees'] as List? ?? [])
+            .map((f) => Map<String, dynamic>.from(f as Map))
+            .toList(),
+      );
 }
 
 /// نتيجة hotelbeds-book.
@@ -158,11 +168,11 @@ class BookingHolder {
   });
 
   Map<String, dynamic> toJson() => {
-    'firstName': firstName,
-    'lastName': lastName,
-    'email': email,
-    'phone': phone,
-  };
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        'phone': phone,
+      };
 }
 
 /// موافقة العميل في صفحة الحجز (تُرسل لـ hotelbeds-prepare وتُسجَّل في booking_consents).
@@ -182,12 +192,12 @@ class BookingConsent {
   });
 
   Map<String, dynamic> toJson() => {
-    'acceptedTerms': acceptedTerms,
-    'confirmedResidency': confirmedResidency,
-    'termsVersion': termsVersion,
-    'privacyVersion': privacyVersion,
-    'locale': locale,
-  };
+        'acceptedTerms': acceptedTerms,
+        'confirmedResidency': confirmedResidency,
+        'termsVersion': termsVersion,
+        'privacyVersion': privacyVersion,
+        'locale': locale,
+      };
 }
 
 /// خطوتا حجز HotelBeds عبر السيرفر:
@@ -219,7 +229,9 @@ class HotelBedsBookingRepository {
     required BookingConsent consent,
   }) async {
     try {
-      final data = await _invoke('hotelbeds-prepare', {
+      // نفس الطلب ونفس شكل الرد للمورّدين: كود HotelBeds رقمي، وكود LiteAPI مثل lp1faeef.
+      final isLite = !RegExp(r'^\d+$').hasMatch(hotelCode.replaceFirst('hb_', ''));
+      final data = await _invoke(isLite ? 'liteapi-prepare' : 'hotelbeds-prepare', {
         'rateKey': rateKey,
         'hotelCode': hotelCode,
         'hotelName': hotelName,
@@ -245,9 +257,14 @@ class HotelBedsBookingRepository {
 
   /// [reviewAccepted]: العميل وافق على شاشة المراجعة (السعر النهائي وسياسة
   /// الإلغاء)؛ يُسجَّل على السيرفر في booking_consents.
-  Future<Result<HotelBedsBookingOutcome>> book(String bookingId, {bool reviewAccepted = true}) async {
+  /// [supplier] من [HotelBedsQuote.supplier]: حجوزات LiteAPI تذهب إلى liteapi-book.
+  Future<Result<HotelBedsBookingOutcome>> book(
+    String bookingId, {
+    bool reviewAccepted = true,
+    String supplier = 'hotelbeds',
+  }) async {
     try {
-      final data = await _invoke('hotelbeds-book', {
+      final data = await _invoke(supplier == 'liteapi' ? 'liteapi-book' : 'hotelbeds-book', {
         'bookingId': bookingId,
         'reviewAccepted': reviewAccepted,
       });
@@ -265,9 +282,9 @@ class HotelBedsBookingRepository {
   }
 
   /// رسوم الإلغاء والمبلغ المسترد الآن (بدون إلغاء فعلي).
-  Future<Result<CancellationQuote>> cancellationQuote(String bookingId) async {
+  Future<Result<CancellationQuote>> cancellationQuote(String bookingId, {String? supplier}) async {
     try {
-      final data = await _invoke('hotelbeds-cancel', {'bookingId': bookingId, 'mode': 'quote'});
+      final data = await _invoke(_cancelFn(supplier), {'bookingId': bookingId, 'mode': 'quote'});
       if (data['ok'] != true) {
         return Failure(data['error']?.toString() ?? 'This booking cannot be cancelled online.');
       }
@@ -282,9 +299,9 @@ class HotelBedsBookingRepository {
   }
 
   /// إلغاء فعلي عند الفندق + استرداد المبلغ المستحق.
-  Future<Result<CancellationQuote>> cancel(String bookingId) async {
+  Future<Result<CancellationQuote>> cancel(String bookingId, {String? supplier}) async {
     try {
-      final data = await _invoke('hotelbeds-cancel', {'bookingId': bookingId, 'mode': 'confirm'});
+      final data = await _invoke(_cancelFn(supplier), {'bookingId': bookingId, 'mode': 'confirm'});
       if (data['ok'] != true) {
         return Failure(data['error']?.toString() ?? 'The booking could not be cancelled.');
       }
@@ -298,6 +315,9 @@ class HotelBedsBookingRepository {
       return Failure(ErrorTranslator.translate(e));
     }
   }
+
+  /// دالة الإلغاء حسب مورّد الحجز (bookings.supplier).
+  String _cancelFn(String? supplier) => supplier == 'liteapi' ? 'liteapi-cancel' : 'hotelbeds-cancel';
 
   String _formatDate(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

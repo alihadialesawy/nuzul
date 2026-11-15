@@ -91,7 +91,8 @@ export function evaluateRisk(i: RiskInput): RiskDecision {
 
   // ───── رفض ما لم يوجد 3D Secure ─────
   if (riskLevel === 'elevated' && !authenticated) reasons.push('radar_elevated_no_3ds');
-  if (postalCheck === 'fail' && !has3ds) reasons.push('postal_fail_no_3ds');
+  // فحص الرمز البريدي (AVS) يعتمد عليه فقط للبطاقات الأمريكية؛ بنوك العراق ومعظم الدول لا تطبّقه.
+  if (postalCheck === 'fail' && !has3ds && (!cardCountry || cardCountry === 'US')) reasons.push('postal_fail_no_3ds');
 
   // ───── إشارات خفيفة ─────
   if (i.ipCountry && cardCountry && i.ipCountry !== cardCountry) {

@@ -238,18 +238,35 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
   HotelInfo? _info;
 
   Future<void> _loadInfo() async {
-    final info = await HotelInfoRepository().fetch(widget.hotel.id);
+    final lang = Localizations.localeOf(context).languageCode;
+    final info = await HotelInfoRepository().fetch(widget.hotel.id, language: lang);
     if (!mounted || info == null) return;
-    setState(() => _info = info);
+    setState(() {
+      _info = info;
+      // LiteAPI: معرض الصور والمرافق يصلان مع معلومات الفندق.
+      if (info.images.length > _hotel.images.length) {
+        _hotel = _hotel.copyWith(images: info.images);
+      }
+      if (_hotel.amenities.isEmpty && info.facilities.isNotEmpty) {
+        _hotel = _hotel.copyWith(amenities: info.facilities);
+      }
+    });
   }
 
+  /// فنادق المورّدين (HotelBeds أو LiteAPI) — كلاهما بمعرّف بادئته hb_.
   bool get _isHotelBeds => widget.hotel.id.startsWith('hb_');
+
+  /// فندق LiteAPI (الكود غير رقمي، مثل hb_lp1faeef).
+  bool get _isLiteApi => _isHotelBeds && HotelInfoRepository.isLiteApiCode(widget.hotel.id);
 
   @override
   void initState() {
     super.initState();
     if (_isHotelBeds) {
-      _loadInfo();
+      // بعد أول إطار: _loadInfo تقرأ لغة الواجهة من context.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadInfo();
+      });
       _hbResult = HotelBedsSearchCache.lookup(
         code: widget.hotel.id.replaceFirst('hb_', ''),
         checkIn: widget.checkIn,
@@ -260,7 +277,8 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
     // فنادق HotelBeds بتيجي بمعرّف بادئته hb_ ومن غير صور من استعلام
     // البحث المبسط -- نجيب الصور الفعلية لحظيًا هنا بس (مش في قائمة
     // البحث كلها) عشان نتجنب إبطاء صفحة النتائج.
-    if (_hotel.id.startsWith('hb_') && _hotel.images.length <= 1) {
+    // صور LiteAPI تصل مع _loadInfo، فلا نطلبها من HotelBeds.
+    if (_hotel.id.startsWith('hb_') && !_isLiteApi && _hotel.images.length <= 1) {
       _loadHotelBedsImages();
     }
   }
@@ -757,6 +775,12 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: AppSizes.lg),
+                    ],
+
+                    // وصف الفندق ومعلوماته المهمة (LiteAPI) — من بيانات الفندق نفسه.
+                    if (_info?.description != null || _info?.importantInfo != null) ...[
+                      _AboutPropertyCard(info: _info!),
                       const SizedBox(height: AppSizes.lg),
                     ],
 
@@ -1514,6 +1538,10 @@ class _AmenityTile extends StatelessWidget {
         Expanded(
           child: Text(
             amenity.label,
+            // مرافق LiteAPI تأتي بالإنجليزية أحيانًا: نكتبها من اليسار حتى لا تنقلب
+            // الأرقام والرموز في الواجهة العربية ("24-hour" لا "hour-24").
+            textDirection: _textDirOf(amenity.label),
+            textAlign: _uiAlign(context),
             style: const TextStyle(fontSize: 13),
           ),
         ),
@@ -1869,6 +1897,112 @@ String _policyText(
 String _fmtDistanceM(double m) =>
     m < 1000 ? '${m.round()} m' : '${(m / 1000).toStringAsFixed(m < 10000 ? 1 : 0)} km';
 
+/// اتجاه النص حسب أول حرف "قوي": عربي/أردو → RTL، لاتيني → LTR، وإلا null (اتجاه الواجهة).
+TextDirection? _textDirOf(String s) {
+  final m = RegExp(r'[A-Za-z\u00C0-\u024F]|[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]').firstMatch(s);
+  if (m == null) return null;
+  return RegExp(r'[A-Za-z\u00C0-\u024F]').hasMatch(m.group(0)!) ? TextDirection.ltr : TextDirection.rtl;
+}
+
+/// محاذاة النص لجهة بداية الواجهة (يمين في العربية) مهما كان اتجاه النص نفسه.
+TextAlign _uiAlign(BuildContext context) =>
+    Directionality.of(context) == TextDirection.rtl ? TextAlign.right : TextAlign.left;
+
+/// وصف الفندق + "معلومات مهمة" من الفندق (LiteAPI). النص طويل أحيانًا،
+/// فيُعرض أول 6 أسطر مع زر "اقرأ المزيد".
+class _AboutPropertyCard extends StatefulWidget {
+  final HotelInfo info;
+  const _AboutPropertyCard({required this.info});
+
+  @override
+  State<_AboutPropertyCard> createState() => _AboutPropertyCardState();
+}
+
+class _AboutPropertyCardState extends State<_AboutPropertyCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final info = widget.info;
+    final desc = info.description;
+    final important = info.importantInfo;
+    final long = (desc?.length ?? 0) > 450;
+    const body = TextStyle(fontSize: 14, height: 1.55, color: AppColors.textSecondary);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _t3(context, ar: 'عن الفندق', en: 'About this property', es: 'Acerca del alojamiento',
+              tr: 'Tesis hakkında', id: 'Tentang properti ini', hi: 'इस प्रॉपर्टी के बारे में',
+              ur: 'اس پراپرٹی کے بارے میں', fr: 'À propos de l\'établissement', bn: 'এই প্রপার্টি সম্পর্কে'),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: AppSizes.sm),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (desc != null) ...[
+                  Text(
+                    desc,
+                    textDirection: _textDirOf(desc),
+                    textAlign: _uiAlign(context),
+                    style: body,
+                    maxLines: (_expanded || !long) ? null : 6,
+                    overflow: (_expanded || !long) ? TextOverflow.visible : TextOverflow.ellipsis,
+                  ),
+                  if (long)
+                    TextButton(
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 36)),
+                      onPressed: () => setState(() => _expanded = !_expanded),
+                      child: Text(_expanded
+                          ? _t3(context, ar: 'عرض أقل', en: 'Show less', es: 'Mostrar menos', tr: 'Daha az göster',
+                          id: 'Tampilkan lebih sedikit', hi: 'कम दिखाएं', ur: 'کم دکھائیں', fr: 'Afficher moins',
+                          bn: 'কম দেখান')
+                          : _t3(context, ar: 'اقرأ المزيد', en: 'Read more', es: 'Leer más', tr: 'Devamını oku',
+                          id: 'Baca selengkapnya', hi: 'और पढ़ें', ur: 'مزید پڑھیں', fr: 'Lire la suite',
+                          bn: 'আরও পড়ুন')),
+                    ),
+                ],
+                if (important != null) ...[
+                  if (desc != null) const Divider(height: AppSizes.lg),
+                  Row(children: [
+                    const Icon(Icons.info_outline, size: 18, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      _t3(context, ar: 'معلومات مهمة من الفندق', en: 'Important information from the hotel',
+                          es: 'Información importante del hotel', tr: 'Otelden önemli bilgiler',
+                          id: 'Informasi penting dari hotel', hi: 'होटल की महत्वपूर्ण जानकारी',
+                          ur: 'ہوٹل کی اہم معلومات', fr: 'Informations importantes de l\'hôtel',
+                          bn: 'হোটেলের গুরুত্বপূর্ণ তথ্য'),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                  ]),
+                  const SizedBox(height: 6),
+                  // كل سطر باتجاهه: الفندق يخلط أحيانًا العربية والإنجليزية.
+                  for (final line in important.split('\n').where((l) => l.trim().isNotEmpty))
+                    SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        line.trim(),
+                        textDirection: _textDirOf(line),
+                        textAlign: _uiAlign(context),
+                        style: body.copyWith(fontSize: 13),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// العنوان الحقيقي + المعالم القريبة + أقرب المطارات/المحطات (من بيانات الفندق).
 class _RealAreaCard extends StatelessWidget {
   final HotelInfo info;
@@ -1914,20 +2048,22 @@ class _RealAreaCard extends StatelessWidget {
             ...info.terminals.map((t) => row(Icons.flight_outlined,
                 t.name != null ? '${t.name} (${t.code})' : t.code, _fmtDistanceM(t.distanceKm * 1000))),
           ],
-          const SizedBox(height: 4),
-          Text(
-            _t3(context,
-                ar: 'المسافات تقريبية بخط مستقيم، حسب بيانات الفندق.',
-                en: 'Distances are approximate, in a straight line, based on the hotel\'s information.',
-                es: 'Las distancias son aproximadas, en línea recta, según la información del hotel.',
-                tr: 'Mesafeler, otelin bilgilerine göre kuş uçuşu yaklaşık değerlerdir.',
-                id: 'Jarak bersifat perkiraan dalam garis lurus, berdasarkan informasi hotel.',
-                hi: 'दूरियां होटल की जानकारी के आधार पर सीधी रेखा में अनुमानित हैं।',
-                ur: 'فاصلے ہوٹل کی معلومات کے مطابق سیدھی لکیر میں تخمینی ہیں۔',
-                fr: 'Distances approximatives à vol d\'oiseau, selon les informations de l\'hôtel.',
-                bn: 'দূরত্বগুলো হোটেলের তথ্য অনুযায়ী সরলরেখায় আনুমানিক।'),
-            style: const TextStyle(fontSize: 11, color: AppColors.textHint),
-          ),
+          if (info.pointsOfInterest.isNotEmpty || info.terminals.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              _t3(context,
+                  ar: 'المسافات تقريبية بخط مستقيم، حسب بيانات الفندق.',
+                  en: 'Distances are approximate, in a straight line, based on the hotel\'s information.',
+                  es: 'Las distancias son aproximadas, en línea recta, según la información del hotel.',
+                  tr: 'Mesafeler, otelin bilgilerine göre kuş uçuşu yaklaşık değerlerdir.',
+                  id: 'Jarak bersifat perkiraan dalam garis lurus, berdasarkan informasi hotel.',
+                  hi: 'दूरियां होटल की जानकारी के आधार पर सीधी रेखा में अनुमानित हैं।',
+                  ur: 'فاصلے ہوٹل کی معلومات کے مطابق سیدھی لکیر میں تخمینی ہیں۔',
+                  fr: 'Distances approximatives à vol d\'oiseau, selon les informations de l\'hôtel.',
+                  bn: 'দূরত্বগুলো হোটেলের তথ্য অনুযায়ী সরলরেখায় আনুমানিক।'),
+              style: const TextStyle(fontSize: 11, color: AppColors.textHint),
+            ),
+          ],
         ]),
       ),
     );

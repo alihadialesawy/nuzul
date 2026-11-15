@@ -401,12 +401,13 @@ class FlynoomPdf {
         ],
         pw.SizedBox(height: 14),
         pw.Divider(color: _light),
-        // العبارة الإلزامية من HotelBeds.
-        pw.Text(
-          'Payable through ${b.supplierName ?? 'HOTELBEDS'}, acting as agent for the service operating company, '
-              'details of which can be provided upon request. VAT: ${b.supplierVat ?? '—'} Reference: ${b.supplierReference ?? '—'}',
-          style: const pw.TextStyle(fontSize: 8, color: _grey),
-        ),
+        // العبارة الإلزامية من HotelBeds (لحجوزات HotelBeds فقط، لا LiteAPI).
+        if (b.supplier == null || b.supplier == 'hotelbeds')
+          pw.Text(
+            'Payable through ${b.supplierName ?? 'HOTELBEDS'}, acting as agent for the service operating company, '
+                'details of which can be provided upon request. VAT: ${b.supplierVat ?? '—'} Reference: ${b.supplierReference ?? '—'}',
+            style: const pw.TextStyle(fontSize: 8, color: _grey),
+          ),
       ],
     ));
     return doc.save();

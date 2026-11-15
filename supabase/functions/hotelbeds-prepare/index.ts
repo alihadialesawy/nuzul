@@ -43,6 +43,7 @@ import {
   toUsdRaw,
 } from '../_shared/hotelbeds.ts';
 import { emailLocale, sendEmail } from '../_shared/email.ts';
+import { lookupIpCountry } from '../_shared/fraud.ts';
 import { blockedHotelReason } from '../_shared/sanctions.ts';
 import { HAJJ_SEASON_MESSAGE, hajjSeasonConflict } from '../_shared/hajj.ts';
 
@@ -75,7 +76,7 @@ function nightsBetween(checkIn: string, checkOut: string): number {
 const TERMS_CONSENT_TEXT =
   'I have read and agree to the Terms of Service, including the binding arbitration agreement and class action waiver, and the Privacy Notice.';
 const RESIDENCY_CONSENT_TEXT =
-  'I confirm that I am not a resident of California, Florida, Hawaii, or Washington.';
+  '(Eligibility under Terms of Service section 3 accepted as part of the Terms; no separate residency checkbox.)';
 
 /// عنوان IP الحقيقي للعميل (أول عنوان في x-forwarded-for).
 function clientIp(req: Request): string | null {
@@ -154,11 +155,9 @@ Deno.serve(async (req) => {
 
     // ───── الموافقة على الشروط ─────
     const consent = body.consent ?? {};
-    if (consent.acceptedTerms !== true || consent.confirmedResidency !== true) {
-      return fail(
-        'consent_required',
-        'Please accept the terms and confirm your state of residence to continue.',
-      );
+    // شرط الأهلية (البند 3 من الشروط) جزء من الموافقة على الشروط؛ لا مربع إقامة منفصل.
+    if (consent.acceptedTerms !== true) {
+      return fail('consent_required', 'Please accept the Terms of Service to continue.');
     }
     const termsVersion = shortText(consent.termsVersion, 20) ?? 'unknown';
     const privacyVersion = shortText(consent.privacyVersion, 20) ?? 'unknown';
@@ -409,7 +408,12 @@ Deno.serve(async (req) => {
         `net=${net} ${supplierCurrency} price=${price} charge=${chargeUsd} USD`,
     );
 
+    // بلد الزائر (من عنوان IP): نافذة البطاقة على الويب تخفي خانة الرمز البريدي
+    // لمن يحجز من العراق (العناوين العراقية بلا رموز بريدية عمليًا).
+    const visitorCountry = await lookupIpCountry(clientIp(req)).catch(() => null);
+
     return ok({
+      visitorCountry,
       bookingId: booking.id,
       clientReference,
       clientSecret: intent.client_secret,

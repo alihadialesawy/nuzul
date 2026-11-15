@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/error_translator.dart';
 import '../../core/services/currency_service.dart';
+import '../../core/constants/hotel_supplier.dart';
 import '../models/hotel_model.dart';
 import '../models/destination_model.dart';
 import 'hotelbeds_repository.dart';
@@ -12,7 +13,9 @@ import 'hotelbeds_repository.dart';
 class HotelRepository {
   final SupabaseClient _client = Supabase.instance.client;
 
-  /// بحث حي عن فنادق حقيقية عبر HotelBeds (Edge Function `hotelbeds-search`).
+  /// بحث حي عن فنادق حقيقية عبر HotelBeds (Edge Function `hotelbeds-search`)
+  /// أو LiteAPI (`liteapi-search`) حسب [kHotelSupplier]. الدالتان تأخذان نفس
+  /// الطلب (destinationCode من جدولنا) وتُرجعان نفس شكل الرد.
   ///
   /// - destinationCode: كود HotelBeds الرسمي من جدول hotelbeds_destinations.
   /// - النتائج الكاملة (الغرف والأسعار وrateKeys) تُحفظ في
@@ -33,7 +36,7 @@ class HotelRepository {
           '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
       final response = await _client.functions.invoke(
-        'hotelbeds-search',
+        kHotelSearchFunction,
         body: {
           'destinationCode': destinationCode,
           'checkIn': formatDate(checkIn),
